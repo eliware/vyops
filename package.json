@@ -5,7 +5,10 @@
     "main": "vyops.mjs",
     "scripts": {
         "lint": "npx oxlint .",
-        "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --coverage --detectOpenHandles --silent --runInBand"
+        "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --coverage --detectOpenHandles --silent --runInBand",
+        "deploy": "./vyops.mjs",
+        "validate": "./preflight.mjs",
+        "preflight": "./preflight.mjs"
     },
     "keywords": [],
     "type": "module",
@@ -17,6 +20,7 @@
         "oxlint": "^1.76.0"
     },
     "bin": {
-        "vyops": "./vyops.mjs"
+        "vyops": "./vyops.mjs",
+        "vyops-preflight": "./preflight.mjs"
     }
 }
