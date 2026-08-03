@@ -43,7 +43,7 @@ export function interactive(client, commands, log = () => {}) {
       let response = '';
       let index = 0;
       let waiting = false;
-      let confirmed = false;
+      let answering = false;
       let settled = false;
       const timer = setTimeout(() => {
         log(`timeout; next command: ${index + 1}/${commands.length}`);
@@ -69,16 +69,17 @@ export function interactive(client, commands, log = () => {}) {
         response += text;
         log(`recv (${text.length} bytes): ${JSON.stringify(text)}`);
         const cleaned = clean(response);
-        if (/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned) && !confirmed) {
-          confirmed = true;
+        if (/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned) && !answering) {
+          answering = true;
           log('commit-confirm prompt; send: y');
+          response = '';
           stream.write('y\n');
-          waiting = false;
-          sendNext();
           return;
         }
         const command = commands[index - 1] ?? '';
-        if (waiting && command && cleaned.includes(command) && prompt(cleaned)) {
+        if (waiting && command && cleaned.includes(command) && prompt(cleaned)
+          && !/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned)) {
+          answering = false;
           waiting = false;
           log(`response [${index}]:\n${cleaned}`);
           if (index >= commands.length) {
