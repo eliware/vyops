@@ -1,4 +1,4 @@
-import { connect, exec, interactive, upload } from './ssh.mjs';
+import { connect, download, exec, interactive, upload } from './ssh.mjs';
 
 export function extractCompare(output) {
   const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
@@ -37,6 +37,8 @@ export async function deploy({ target, config }) {
     const compare = extractCompare(output);
     if (compare) process.stdout.write(`${compare}\n`);
     if (/Invalid command|Commit failed|Save failed/i.test(output)) throw new Error('router reported deployment failure');
+    log(`syncing live config: /config/config.boot -> ${config}`);
+    await download(client, '/config/config.boot', config);
     return 0;
   } finally {
     log('cleaning up remote file');

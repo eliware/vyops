@@ -34,6 +34,15 @@ export async function upload(client, local, remote) {
   });
 }
 
+export function download(client, remote, local) {
+  return new Promise((resolve, reject) => {
+    client.sftp((error, sftp) => {
+      if (error) return reject(error);
+      sftp.fastGet(remote, local, error2 => error2 ? reject(error2) : resolve());
+    });
+  });
+}
+
 export function interactive(client, commands, log = () => {}) {
   return new Promise((resolve, reject) => {
     client.shell({ term: 'xterm', cols: 160, rows: 48 }, (error, stream) => {
