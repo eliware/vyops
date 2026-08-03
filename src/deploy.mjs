@@ -20,6 +20,7 @@ export async function deploy({ target, config }) {
     log(`uploading config: ${config}`);
     await upload(client, config, remote);
     log(`upload complete: ${remote}`);
+    log('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
       `load ${remote}`,
@@ -32,6 +33,7 @@ export async function deploy({ target, config }) {
       'exit',
       'exit',
     ], log);
+    log(`interactive sequence returned (${output.length} bytes)`);
     const compare = extractCompare(output);
     if (compare) process.stdout.write(`${compare}\n`);
     if (/Invalid command|Commit failed|Save failed/i.test(output)) throw new Error('router reported deployment failure');

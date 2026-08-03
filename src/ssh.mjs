@@ -45,8 +45,9 @@ export function interactive(client, commands, log = () => {}) {
       let waiting = false;
       let answering = false;
       let settled = false;
+      log(`interactive sequence start (${commands.length} commands)`);
       const timer = setTimeout(() => {
-        log(`timeout; next command: ${index + 1}/${commands.length}`);
+        log(`timeout; next command: ${index + 1}/${commands.length}; waiting=${waiting}; answering=${answering}`);
         log(`partial response:\n${response}`);
         stream.close();
         reject(new Error('interactive SSH timeout'));
@@ -61,7 +62,9 @@ export function interactive(client, commands, log = () => {}) {
         response = '';
         waiting = true;
         log(`send [${index}/${commands.length}]: ${command}`);
+        log(`state before send: index=${index}, waiting=${waiting}, answering=${answering}`);
         stream.write(`${command}\n`);
+        log(`write complete [${index}/${commands.length}]`);
       };
       stream.on('data', data => {
         const text = data.toString();
@@ -69,16 +72,26 @@ export function interactive(client, commands, log = () => {}) {
         response += text;
         log(`recv (${text.length} bytes): ${JSON.stringify(text)}`);
         const cleaned = clean(response);
+        const pager = /(?:^|\n):\s*$/.test(cleaned) || /--More--\s*$/i.test(cleaned);
+        log(`state after data: index=${index}, waiting=${waiting}, answering=${answering}, prompt=${prompt(cleaned)}, pager=${pager}, bytes=${text.length}`);
+        if (pager) {
+          log('pager prompt detected; sending space');
+          stream.write(' ');
+          log('write complete: space');
+          return;
+        }
         if (/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned) && !answering) {
           answering = true;
-          log('commit-confirm prompt; send: y');
+          log('commit-confirm prompt detected; sending: y');
           response = '';
           stream.write('y\n');
+          log('write complete: y');
           return;
         }
         const commandComplete = waiting
           && prompt(cleaned)
           && !/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned);
+        log(`command completion check: complete=${commandComplete}`);
         if (commandComplete) {
           answering = false;
           waiting = false;
@@ -91,6 +104,11 @@ export function interactive(client, commands, log = () => {}) {
           } else sendNext();
         }
       });
+      stream.on('error', error => {
+        log(`interactive stream error: ${error.message}`);
+        clearTimeout(timer);
+        reject(error);
+      });
       stream.stderr.on('data', data => {
         const text = data.toString();
         output += text;
@@ -98,7 +116,7 @@ export function interactive(client, commands, log = () => {}) {
         log(`recv stderr (${text.length} bytes): ${JSON.stringify(text)}`);
       });
       stream.on('close', () => {
-        log('VyOS interactive shell closed');
+        log(`VyOS interactive shell closed; settled=${settled}; index=${index}/${commands.length}`);
         clearTimeout(timer);
         if (!settled) resolve(output);
       });
