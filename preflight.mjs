@@ -1,17 +1,31 @@
 #!/usr/bin/env node
-import { readFile } from 'node:fs/promises';
-import { validateConfig } from './src/validate.mjs';
+import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { fixConfig, validateConfig } from './src/validate.mjs';
 
-const [file] = process.argv.slice(2);
-if (process.argv.length !== 3) {
-  console.error('Usage: ./preflight.mjs <config.boot>');
+const argv = process.argv.slice(2);
+const fix = argv[0] === '--fix';
+const [file] = fix ? argv.slice(1) : argv;
+if (!file || argv.length !== (fix ? 2 : 1)) {
+  console.error('Usage: ./preflight.mjs [--fix] <config.boot>');
   process.exitCode = 1;
 } else {
   console.log(`Config preflight: ${file}`);
   try {
-    const text = await readFile(file, 'utf8');
+    let text = await readFile(file, 'utf8');
     console.log('  ✓ readable');
-    if (!text.trim()) throw new Error('config validation failed: file is empty');
+    if (fix) {
+      text = fixConfig(text);
+      validateConfig(text);
+      const temporary = `${file}.tmp-${process.pid}`;
+      try {
+        await writeFile(temporary, text, { flag: 'wx' });
+        await rename(temporary, file);
+      } catch (error) {
+        await unlink(temporary).catch(() => {});
+        throw error;
+      }
+      console.log('  ✓ fixed formatting and ordering');
+    }
     console.log('  ✓ non-empty');
     validateConfig(text);
     console.log('  ✓ quotes balanced');

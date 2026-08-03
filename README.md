@@ -27,4 +27,16 @@ npm test
 npm run lint
 ```
 
+Preflight a config without changing it:
+
+```sh
+./preflight.mjs /path/to/config.boot
+```
+
+Fix line endings, indentation, trailing whitespace, and sibling statement ordering in place:
+
+```sh
+./preflight.mjs --fix /path/to/config.boot
+```
+
 Config files may contain secrets. Do not print or commit deployment logs containing config contents.
