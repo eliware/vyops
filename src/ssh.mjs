@@ -76,10 +76,9 @@ export function interactive(client, commands, log = () => {}) {
           stream.write('y\n');
           return;
         }
-        const command = commands[index - 1] ?? '';
-        const commandComplete = prompt(cleaned)
-          && !/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned)
-          && ((waiting && command && cleaned.includes(command)) || answering);
+        const commandComplete = waiting
+          && prompt(cleaned)
+          && !/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned);
         if (commandComplete) {
           answering = false;
           waiting = false;
