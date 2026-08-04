@@ -26,7 +26,7 @@ async function installPostCommitHooks(client, config, log) {
   if (!names.length) return;
   const remoteDir = `/home/vyos/.post-hooks.${process.pid}`;
   const installDir = '/config/scripts/commit/post-hooks.d';
-  const made = await exec(client, `sudo mkdir -p ${JSON.stringify(remoteDir)} ${JSON.stringify(installDir)}`);
+  const made = await exec(client, `mkdir -p ${JSON.stringify(remoteDir)} && sudo mkdir -p ${JSON.stringify(installDir)}`);
   if (made.code !== 0) throw new Error(`post-commit hook directory setup failed: ${made.stderr || made.stdout}`.trim());
   try {
     for (const name of names) {
