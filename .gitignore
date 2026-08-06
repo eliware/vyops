@@ -4,3 +4,4 @@ coverage/
 .agentx_responseid
 *.log
 .jest.result
+.agentx*
