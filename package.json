@@ -1,26 +1,27 @@
 {
-    "name": "vyops-bash",
-    "version": "1.0.0",
-    "description": "",
-    "main": "vyops.mjs",
-    "scripts": {
-        "lint": "npx oxlint .",
-        "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --coverage --detectOpenHandles --silent --runInBand",
-        "deploy": "./vyops.mjs",
-        "validate": "./preflight.mjs",
-        "preflight": "./preflight.mjs"
-    },
-    "keywords": [],
-    "type": "module",
-    "dependencies": {
-        "ssh2": "^1.17.0"
-    },
-    "devDependencies": {
-        "jest": "^30.4.2",
-        "oxlint": "^1.76.0"
-    },
-    "bin": {
-        "vyops": "./vyops.mjs",
-        "vyops-preflight": "./preflight.mjs"
-    }
+  "name": "vyops-bash",
+  "version": "1.0.0",
+  "description": "",
+  "main": "vyops.mjs",
+  "scripts": {
+    "lint": "npx oxlint .",
+    "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --coverage --detectOpenHandles --silent --runInBand",
+    "deploy": "./vyops.mjs",
+    "validate": "./preflight.mjs",
+    "preflight": "./preflight.mjs",
+    "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'"
+  },
+  "keywords": [],
+  "type": "module",
+  "dependencies": {
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "oxlint": "^1.76.0"
+  },
+  "bin": {
+    "vyops": "./vyops.mjs",
+    "vyops-preflight": "./preflight.mjs"
+  }
 }
