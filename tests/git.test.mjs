@@ -98,3 +98,18 @@ test('pushBack commits and pushes a changed config', async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('git checks use the config directory instead of the process cwd', async () => {
+  const { directory, config } = await repository();
+  const previous = process.cwd();
+  const outside = await mkdtemp(join(tmpdir(), 'vyops-outside-'));
+  process.chdir(outside);
+  try {
+    await git(directory, 'commit', '--allow-empty', '-m', 'Pushback config directory');
+    await expect(shouldSkip(config)).resolves.toBe(true);
+  } finally {
+    process.chdir(previous);
+    await rm(directory, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+});

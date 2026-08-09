@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { path } from '@eliware/common';
 
 const run = promisify(execFile);
 
@@ -7,8 +8,12 @@ async function git(args, cwd) {
   return run('git', args, { cwd, encoding: 'utf8' });
 }
 
+function configDirectory(config) {
+  return path(config, '..');
+}
+
 export async function shouldSkip(config) {
-  const cwd = process.cwd();
+  const cwd = configDirectory(config);
   const { stdout: root } = await git(['rev-parse', '--show-toplevel'], cwd);
   const repo = root.trim();
   const relative = config.startsWith(`${repo}/`) ? config.slice(repo.length + 1) : config;
@@ -19,7 +24,7 @@ export async function shouldSkip(config) {
 }
 
 export async function pushBack(config) {
-  const { stdout: root } = await git(['rev-parse', '--show-toplevel'], process.cwd());
+  const { stdout: root } = await git(['rev-parse', '--show-toplevel'], configDirectory(config));
   const repo = root.trim();
   const relative = config.startsWith(`${repo}/`) ? config.slice(repo.length + 1) : config;
   const { stdout: diff } = await git(['diff', '--', relative], repo);
