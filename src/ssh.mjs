@@ -138,7 +138,7 @@ export function interactive(client, commands, log = () => {}) {
       const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
       const title = new RegExp(`${String.fromCharCode(27)}\\][^${String.fromCharCode(7)}]*(?:${String.fromCharCode(7)}|${String.fromCharCode(27)}\\\\)`, 'g');
       const clean = value => value.replace(ansi, '').replace(title, '').replace(/\r/g, '');
-      const prompt = value => /(?:^|\n)[^\n]*[#>$]\s*$/.test(value);
+      const prompt = value => /(?:^|\n)[A-Za-z0-9._-]+@[A-Za-z0-9._:-]+(?::~\$|#)\s*$/.test(value);
       const sendNext = () => {
         if (waiting || index >= commands.length) return;
         const command = commands[index++];

@@ -151,14 +151,14 @@ test('interactive runs commands, handles pager and commit confirmation', async (
   stream.emit('data', 'router output');
   stream.emit('data', '\n:');
   expect(stream.writes).toEqual(['first\n', ' ']);
-  stream.emit('data', '\nrouter#');
+  stream.emit('data', '\nvyos@core1.purinton.us#');
   expect(stream.writes).toEqual(['first\n', ' ', 'second\n']);
   stream.stderr.emit('data', 'warning');
   stream.emit('data', 'Proceed? [Y/n]');
   expect(stream.writes).toEqual(['first\n', ' ', 'second\n', 'y\n']);
-  stream.emit('data', '\nrouter#');
+  stream.emit('data', '\nvyos@core1.purinton.us#');
   await expect(promise).resolves.toContain('Proceed? [Y/n]');
-  stream.emit('data', '\nrouter#');
+  stream.emit('data', '\nvyos@core1.purinton.us#');
   expect(stream.ended).toBe(true);
 });
 
