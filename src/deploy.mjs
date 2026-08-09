@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { fs, path as eliwarePath, log } from '@eliware/common';
 import { close, connect, download, exec, interactive, upload } from './ssh.mjs';
 
@@ -10,7 +11,7 @@ export function extractCompare(output) {
   return match?.[1].replace(/^\[edit\]\s*$/gm, '').trim() ?? '';
 }
 
-async function installPostCommitHooks(client, config, log) {
+async function installPostCommitHooks(client, config, log, runId) {
   const hooksDir = eliwarePath(config, '..', 'scripts', 'commit', 'post-hooks.d');
   let names;
   try {
@@ -23,7 +24,7 @@ async function installPostCommitHooks(client, config, log) {
     throw error;
   }
   if (!names.length) return;
-  const remoteDir = `/home/vyos/.post-hooks.${process.pid}`;
+  const remoteDir = `/home/vyos/.post-hooks.${runId}`;
   const installDir = '/config/scripts/commit/post-hooks.d';
   const made = await exec(client, `mkdir -p ${JSON.stringify(remoteDir)} && sudo mkdir -p ${JSON.stringify(installDir)}`);
   if (made.code !== 0) throw new Error(`post-commit hook directory setup failed: ${made.stderr || made.stdout}`.trim());
@@ -47,12 +48,13 @@ export async function deploy({ target, config }) {
   debugLog(`connecting: ${target}`);
   const client = await connect(target);
   debugLog('SSH connected');
-  const remote = `/home/vyos/.config.deploy.${process.pid}`;
+  const runId = randomUUID();
+  const remote = `/home/vyos/.config.deploy.${runId}`;
   try {
     debugLog(`uploading config: ${config}`);
     await upload(client, config, remote);
     debugLog(`upload complete: ${remote}`);
-    await installPostCommitHooks(client, config, debugLog);
+    await installPostCommitHooks(client, config, debugLog, runId);
     debugLog('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
