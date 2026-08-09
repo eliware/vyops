@@ -10,6 +10,7 @@ const mocks = {
   exec: jest.fn(),
   interactive: jest.fn(),
   upload: jest.fn(),
+  close: jest.fn().mockResolvedValue(undefined),
 };
 jest.unstable_mockModule('@eliware/common', () => ({
   fs: { promises: fsMocks },

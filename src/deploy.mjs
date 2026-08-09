@@ -1,5 +1,5 @@
 import { fs, path as eliwarePath, log } from '@eliware/common';
-import { connect, download, exec, interactive, upload } from './ssh.mjs';
+import { close, connect, download, exec, interactive, upload } from './ssh.mjs';
 
 export function extractCompare(output) {
   const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
@@ -76,6 +76,6 @@ export async function deploy({ target, config }) {
   } finally {
     debugLog('cleaning up remote file');
     await exec(client, `rm -f -- ${JSON.stringify(remote)}`).catch(error => debugLog(`cleanup failed: ${error.message}`));
-    client.end();
+    await close(client);
   }
 }
