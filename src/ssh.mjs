@@ -17,7 +17,7 @@ export function parseTarget(target) {
   }
   const username = target.slice(0, at);
   const host = target.slice(at + 1);
-  if (!/^[A-Za-z0-9._-]+$/.test(username) || !/^(?:\[[0-9A-Fa-f:]+\]|[A-Za-z0-9._:-]+)$/.test(host)) {
+  if (!/^[A-Za-z0-9._-]+$/.test(username) || !/^(?:\[[0-9A-Fa-f]*:[0-9A-Fa-f:]+\]|(?!\[)[A-Za-z0-9._:-]+)$/.test(host)) {
     throw new Error('invalid target; expected user@host');
   }
   return { username, host };
@@ -30,7 +30,8 @@ function wildcardMatch(pattern, value) {
 
 function hostMatches(pattern, hosts) {
   if (pattern.startsWith('|1|')) {
-    const [, salt, digest] = pattern.split('|');
+    const [, version, salt, digest] = pattern.split('|');
+    if (version !== '1') return false;
     if (!salt || !digest) return false;
     return hosts.some(host => createHmac('sha1', Buffer.from(salt, 'base64')).update(host).digest('base64') === digest);
   }

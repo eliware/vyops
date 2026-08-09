@@ -41,8 +41,8 @@ class MockClient extends EventEmitter {
   shell(options, callback) { this.shellOptions = options; callback(null, this.shellStream); }
 }
 
-jest.unstable_mockModule('ssh2', () => ({ default: { Client: MockClient, utils: { parseKey: () => ({ getPublicSSH: () => Buffer.alloc(0) }) } } }));
-const { connect, exec, upload, download, interactive, closeAll } = await import('../src/ssh.mjs');
+jest.unstable_mockModule('ssh2', () => ({ default: { Client: MockClient, utils: { parseKey: value => { if (value.startsWith('badtype')) throw new Error('bad key'); return { getPublicSSH: () => Buffer.alloc(0) }; } } } }));
+const { connect, exec, upload, download, interactive, close, closeAll, parseTarget } = await import('../src/ssh.mjs');
 
 beforeEach(() => {
   MockClient.instances.length = 0;
@@ -191,7 +191,7 @@ test('interactive handles shell, stream, close, and timeout failures', async () 
   closeClient.shellStream.emit('close');
   await expect(closePromise).rejects.toThrow('interactive SSH closed before command sequence completed');
 
-  jest.useFakeTimers();
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
   const timeoutClient = new MockClient();
   const timeoutPromise = interactive(timeoutClient, ['x']);
   jest.advanceTimersByTime(60000);
@@ -212,4 +212,84 @@ test('closeAll ends active SSH clients', async () => {
   closeAll();
   expect(MockClient.instances.at(-1).shellStream.closed).toBe(false);
   await rm(keyDir, { recursive: true, force: true });
+});
+
+
+test.each([undefined, '', 'router', '@router', 'vyos@', 'vyos@router@other', 'vy os@router', 'vyos@bad/host', 'vyos@[bad]'])('rejects invalid target %p', target => {
+  expect(() => parseTarget(target)).toThrow('invalid target; expected user@host');
+});
+
+test('accepts valid target forms', () => {
+  expect(parseTarget('vyos@router.example')).toEqual({ username: 'vyos', host: 'router.example' });
+  expect(parseTarget('vyos@192.0.2.1')).toEqual({ username: 'vyos', host: '192.0.2.1' });
+  expect(parseTarget('vyos@[2001:db8::1]')).toEqual({ username: 'vyos', host: '[2001:db8::1]' });
+});
+
+test('connect rejects missing known_hosts', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
+  await mkdir(join(dir, '.ssh'), { recursive: true });
+  await writeFile(join(dir, '.ssh/id_rsa'), 'key');
+  process.env.HOME = dir;
+  await expect(connect('vyos@router')).rejects.toThrow();
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('host verifier accepts matching known host and rejects mismatch', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
+  await mkdir(join(dir, '.ssh'), { recursive: true });
+  await writeFile(join(dir, '.ssh/id_rsa'), 'key');
+  await writeFile(join(dir, '.ssh/known_hosts'), '# comment\n\nrouter ssh-ed25519 AAAA\nmalformed\n');
+  process.env.HOME = dir;
+  const client = await connect('vyos@router');
+  const verify = key => new Promise(resolve => client.options.hostVerifier(key, resolve));
+  await expect(verify(Buffer.alloc(0))).resolves.toBe(true);
+  await expect(verify(Buffer.from('mismatch'))).resolves.toBe(false);
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('host verifier handles revoked, negated, wildcard, and hashed entries', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
+  await mkdir(join(dir, '.ssh'), { recursive: true });
+  await writeFile(join(dir, '.ssh/id_rsa'), 'key');
+  await writeFile(join(dir, '.ssh/known_hosts'), '@cert-authority router ssh-ed25519 AAAA\n@revoked router ssh-ed25519 AAAA\n*.example ssh-ed25519 AAAA\n|1|bad|bad ssh-ed25519 AAAA\n!router router ssh-ed25519 AAAA\n');
+  process.env.HOME = dir;
+  const client = await connect('vyos@router');
+  await expect(new Promise(resolve => client.options.hostVerifier(Buffer.alloc(0), resolve))).resolves.toBe(false);
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('host verifier handles valid hashed and malformed key entries', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
+  await mkdir(join(dir, '.ssh'), { recursive: true });
+  await writeFile(join(dir, '.ssh/id_rsa'), 'key');
+  const digest = await import('node:crypto').then(({ createHmac }) => createHmac('sha1', Buffer.from('salt')).update('router').digest('base64'));
+  await writeFile(join(dir, '.ssh/known_hosts'), `|1|${Buffer.from('salt').toString('base64')}|${digest} ssh-ed25519 AAAA\nrouter badtype bad\n`);
+  process.env.HOME = dir;
+  const client = await connect('vyos@router');
+  await expect(new Promise(resolve => client.options.hostVerifier(Buffer.alloc(0), resolve))).resolves.toBe(true);
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('exec handles stream errors and timeout', async () => {
+  const client = new MockClient();
+  client.execCallback = (_command, callback) => {
+    const stream = new MockStream();
+    callback(null, stream);
+    stream.emit('error', new Error('stream error'));
+  };
+  await expect(exec(client, 'bad')).rejects.toThrow('stream error');
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+  const timeoutClient = new MockClient();
+  const promise = exec(timeoutClient, 'slow');
+  jest.advanceTimersByTime(60000);
+  await expect(promise).rejects.toThrow('SSH command timed out: slow');
+  jest.useRealTimers();
+});
+
+test('close handles null and error', async () => {
+  await expect(close(null)).resolves.toBeUndefined();
+  const client = new MockClient();
+  const promise = close(client);
+  client.emit('error', new Error('close error'));
+  await expect(promise).resolves.toBeUndefined();
 });
