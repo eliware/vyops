@@ -1,7 +1,7 @@
 {
-  "name": "vyops-bash",
+  "name": "vyops",
   "version": "1.0.0",
-  "description": "",
+  "description": "Deploy native VyOS configuration files over SSH.",
   "main": "vyops.mjs",
   "scripts": {
     "lint": "npx oxlint .",
@@ -11,7 +11,13 @@
     "preflight": "./preflight.mjs",
     "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'"
   },
-  "keywords": [],
+  "keywords": [
+    "vyos",
+    "networking",
+    "gitops",
+    "ssh",
+    "cli"
+  ],
   "type": "module",
   "dependencies": {
     "ssh2": "^1.17.0"
@@ -23,5 +29,14 @@
   "bin": {
     "vyops": "./vyops.mjs",
     "vyops-preflight": "./preflight.mjs"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/eliware/vyops-js.git"
+  },
+  "homepage": "https://github.com/eliware/vyops-js#readme",
+  "bugs": {
+    "url": "https://github.com/eliware/vyops-js/issues"
   }
 }
