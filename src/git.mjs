@@ -4,9 +4,34 @@ import { promisify } from 'node:util';
 import { path } from '@eliware/common';
 
 const run = promisify(execFile);
+const LOCK_MAX_AGE = 60 * 60 * 1000;
 
 async function git(args, cwd) {
   return run('git', args, { cwd, encoding: 'utf8' });
+}
+
+async function staleLock(lock) {
+  let owner;
+  let stats;
+  try {
+    [owner, stats] = await Promise.all([
+      fs.readFile(path(lock, 'owner'), 'utf8'),
+      fs.stat(lock),
+    ]);
+  } catch {
+    return false;
+  }
+  const pid = Number.parseInt(owner.trim(), 10);
+  if (Number.isInteger(pid) && pid > 0) {
+    try {
+      process.kill(pid, 0);
+      return false;
+    } catch (error) {
+      if (error.code === 'EPERM') return false;
+      if (error.code !== 'ESRCH') return false;
+    }
+  }
+  return Date.now() - stats.mtimeMs > LOCK_MAX_AGE;
 }
 
 async function withRepositoryLock(repo, action) {
@@ -14,8 +39,12 @@ async function withRepositoryLock(repo, action) {
   try {
     await fs.mkdir(lock);
   } catch (error) {
-    if (error.code === 'EEXIST') throw new Error('another pushback is already running');
-    throw error;
+    if (error.code !== 'EEXIST' || !(await staleLock(lock))) {
+      if (error.code === 'EEXIST') throw new Error('another pushback is already running');
+      throw error;
+    }
+    await fs.rm(lock, { recursive: true, force: true });
+    await fs.mkdir(lock);
   }
   try {
     await fs.writeFile(path(lock, 'owner'), `${process.pid}\n`, 'utf8');
