@@ -23,7 +23,7 @@ class MockClient extends EventEmitter {
     super();
     this.shellStream = new MockStream();
     this.sftpClient = {
-      writeFile: (remote, data, callback) => callback(null),
+      writeFile: (remote, data, options, callback) => callback(null),
       fastGet: (remote, local, callback) => callback(null),
     };
     MockClient.instances.push(this);
@@ -121,6 +121,7 @@ test('upload and download resolve on successful SFTP operations', async () => {
   await writeFile(local, 'config');
   const client = new MockClient();
   await expect(upload(client, local, '/remote')).resolves.toBeUndefined();
+  expect(client.sftpClient.writeFile).toBeDefined();
   await expect(download(client, '/remote', join(keyDir, 'copy'))).resolves.toBeUndefined();
   await rm(keyDir, { recursive: true, force: true });
 });
@@ -135,7 +136,7 @@ test('upload and download reject SFTP and operation errors', async () => {
   await expect(download(client, '/remote', join(keyDir, 'copy'))).rejects.toThrow('sftp failed');
 
   const operationClient = new MockClient();
-  operationClient.sftpClient.writeFile = (_remote, _data, callback) => callback(new Error('write failed'));
+  operationClient.sftpClient.writeFile = (_remote, _data, _options, callback) => callback(new Error('write failed'));
   operationClient.sftpClient.fastGet = (_remote, _local, callback) => callback(new Error('get failed'));
   await expect(upload(operationClient, local, '/remote')).rejects.toThrow('write failed');
   await expect(download(operationClient, '/remote', join(keyDir, 'copy'))).rejects.toThrow('get failed');

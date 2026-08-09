@@ -95,12 +95,12 @@ export function exec(client, command) {
   }));
 }
 
-export async function upload(client, local, remote) {
+export async function upload(client, local, remote, mode = 0o600) {
   const data = await fs.promises.readFile(local);
   return new Promise((resolve, reject) => {
     client.sftp((error, sftp) => {
       if (error) return reject(error);
-      sftp.writeFile(remote, data, error2 => error2 ? reject(error2) : resolve());
+      sftp.writeFile(remote, data, { mode }, error2 => error2 ? reject(error2) : resolve());
     });
   });
 }
