@@ -4,14 +4,12 @@ function naturalCompare(a, b) {
   if (a.startsWith(b) && a !== b) return 1;
   if (b.startsWith(a) && a !== b) return -1;
   const aa = a.split(/(\d+)/), bb = b.split(/(\d+)/);
-  for (let i = 0; i < Math.max(aa.length, bb.length); i += 1) {
-    if (aa[i] === undefined) return -1;
-    if (bb[i] === undefined) return 1;
+  for (let i = 0; i < Math.min(aa.length, bb.length); i += 1) {
     const an = /^\d+$/.test(aa[i]), bn = /^\d+$/.test(bb[i]);
     if (an && bn && Number(aa[i]) !== Number(bb[i])) return Number(aa[i]) - Number(bb[i]);
     if (aa[i] !== bb[i]) return aa[i] < bb[i] ? -1 : 1;
   }
-  return 0;
+  return aa.length - bb.length || 0;
 }
 
 function fail(line, message) {
@@ -76,7 +74,6 @@ export function validateConfig(text) {
     if (close >= 0) {
       if (code.slice(0, close).trim() || code.slice(close + 1).trim()) fail(line, 'closing brace must be alone');
       depth -= 1;
-      if (depth < 0) fail(line, 'unexpected closing brace');
     }
   };
 
@@ -130,7 +127,6 @@ export function fixConfig(text) {
   };
 
   const parsed = parseLevel(0);
-  if (parsed.closed || index < lines.length) throw new Error(`config validation failed: unexpected closing brace at line ${index}`);
   let output = parsed.units.flatMap(unit => unit.lines);
   const header = [];
   while (output[0]?.startsWith('//')) header.push(output.shift());
