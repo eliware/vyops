@@ -31,7 +31,7 @@ export async function pushBack(config) {
   if (!diff) return false;
   await git(['add', '--', relative], repo);
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  await git(['commit', '-m', `Pushback ${timestamp}`], repo);
+  await git(['commit', '--only', '-m', `Pushback ${timestamp}`, '--', relative], repo);
   await git(['push'], repo);
   return true;
 }
