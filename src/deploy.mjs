@@ -20,27 +20,42 @@ async function installPostCommitHooks(client, config, log, runId) {
       .map(entry => entry.name)
       .sort();
   } catch (error) {
-    if (error.code === 'ENOENT') return;
+    if (error.code === 'ENOENT') return null;
     throw error;
   }
-  if (!names.length) return;
+  if (!names.length) return null;
+  if (names.some(name => !name || name === '.' || name === '..' || /[\\/]/.test(name))) {
+    throw new Error('post-commit hook name is invalid');
+  }
   const remoteDir = `/home/vyos/.post-hooks.${runId}`;
+  const backupDir = `/home/vyos/.post-hooks-backup.${runId}`;
   const installDir = '/config/scripts/commit/post-hooks.d';
-  const made = await exec(client, `mkdir -p ${JSON.stringify(remoteDir)} && sudo mkdir -p ${JSON.stringify(installDir)}`);
+  const made = await exec(client, `mkdir -p ${JSON.stringify(remoteDir)} && sudo mkdir -p ${JSON.stringify(installDir)} ${JSON.stringify(backupDir)}`);
   if (made.code !== 0) throw new Error(`post-commit hook directory setup failed: ${made.stderr || made.stdout}`.trim());
   try {
     for (const name of names) {
       const local = eliwarePath(hooksDir, name);
-      const hookName = name.split(/[\\/]/).at(-1);
-      const remote = `${remoteDir}/${hookName}`;
+      const remote = `${remoteDir}/${name}`;
+      const installed = `${installDir}/${name}`;
+      const backup = `${backupDir}/${name}`;
+      const backedUp = await exec(client, `if sudo test -e ${JSON.stringify(installed)}; then sudo cp -p -- ${JSON.stringify(installed)} ${JSON.stringify(backup)}; fi`);
+      if (backedUp.code !== 0) throw new Error(`post-commit hook backup failed (${name}): ${backedUp.stderr || backedUp.stdout}`.trim());
       await upload(client, local, remote);
-      const installed = await exec(client, `sudo install -m 755 ${JSON.stringify(remote)} ${JSON.stringify(`${installDir}/${hookName}`)}`);
-      if (installed.code !== 0) throw new Error(`post-commit hook install failed (${name}): ${installed.stderr || installed.stdout}`.trim());
+      const installedResult = await exec(client, `sudo install -m 755 ${JSON.stringify(remote)} ${JSON.stringify(installed)}`);
+      if (installedResult.code !== 0) throw new Error(`post-commit hook install failed (${name}): ${installedResult.stderr || installedResult.stdout}`.trim());
       log(`installed post-commit hook: ${name}`);
     }
-  } finally {
-    await exec(client, `rm -rf -- ${JSON.stringify(remoteDir)}`).catch(error => log(`hook cleanup failed: ${error.message}`));
+  } catch (error) {
+    await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; for f in ${JSON.stringify(backupDir)}/*; do [ -e "$f" ] && sudo mv -- "$f" ${JSON.stringify(installDir)}/; done; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(cleanupError => log(`hook rollback failed: ${cleanupError.message}`));
+    throw error;
   }
+  return async committed => {
+    if (committed) {
+      await exec(client, `sudo rm -rf -- ${JSON.stringify(backupDir)}; rm -rf -- ${JSON.stringify(remoteDir)}`).catch(error => log(`hook cleanup failed: ${error.message}`));
+      return;
+    }
+    await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; for f in ${JSON.stringify(backupDir)}/*; do [ -e "$f" ] && sudo mv -- "$f" ${JSON.stringify(installDir)}/; done; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(error => log(`hook rollback failed: ${error.message}`));
+  };
 }
 
 export async function deploy({ target, config }) {
@@ -48,13 +63,14 @@ export async function deploy({ target, config }) {
   debugLog(`connecting: ${target}`);
   const client = await connect(target);
   debugLog('SSH connected');
+  let finalizeHooks;
   const runId = randomUUID();
   const remote = `/home/vyos/.config.deploy.${runId}`;
   try {
     debugLog(`uploading config: ${config}`);
     await upload(client, config, remote);
     debugLog(`upload complete: ${remote}`);
-    await installPostCommitHooks(client, config, debugLog, runId);
+    finalizeHooks = await installPostCommitHooks(client, config, debugLog, runId);
     debugLog('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
@@ -72,9 +88,13 @@ export async function deploy({ target, config }) {
     const compare = extractCompare(output);
     if (compare) log.info(compare);
     if (/Invalid command|Commit failed|Save failed/i.test(output)) throw new Error('router reported deployment failure');
+    if (finalizeHooks) await finalizeHooks(true);
     debugLog(`syncing live config: /config/config.boot -> ${config}`);
     await download(client, '/config/config.boot', config);
     return 0;
+  } catch (error) {
+    if (finalizeHooks) await finalizeHooks(false);
+    throw error;
   } finally {
     debugLog('cleaning up remote file');
     await exec(client, `rm -f -- ${JSON.stringify(remote)}`).catch(error => debugLog(`cleanup failed: ${error.message}`));

@@ -107,10 +107,10 @@ test('hook setup and install failures', async () => {
     await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook directory setup failed: setup out');
     mocks.exec.mockReset();
     fsMocks.readdir.mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
-    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'install err' }).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'install err' }).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook install failed (hook.sh): install err');
     mocks.exec.mockReset();
-    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 1, stdout: 'install out', stderr: '' }).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 1, stdout: 'install out', stderr: '' }).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     fsMocks.readdir.mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
     await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook install failed (hook.sh): install out');
   } finally {
@@ -127,7 +127,7 @@ test('handles non-missing hook directory errors and hook cleanup errors', async 
     fsMocks.readdir.mockRejectedValueOnce(new Error('permission denied'));
     await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).rejects.toThrow('permission denied');
     fsMocks.readdir.mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
-    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockRejectedValueOnce(new Error('hook cleanup failed')).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockRejectedValueOnce(new Error('hook cleanup failed')).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).resolves.toBe(0);
   } finally {
     await rm(root, { recursive: true, force: true });
