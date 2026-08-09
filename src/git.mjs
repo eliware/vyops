@@ -28,13 +28,14 @@ async function staleLock(lock) {
       return false;
     } catch (error) {
       if (error.code === 'EPERM') return false;
-      if (error.code !== 'ESRCH') return false;
+      if (error.code === 'ESRCH') return true;
+      return false;
     }
   }
   return Date.now() - stats.mtimeMs > LOCK_MAX_AGE;
 }
 
-async function withRepositoryLock(repo, action, force = false) {
+async function withRepositoryLock(repo, action, force) {
   const lock = path(repo, '.git', 'vyops-pushback.lock');
   try {
     await fs.mkdir(lock);
