@@ -117,4 +117,4 @@ Open an issue or provide a focused patch with tests and validation results.
 
 ## License
 
-No license has been declared in package metadata yet.
+MIT License; see `LICENSE`.
