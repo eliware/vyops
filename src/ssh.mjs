@@ -201,7 +201,10 @@ export function interactive(client, commands, log = () => {}) {
       stream.on('close', () => {
         log(`VyOS interactive shell closed; settled=${settled}; index=${index}/${commands.length}`);
         clearTimeout(timer);
-        if (!settled && !timedOut) resolve(output);
+        if (!settled && !timedOut) {
+          if (commands.length === 0) resolve(output);
+          else reject(new Error('interactive SSH closed before command sequence completed'));
+        }
       });
       sendNext();
     });
