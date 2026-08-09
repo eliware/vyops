@@ -29,7 +29,7 @@ try {
     process.exit(0);
   }
   await deploy(args);
-  if (await pushBack(args.config)) log.info('Pushback committed and pushed');
+  if (await pushBack(args.config, { force: args.force })) log.info('Pushback committed and pushed');
   log.info('Deployment successful');
 } catch (error) {
   log.error(error.message);

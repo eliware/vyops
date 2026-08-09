@@ -4,9 +4,9 @@ test('parses target and config', () => {
   expect(parseArgs(['vyos@core1', '/tmp/config.boot'])).toEqual({ target: 'vyos@core1', config: '/tmp/config.boot' });
 });
 
-test('parses dry-run switch', () => {
-  expect(parseArgs(['--dry-run', 'vyos@core1', '/tmp/config.boot'])).toEqual({
-    target: 'vyos@core1', config: '/tmp/config.boot', dryRun: true,
+test('parses dry-run and force switches', () => {
+  expect(parseArgs(['--dry-run', '--force', 'vyos@core1', '/tmp/config.boot'])).toEqual({
+    target: 'vyos@core1', config: '/tmp/config.boot', dryRun: true, force: true,
   });
 });
 

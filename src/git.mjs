@@ -34,12 +34,12 @@ async function staleLock(lock) {
   return Date.now() - stats.mtimeMs > LOCK_MAX_AGE;
 }
 
-async function withRepositoryLock(repo, action) {
+async function withRepositoryLock(repo, action, force = false) {
   const lock = path(repo, '.git', 'vyops-pushback.lock');
   try {
     await fs.mkdir(lock);
   } catch (error) {
-    if (error.code !== 'EEXIST' || !(await staleLock(lock))) {
+    if (error.code !== 'EEXIST' || (!force && !(await staleLock(lock)))) {
       if (error.code === 'EEXIST') throw new Error('another pushback is already running');
       throw error;
     }
@@ -69,7 +69,7 @@ export async function shouldSkip(config) {
   return subject.trim().startsWith('Pushback ');
 }
 
-export async function pushBack(config) {
+export async function pushBack(config, { force = false } = {}) {
   const { stdout: root } = await git(['rev-parse', '--show-toplevel'], configDirectory(config));
   const repo = root.trim();
   return withRepositoryLock(repo, async () => {
@@ -81,5 +81,5 @@ export async function pushBack(config) {
     await git(['commit', '--only', '-m', `Pushback ${timestamp}`, '--', relative], repo);
     await git(['push'], repo);
     return true;
-  });
+  }, force);
 }
