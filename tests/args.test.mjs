@@ -20,3 +20,7 @@ test('rejects missing or extra positional arguments', () => {
   expect(() => parseArgs(['vyos@core1'])).toThrow(/Usage:/);
   expect(() => parseArgs(['vyos@core1', 'config.boot', 'extra'])).toThrow(/Usage:/);
 });
+
+test('rejects unknown switches', () => {
+  expect(() => parseArgs(['--bogus', 'vyos@core1', '/tmp/config.boot'])).toThrow(/Usage:/);
+});
