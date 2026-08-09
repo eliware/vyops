@@ -163,6 +163,13 @@ test('interactive runs commands, handles pager and commit confirmation', async (
   expect(stream.ended).toBe(true);
 });
 
+test('interactive rejects a failed structured command', async () => {
+  const client = new MockClient();
+  const promise = interactive(client, [{ command: 'save', reject: /save failed/i }]);
+  client.shellStream.emit('data', 'save failed\nvyos@core1.purinton.us# ');
+  await expect(promise).rejects.toThrow('interactive command failed: save');
+});
+
 test('interactive handles an empty command list', async () => {
   const client = new MockClient();
   const promise = interactive(client, []);

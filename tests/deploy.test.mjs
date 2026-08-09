@@ -59,12 +59,12 @@ test('deploys config, downloads live state, and logs when debug is enabled', asy
 
 test('deploys without compare output when debug is disabled', async () => {
   await expect(deploy({ target: 'vyos@core1', config: '/tmp/config.boot' })).resolves.toBe(0);
-  expect(mocks.interactive).toHaveBeenCalledWith(expect.anything(), expect.arrayContaining(['commit-confirm 5']), expect.any(Function));
+  expect(mocks.interactive.mock.calls[0][1]).toEqual(expect.arrayContaining([expect.objectContaining({ command: 'commit-confirm 5' })]));
 });
 
 test('rejects router failures and always cleans up', async () => {
-  mocks.interactive.mockResolvedValue('Commit failed');
-  await expect(deploy({ target: 'vyos@core1', config: '/tmp/config.boot' })).rejects.toThrow('router reported deployment failure');
+  mocks.interactive.mockRejectedValue(new Error('interactive command failed: commit-confirm 5'));
+  await expect(deploy({ target: 'vyos@core1', config: '/tmp/config.boot' })).rejects.toThrow('interactive command failed: commit-confirm 5');
   expect(mocks.exec).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('rm -f --'));
 });
 

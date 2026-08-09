@@ -74,20 +74,19 @@ export async function deploy({ target, config }) {
     debugLog('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
-      `load ${remote}`,
+      { command: `load ${remote}`, reject: /(?:load failed|error|invalid)/i },
       "printf '%s\\n' '--- compare ---'",
       'compare',
       "printf '%s\\n' '--- end compare ---'",
-      'commit-confirm 5',
-      'confirm',
-      'save',
+      { command: 'commit-confirm 5', reject: /(?:commit failed|error|invalid)/i },
+      { command: 'confirm', reject: /(?:confirm failed|error|invalid)/i },
+      { command: 'save', reject: /(?:save failed|error|invalid)/i },
       'exit',
       'exit',
     ], debugLog);
     debugLog(`interactive sequence returned (${output.length} bytes)`);
     const compare = extractCompare(output);
     if (compare) log.info(compare);
-    if (/Invalid command|Commit failed|Save failed/i.test(output)) throw new Error('router reported deployment failure');
     if (finalizeHooks) await finalizeHooks(true);
     debugLog(`syncing live config: /config/config.boot -> ${config}`);
     await download(client, '/config/config.boot', config);

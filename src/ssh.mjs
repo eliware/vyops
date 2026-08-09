@@ -126,6 +126,7 @@ export function interactive(client, commands, log = () => {}) {
       let answering = false;
       let settled = false;
       let timedOut = false;
+      let currentItem;
       log(`interactive sequence start (${commands.length} commands)`);
       const timer = setTimeout(() => {
         log(`timeout; next command: ${index + 1}/${commands.length}; waiting=${waiting}; answering=${answering}`);
@@ -141,7 +142,9 @@ export function interactive(client, commands, log = () => {}) {
       const prompt = value => /(?:^|\n)[A-Za-z0-9._-]+@[A-Za-z0-9._:-]+(?::~\$|#)\s*$/.test(value);
       const sendNext = () => {
         if (waiting || index >= commands.length) return;
-        const command = commands[index++];
+        currentItem = commands[index++];
+        const item = currentItem;
+        const command = typeof item === 'string' ? item : item.command;
         response = '';
         waiting = true;
         log(`send [${index}/${commands.length}]: ${command}`);
@@ -179,6 +182,13 @@ export function interactive(client, commands, log = () => {}) {
           answering = false;
           waiting = false;
           log(`response [${index}]:\n${cleaned}`);
+          if (typeof currentItem !== 'string' && currentItem.reject?.test(cleaned)) {
+            settled = true;
+            clearTimeout(timer);
+            stream.close();
+            reject(new Error(`interactive command failed: ${typeof currentItem === 'string' ? currentItem : currentItem.command}`));
+            return;
+          }
           if (index >= commands.length) {
             settled = true;
             clearTimeout(timer);
