@@ -133,3 +133,68 @@ test('handles non-missing hook directory errors and hook cleanup errors', async 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('rejects unsafe post-commit hook names', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
+  try {
+    fsMocks.readdir.mockResolvedValue([{ name: '../hook.sh', isFile: () => true }]);
+    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+      .rejects.toThrow('post-commit hook name is invalid');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('tolerates hook rollback cleanup failures', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
+  const hooks = join(root, 'scripts', 'commit', 'post-hooks.d');
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, 'hook.sh'), '#!/bin/sh\n');
+  try {
+    fsMocks.readdir.mockResolvedValue([{ name: 'hook.sh', isFile: () => true }]);
+    mocks.interactive.mockRejectedValue(new Error('deployment failed'));
+    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockRejectedValueOnce(new Error('rollback cleanup failed'))
+      .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+      .rejects.toThrow('deployment failed');
+    expect(mocks.exec).toHaveBeenCalledTimes(5);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('reports hook backup failures and tolerates install rollback failures', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
+  const hooks = join(root, 'scripts', 'commit', 'post-hooks.d');
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, 'hook.sh'), '#!/bin/sh\n');
+  try {
+    fsMocks.readdir.mockResolvedValue([{ name: 'hook.sh', isFile: () => true }]);
+    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'backup err' })
+      .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+      .rejects.toThrow('post-commit hook backup failed (hook.sh): backup err');
+
+    mocks.exec.mockReset();
+    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 1, stdout: 'backup out', stderr: '' })
+      .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+      .rejects.toThrow('post-commit hook backup failed (hook.sh): backup out');
+
+    mocks.exec.mockReset();
+    mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 1, stdout: 'install out', stderr: '' })
+      .mockRejectedValueOnce(new Error('install rollback failed'))
+      .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+      .rejects.toThrow('post-commit hook install failed (hook.sh): install out');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
