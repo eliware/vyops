@@ -4,6 +4,9 @@ import ssh2 from 'ssh2';
 
 const { Client, utils } = ssh2;
 
+const CONNECT_TIMEOUT = 30000;
+const OPERATION_TIMEOUT = 60000;
+
 export function parseTarget(target) {
   if (typeof target !== 'string' || !target || /\s/.test(target)) {
     throw new Error('invalid target; expected user@host');
@@ -81,35 +84,53 @@ export async function connect(target) {
       agent: process.env.SSH_AUTH_SOCK,
       privateKey,
       hostVerifier: (key, callback) => callback(verifyKnownHost(host, key, knownHosts)),
+      readyTimeout: CONNECT_TIMEOUT,
+      authTimeout: CONNECT_TIMEOUT,
     });
   });
 }
 
 export function exec(client, command) {
-  return new Promise((resolve, reject) => client.exec(command, (error, stream) => {
-    if (error) return reject(error);
-    let stdout = '', stderr = '';
-    stream.on('data', data => { stdout += data; });
-    stream.stderr.on('data', data => { stderr += data; });
-    stream.on('close', code => resolve({ code: code ?? 1, stdout, stderr }));
-  }));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`SSH command timed out: ${command}`)), OPERATION_TIMEOUT);
+    client.exec(command, (error, stream) => {
+      if (error) { clearTimeout(timer); return reject(error); }
+      let stdout = '', stderr = '';
+      const finish = (callback, value) => {
+        clearTimeout(timer);
+        callback(value);
+      };
+      stream.on('data', data => { stdout += data; });
+      stream.stderr.on('data', data => { stderr += data; });
+      stream.on('error', error2 => finish(reject, error2));
+      stream.on('close', code => finish(resolve, { code: code ?? 1, stdout, stderr }));
+    });
+  });
 }
 
 export async function upload(client, local, remote, mode = 0o600) {
   const data = await fs.promises.readFile(local);
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`SFTP upload timed out: ${remote}`)), OPERATION_TIMEOUT);
     client.sftp((error, sftp) => {
-      if (error) return reject(error);
-      sftp.writeFile(remote, data, { mode }, error2 => error2 ? reject(error2) : resolve());
+      if (error) { clearTimeout(timer); return reject(error); }
+      sftp.writeFile(remote, data, { mode }, error2 => {
+        clearTimeout(timer);
+        return error2 ? reject(error2) : resolve();
+      });
     });
   });
 }
 
 export function download(client, remote, local) {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`SFTP download timed out: ${remote}`)), OPERATION_TIMEOUT);
     client.sftp((error, sftp) => {
-      if (error) return reject(error);
-      sftp.fastGet(remote, local, error2 => error2 ? reject(error2) : resolve());
+      if (error) { clearTimeout(timer); return reject(error); }
+      sftp.fastGet(remote, local, error2 => {
+        clearTimeout(timer);
+        return error2 ? reject(error2) : resolve();
+      });
     });
   });
 }
