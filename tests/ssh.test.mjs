@@ -35,13 +35,14 @@ class MockClient extends EventEmitter {
     MockClient.nextConnectError = null;
     queueMicrotask(() => this.emit(error ? 'error' : 'ready', error));
   }
+  end() { this.emit('close'); }
   exec(command, callback) { this.execCallback?.(command, callback); }
   sftp(callback) { callback(null, this.sftpClient); }
   shell(options, callback) { this.shellOptions = options; callback(null, this.shellStream); }
 }
 
 jest.unstable_mockModule('ssh2', () => ({ Client: MockClient }));
-const { connect, exec, upload, download, interactive } = await import('../src/ssh.mjs');
+const { connect, exec, upload, download, interactive, closeAll } = await import('../src/ssh.mjs');
 
 beforeEach(() => {
   MockClient.instances.length = 0;
@@ -180,4 +181,15 @@ test('interactive handles shell, stream, close, and timeout failures', async () 
   await expect(timeoutPromise).rejects.toThrow('interactive SSH timeout');
   expect(timeoutClient.shellStream.closed).toBe(true);
   jest.useRealTimers();
+});
+
+test('closeAll ends active SSH clients', async () => {
+  const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
+  const key = join(keyDir, 'key');
+  await writeFile(key, 'key');
+  process.env.VYOPS_SSH_KEY = key;
+  await connect('router');
+  closeAll();
+  expect(MockClient.instances.at(-1).shellStream.closed).toBe(false);
+  await rm(keyDir, { recursive: true, force: true });
 });

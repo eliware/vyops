@@ -1,5 +1,4 @@
-import { readdir } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { fs, path as eliwarePath, log } from '@eliware/common';
 import { connect, download, exec, interactive, upload } from './ssh.mjs';
 
 export function extractCompare(output) {
@@ -12,10 +11,10 @@ export function extractCompare(output) {
 }
 
 async function installPostCommitHooks(client, config, log) {
-  const hooksDir = join(dirname(config), 'scripts', 'commit', 'post-hooks.d');
+  const hooksDir = eliwarePath(config, '..', 'scripts', 'commit', 'post-hooks.d');
   let names;
   try {
-    names = (await readdir(hooksDir, { withFileTypes: true }))
+    names = (await fs.promises.readdir(hooksDir, { withFileTypes: true }))
       .filter(entry => entry.isFile())
       .map(entry => entry.name)
       .sort();
@@ -30,10 +29,11 @@ async function installPostCommitHooks(client, config, log) {
   if (made.code !== 0) throw new Error(`post-commit hook directory setup failed: ${made.stderr || made.stdout}`.trim());
   try {
     for (const name of names) {
-      const local = join(hooksDir, name);
-      const remote = `${remoteDir}/${basename(name)}`;
+      const local = eliwarePath(hooksDir, name);
+      const hookName = name.split(/[\\/]/).at(-1);
+      const remote = `${remoteDir}/${hookName}`;
       await upload(client, local, remote);
-      const installed = await exec(client, `sudo install -m 755 ${JSON.stringify(remote)} ${JSON.stringify(`${installDir}/${basename(name)}`)}`);
+      const installed = await exec(client, `sudo install -m 755 ${JSON.stringify(remote)} ${JSON.stringify(`${installDir}/${hookName}`)}`);
       if (installed.code !== 0) throw new Error(`post-commit hook install failed (${name}): ${installed.stderr || installed.stdout}`.trim());
       log(`installed post-commit hook: ${name}`);
     }
@@ -43,18 +43,17 @@ async function installPostCommitHooks(client, config, log) {
 }
 
 export async function deploy({ target, config }) {
-  const debug = process.env.VYOPS_DEBUG === 'true';
-  const log = message => { if (debug) console.error(`[vyops] ${message}`); };
-  log(`connecting: ${target}`);
+  const debugLog = message => log.debug(`[vyops] ${message}`);
+  debugLog(`connecting: ${target}`);
   const client = await connect(target);
-  log('SSH connected');
+  debugLog('SSH connected');
   const remote = `/home/vyos/.config.deploy.${process.pid}`;
   try {
-    log(`uploading config: ${config}`);
+    debugLog(`uploading config: ${config}`);
     await upload(client, config, remote);
-    log(`upload complete: ${remote}`);
-    await installPostCommitHooks(client, config, log);
-    log('starting interactive deployment sequence');
+    debugLog(`upload complete: ${remote}`);
+    await installPostCommitHooks(client, config, debugLog);
+    debugLog('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
       `load ${remote}`,
@@ -66,17 +65,17 @@ export async function deploy({ target, config }) {
       'save',
       'exit',
       'exit',
-    ], log);
-    log(`interactive sequence returned (${output.length} bytes)`);
+    ], debugLog);
+    debugLog(`interactive sequence returned (${output.length} bytes)`);
     const compare = extractCompare(output);
-    if (compare) process.stdout.write(`${compare}\n`);
+    if (compare) log.info(compare);
     if (/Invalid command|Commit failed|Save failed/i.test(output)) throw new Error('router reported deployment failure');
-    log(`syncing live config: /config/config.boot -> ${config}`);
+    debugLog(`syncing live config: /config/config.boot -> ${config}`);
     await download(client, '/config/config.boot', config);
     return 0;
   } finally {
-    log('cleaning up remote file');
-    await exec(client, `rm -f -- ${JSON.stringify(remote)}`).catch(error => log(`cleanup failed: ${error.message}`));
+    debugLog('cleaning up remote file');
+    await exec(client, `rm -f -- ${JSON.stringify(remote)}`).catch(error => debugLog(`cleanup failed: ${error.message}`));
     client.end();
   }
 }

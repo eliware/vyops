@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { fs } from '@eliware/common';
 
 function naturalCompare(a, b) {
   if (a.startsWith(b) && a !== b) return 1;
@@ -88,7 +88,7 @@ export function validateConfig(text) {
 }
 
 export async function readAndValidateConfig(path) {
-  const text = await readFile(path, 'utf8');
+  const text = await fs.promises.readFile(path, 'utf8');
   return validateConfig(text);
 }
 

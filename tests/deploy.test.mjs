@@ -11,7 +11,11 @@ const mocks = {
   interactive: jest.fn(),
   upload: jest.fn(),
 };
-jest.unstable_mockModule('node:fs/promises', () => fsMocks);
+jest.unstable_mockModule('@eliware/common', () => ({
+  fs: { promises: fsMocks },
+  path: (...segments) => join(...segments),
+  log: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 jest.unstable_mockModule('../src/ssh.mjs', () => mocks);
 const { deploy, extractCompare } = await import('../src/deploy.mjs');
 

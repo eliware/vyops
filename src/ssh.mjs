@@ -1,15 +1,17 @@
-import { readFile } from 'node:fs/promises';
+import { fs } from '@eliware/common';
 import { Client } from 'ssh2';
 
 export async function connect(target) {
   const at = target.lastIndexOf('@');
   const username = at < 0 ? undefined : target.slice(0, at);
   const host = at < 0 ? target : target.slice(at + 1);
-  const privateKey = await readFile(process.env.VYOPS_SSH_KEY || `${process.env.HOME}/.ssh/id_rsa`);
+  const privateKey = await fs.promises.readFile(process.env.VYOPS_SSH_KEY || `${process.env.HOME}/.ssh/id_rsa`);
   return new Promise((resolve, reject) => {
     const client = new Client();
     client.once('ready', () => resolve(client));
     client.once('error', reject);
+    client.once('close', () => activeClients.delete(client));
+    activeClients.add(client);
     client.connect({ host, username, agent: process.env.SSH_AUTH_SOCK, privateKey });
   });
 }
@@ -25,7 +27,7 @@ export function exec(client, command) {
 }
 
 export async function upload(client, local, remote) {
-  const data = await readFile(local);
+  const data = await fs.promises.readFile(local);
   return new Promise((resolve, reject) => {
     client.sftp((error, sftp) => {
       if (error) return reject(error);
@@ -135,4 +137,11 @@ export function interactive(client, commands, log = () => {}) {
       sendNext();
     });
   });
+}
+
+const activeClients = new Set();
+
+export function closeAll() {
+  for (const client of activeClients) client.end();
+  activeClients.clear();
 }
