@@ -54,10 +54,13 @@ export function interactive(client, commands, log = () => {}) {
       let waiting = false;
       let answering = false;
       let settled = false;
+      let timedOut = false;
       log(`interactive sequence start (${commands.length} commands)`);
       const timer = setTimeout(() => {
         log(`timeout; next command: ${index + 1}/${commands.length}; waiting=${waiting}; answering=${answering}`);
         log(`partial response:\n${response}`);
+        timedOut = true;
+        settled = true;
         stream.close();
         reject(new Error('interactive SSH timeout'));
       }, 60000);
@@ -127,7 +130,7 @@ export function interactive(client, commands, log = () => {}) {
       stream.on('close', () => {
         log(`VyOS interactive shell closed; settled=${settled}; index=${index}/${commands.length}`);
         clearTimeout(timer);
-        if (!settled) resolve(output);
+        if (!settled && !timedOut) resolve(output);
       });
       sendNext();
     });
