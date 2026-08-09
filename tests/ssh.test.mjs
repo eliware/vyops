@@ -69,21 +69,22 @@ test('connect uses the default key path', async () => {
   process.env.HOME = keyDir;
   await mkdir(join(keyDir, '.ssh'), { recursive: true });
   await writeFile(join(keyDir, '.ssh/id_rsa'), 'default-key');
-  const client = await connect('router');
+  const client = await connect('vyos@router');
   expect(client.options.privateKey).toEqual(Buffer.from('default-key'));
   await rm(keyDir, { recursive: true, force: true });
 });
 
-test('connect supports host-only targets and rejects connection errors', async () => {
+test('connect rejects host-only targets and connection errors', async () => {
   const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
   const key = join(keyDir, 'key');
   await writeFile(key, 'key');
   process.env.VYOPS_SSH_KEY = key;
   const error = new Error('connection failed');
   MockClient.nextConnectError = error;
-  const promise = connect('router');
+  await expect(connect('router')).rejects.toThrow('invalid target');
+  const promise = connect('vyos@router');
   await expect(promise).rejects.toThrow('connection failed');
-  expect(MockClient.instances[0].options.username).toBeUndefined();
+  expect(MockClient.instances[0].options.username).toBe('vyos');
   await rm(keyDir, { recursive: true, force: true });
 });
 
@@ -188,7 +189,7 @@ test('closeAll ends active SSH clients', async () => {
   const key = join(keyDir, 'key');
   await writeFile(key, 'key');
   process.env.VYOPS_SSH_KEY = key;
-  await connect('router');
+  await connect('vyos@router');
   closeAll();
   expect(MockClient.instances.at(-1).shellStream.closed).toBe(false);
   await rm(keyDir, { recursive: true, force: true });

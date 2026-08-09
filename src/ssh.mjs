@@ -1,10 +1,24 @@
 import { fs } from '@eliware/common';
 import { Client } from 'ssh2';
 
+export function parseTarget(target) {
+  if (typeof target !== 'string' || !target || /\s/.test(target)) {
+    throw new Error('invalid target; expected user@host');
+  }
+  const at = target.indexOf('@');
+  if (at <= 0 || at !== target.lastIndexOf('@') || at === target.length - 1) {
+    throw new Error('invalid target; expected user@host');
+  }
+  const username = target.slice(0, at);
+  const host = target.slice(at + 1);
+  if (!/^[A-Za-z0-9._-]+$/.test(username) || !/^(?:\[[0-9A-Fa-f:]+\]|[A-Za-z0-9._:-]+)$/.test(host)) {
+    throw new Error('invalid target; expected user@host');
+  }
+  return { username, host };
+}
+
 export async function connect(target) {
-  const at = target.lastIndexOf('@');
-  const username = at < 0 ? undefined : target.slice(0, at);
-  const host = at < 0 ? target : target.slice(at + 1);
+  const { username, host } = parseTarget(target);
   const privateKey = await fs.promises.readFile(process.env.VYOPS_SSH_KEY || `${process.env.HOME}/.ssh/id_rsa`);
   return new Promise((resolve, reject) => {
     const client = new Client();
@@ -141,7 +155,22 @@ export function interactive(client, commands, log = () => {}) {
 
 const activeClients = new Set();
 
-export function closeAll() {
-  for (const client of activeClients) client.end();
-  activeClients.clear();
+export function close(client) {
+  if (!client) return Promise.resolve();
+  return new Promise(resolve => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      activeClients.delete(client);
+      resolve();
+    };
+    client.once('close', done);
+    client.once('error', done);
+    client.end();
+  });
+}
+
+export async function closeAll() {
+  await Promise.all([...activeClients].map(client => close(client)));
 }
