@@ -41,7 +41,7 @@ class MockClient extends EventEmitter {
   shell(options, callback) { this.shellOptions = options; callback(null, this.shellStream); }
 }
 
-jest.unstable_mockModule('ssh2', () => ({ Client: MockClient }));
+jest.unstable_mockModule('ssh2', () => ({ default: { Client: MockClient, utils: { parseKey: () => ({ getPublicSSH: () => Buffer.alloc(0) }) } } }));
 const { connect, exec, upload, download, interactive, closeAll } = await import('../src/ssh.mjs');
 
 beforeEach(() => {
@@ -56,11 +56,15 @@ test('connect parses user@host and resolves on ready', async () => {
   const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
   const key = join(keyDir, 'key');
   await writeFile(key, 'private-key');
+  await mkdir(join(keyDir, '.ssh'), { recursive: true });
+  await writeFile(join(keyDir, '.ssh/known_hosts'), 'router ssh-ed25519 AAAA\n');
+  process.env.HOME = keyDir;
   process.env.VYOPS_SSH_KEY = key;
   process.env.SSH_AUTH_SOCK = '/tmp/agent.sock';
   const promise = connect('vyos@router');
   const client = await promise;
-  expect(client.options).toEqual({ host: 'router', username: 'vyos', agent: '/tmp/agent.sock', privateKey: Buffer.from('private-key') });
+  expect(client.options).toMatchObject({ host: 'router', username: 'vyos', agent: '/tmp/agent.sock', privateKey: Buffer.from('private-key') });
+  expect(client.options.hostVerifier).toEqual(expect.any(Function));
   await rm(keyDir, { recursive: true, force: true });
 });
 
@@ -69,6 +73,7 @@ test('connect uses the default key path', async () => {
   process.env.HOME = keyDir;
   await mkdir(join(keyDir, '.ssh'), { recursive: true });
   await writeFile(join(keyDir, '.ssh/id_rsa'), 'default-key');
+  await writeFile(join(keyDir, '.ssh/known_hosts'), 'router ssh-ed25519 AAAA\n');
   const client = await connect('vyos@router');
   expect(client.options.privateKey).toEqual(Buffer.from('default-key'));
   await rm(keyDir, { recursive: true, force: true });
@@ -78,6 +83,9 @@ test('connect rejects host-only targets and connection errors', async () => {
   const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
   const key = join(keyDir, 'key');
   await writeFile(key, 'key');
+  await mkdir(join(keyDir, '.ssh'), { recursive: true });
+  await writeFile(join(keyDir, '.ssh/known_hosts'), 'router ssh-ed25519 AAAA\n');
+  process.env.HOME = keyDir;
   process.env.VYOPS_SSH_KEY = key;
   const error = new Error('connection failed');
   MockClient.nextConnectError = error;
@@ -188,6 +196,9 @@ test('closeAll ends active SSH clients', async () => {
   const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
   const key = join(keyDir, 'key');
   await writeFile(key, 'key');
+  await mkdir(join(keyDir, '.ssh'), { recursive: true });
+  await writeFile(join(keyDir, '.ssh/known_hosts'), 'router ssh-ed25519 AAAA\n');
+  process.env.HOME = keyDir;
   process.env.VYOPS_SSH_KEY = key;
   await connect('vyos@router');
   closeAll();
