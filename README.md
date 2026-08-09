@@ -6,7 +6,6 @@
 
 - SSH-key authentication via `ssh2`.
 - Native VyOS curly-brace configuration validation.
-- Optional formatting and sibling-statement ordering fixes.
 - Candidate load, `compare`, `commit-confirm`, confirmation, and save.
 - Post-commit hook installation from `scripts/commit/post-hooks.d/`.
 - Pushback of confirmed `/config/config.boot` changes to the current Git repository.
@@ -27,8 +26,7 @@ npm install
 The package provides:
 
 ```text
-vyops             Deploy a configuration.
-vyops-preflight   Validate or fix a configuration without connecting to a router.
+vyops   Deploy or dry-run a configuration.
 ```
 
 ## Configuration
@@ -58,13 +56,6 @@ Console switches:
 ```
 
 `--dry-run` validates the config and skips SSH, commit, save, download, and Git pushback.
-
-Preflight only:
-
-```sh
-./preflight.mjs /path/to/config.boot
-./preflight.mjs --fix /path/to/config.boot
-```
 
 The deployment workflow:
 

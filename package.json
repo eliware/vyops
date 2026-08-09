@@ -7,8 +7,6 @@
     "lint": "npx oxlint .",
     "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --silent --coverage",
     "deploy": "./vyops.mjs",
-    "validate": "./preflight.mjs",
-    "preflight": "./preflight.mjs",
     "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'",
     "pack": "npm pack --dry-run"
   },
@@ -28,8 +26,7 @@
     "oxlint": "^1.76.0"
   },
   "bin": {
-    "vyops": "./vyops.mjs",
-    "vyops-preflight": "./preflight.mjs"
+    "vyops": "./vyops.mjs"
   },
   "license": "MIT",
   "repository": {
