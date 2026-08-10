@@ -29,19 +29,20 @@
         "oxlint": "^1.77.0"
     },
     "bin": {
-        "vyops": "./vyops.mjs"
+        "vyops": "./bin/vyops"
     },
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+ssh://git@github.com/eliware/vyops-js.git"
+        "url": "git+https://github.com/eliware/vyops.git"
     },
-    "homepage": "https://github.com/eliware/vyops-js#readme",
+    "homepage": "https://github.com/eliware/vyops#readme",
     "bugs": {
-        "url": "https://github.com/eliware/vyops-js/issues"
+        "url": "https://github.com/eliware/vyops/issues"
     },
     "files": [
         "vyops.mjs",
+        "bin/",
         "src/",
         "README.md",
         "LICENSE",

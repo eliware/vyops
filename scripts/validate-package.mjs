@@ -6,6 +6,7 @@ const requiredFiles = [
   'RELEASE_NOTES.md',
   'package.json',
   'vyops.mjs',
+  'bin/vyops',
   'src/args.mjs',
   'src/deploy.mjs',
   'src/git.mjs',
