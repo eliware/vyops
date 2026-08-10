@@ -8,7 +8,8 @@
     "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --silent --coverage",
     "deploy": "./vyops.mjs",
     "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'",
-    "pack": "npm pack --dry-run"
+    "pack": "npm pack --dry-run",
+    "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs"
   },
   "keywords": [
     "vyos",
@@ -37,5 +38,12 @@
   "homepage": "https://github.com/eliware/vyops-js#readme",
   "bugs": {
     "url": "https://github.com/eliware/vyops-js/issues"
-  }
+  },
+  "files": [
+    "vyops.mjs",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "RELEASE_NOTES.md"
+  ]
 }
