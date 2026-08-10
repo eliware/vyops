@@ -9,7 +9,8 @@
     "deploy": "./vyops.mjs",
     "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'",
     "pack": "npm pack --dry-run",
-    "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs"
+    "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs",
+    "audit": "npm audit --omit=dev --audit-level=moderate"
   },
   "keywords": [
     "vyos",

@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run lint
+      - run: npm run audit
+      - run: npm run validate:package
       - name: Configure npm auth token
         run: npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
       - name: Publish to npm
