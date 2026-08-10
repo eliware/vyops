@@ -24,7 +24,7 @@ try {
     log.info(`Configuration valid; dry run for ${args.target}`);
     process.exit(0);
   }
-  if (await shouldSkip(args.config)) {
+  if (!args.force && await shouldSkip(args.config)) {
     log.info('Latest commit is Pushback and config is unchanged; skipping deployment');
     process.exit(0);
   }
