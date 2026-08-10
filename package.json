@@ -1,50 +1,50 @@
 {
-  "name": "@eliware/vyops",
-  "version": "1.0.0",
-  "description": "Deploy native VyOS configuration files over SSH.",
-  "main": "vyops.mjs",
-  "scripts": {
-    "lint": "npx oxlint .",
-    "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --silent --coverage",
-    "deploy": "./vyops.mjs",
-    "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'",
-    "pack": "npm pack --dry-run",
-    "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs",
-    "audit": "npm audit --omit=dev --audit-level=moderate"
-  },
-  "keywords": [
-    "vyos",
-    "networking",
-    "gitops",
-    "ssh",
-    "cli"
-  ],
-  "type": "module",
-  "dependencies": {
-    "@eliware/common": "^1.1.7",
-    "ssh2": "^1.17.0"
-  },
-  "devDependencies": {
-    "jest": "^30.4.2",
-    "oxlint": "^1.76.0"
-  },
-  "bin": {
-    "vyops": "./vyops.mjs"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/eliware/vyops-js.git"
-  },
-  "homepage": "https://github.com/eliware/vyops-js#readme",
-  "bugs": {
-    "url": "https://github.com/eliware/vyops-js/issues"
-  },
-  "files": [
-    "vyops.mjs",
-    "src/",
-    "README.md",
-    "LICENSE",
-    "RELEASE_NOTES.md"
-  ]
+    "name": "@eliware/vyops",
+    "version": "1.0.1",
+    "description": "Deploy native VyOS configuration files over SSH.",
+    "main": "vyops.mjs",
+    "scripts": {
+        "lint": "npx oxlint .",
+        "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --silent --coverage",
+        "deploy": "./vyops.mjs",
+        "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'",
+        "pack": "npm pack --dry-run",
+        "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs",
+        "audit": "npm audit --omit=dev --audit-level=moderate"
+    },
+    "keywords": [
+        "vyos",
+        "networking",
+        "gitops",
+        "ssh",
+        "cli"
+    ],
+    "type": "module",
+    "dependencies": {
+        "@eliware/common": "^1.1.7",
+        "ssh2": "^1.17.0"
+    },
+    "devDependencies": {
+        "jest": "^30.4.2",
+        "oxlint": "^1.77.0"
+    },
+    "bin": {
+        "vyops": "./vyops.mjs"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+ssh://git@github.com/eliware/vyops-js.git"
+    },
+    "homepage": "https://github.com/eliware/vyops-js#readme",
+    "bugs": {
+        "url": "https://github.com/eliware/vyops-js/issues"
+    },
+    "files": [
+        "vyops.mjs",
+        "src/",
+        "README.md",
+        "LICENSE",
+        "RELEASE_NOTES.md"
+    ]
 }
