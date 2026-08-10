@@ -17,7 +17,7 @@ Verification:
 - `npm run audit`
 - `npm run validate:package`
 
-## Unreleased
+## 1.0.3 - 2026-08-10
 
 - Expanded README documentation for installation, configuration, usage, security, operations, development, and support.
 - Documented Git pushback behavior and dry-run validation.
