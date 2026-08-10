@@ -35,7 +35,7 @@ beforeEach(() => {
 });
 
 test('extracts only compare results from the interactive transcript', () => {
-  const output = `--- compare ---\n[edit]\nvyos@core1.purinton.us# compare\n[system login banner]\n- post-login "GitOps deployment test v2"\n+ post-login ""\n\nvyos@core1.purinton.us# printf '%s\\n' '--- end compare ---'`;
+  const output = `--- compare ---\n[edit]\ntestuser@test-router.example.test# compare\n[system login banner]\n- post-login "GitOps deployment test v2"\n+ post-login ""\n\ntestuser@test-router.example.test# printf '%s\\n' '--- end compare ---'`;
   expect(extractCompare(output)).toBe('[system login banner]\n- post-login "GitOps deployment test v2"\n+ post-login ""');
 });
 
@@ -50,28 +50,28 @@ test('deploys config, downloads live state, and logs when debug is enabled', asy
   process.env.VYOPS_DEBUG = 'true';
   mocks.interactive.mockResolvedValue('vyos# compare\n[system]\n+ host-name test\n\nvyos# printf x');
   const config = '/tmp/config.boot';
-  const result = await deploy({ target: 'vyos@core1', config });
+  const result = await deploy({ target: 'testuser@test-router.example.test', config });
   expect(result).toBe(0);
-  expect(mocks.connect).toHaveBeenCalledWith('vyos@core1');
+  expect(mocks.connect).toHaveBeenCalledWith('testuser@test-router.example.test');
   expect(mocks.upload).toHaveBeenCalledWith(expect.anything(), config, expect.stringMatching(/^\/home\/vyos\/\.config\.deploy\.[0-9a-f-]{36}$/));
   expect(mocks.download).toHaveBeenCalledWith(expect.anything(), '/config/config.boot', config);
 });
 
 test('deploys without compare output when debug is disabled', async () => {
-  await expect(deploy({ target: 'vyos@core1', config: '/tmp/config.boot' })).resolves.toBe(0);
+  await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).resolves.toBe(0);
   expect(mocks.interactive.mock.calls[0][1]).toEqual(expect.arrayContaining([expect.objectContaining({ command: 'commit-confirm 5' })]));
 });
 
 test('rejects router failures and always cleans up', async () => {
   mocks.interactive.mockRejectedValue(new Error('interactive command failed: commit-confirm 5'));
-  await expect(deploy({ target: 'vyos@core1', config: '/tmp/config.boot' })).rejects.toThrow('interactive command failed: commit-confirm 5');
+  await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).rejects.toThrow('interactive command failed: commit-confirm 5');
   expect(mocks.exec).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('rm -f --'));
 });
 
 test('propagates download failures and tolerates cleanup failures', async () => {
   mocks.download.mockRejectedValue(new Error('download failed'));
   mocks.exec.mockRejectedValue(new Error('cleanup failed'));
-  await expect(deploy({ target: 'vyos@core1', config: '/tmp/config.boot' })).rejects.toThrow('download failed');
+  await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).rejects.toThrow('download failed');
 });
 
 test('installs sorted post-commit hooks and cleans its remote directory', async () => {
@@ -82,7 +82,7 @@ test('installs sorted post-commit hooks and cleans its remote directory', async 
   await writeFile(join(hooks, 'a.sh'), '#!/bin/sh\n');
   try {
     fsMocks.readdir.mockResolvedValue([{ name: 'b.sh', isFile: () => true }, { name: 'a.sh', isFile: () => true }]);
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).resolves.toBe(0);
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).resolves.toBe(0);
     expect(mocks.upload.mock.calls.slice(1).map(call => call[1])).toEqual([join(hooks, 'a.sh'), join(hooks, 'b.sh')]);
     expect(mocks.exec.mock.calls.some(call => call[1].includes('sudo install'))).toBe(true);
   } finally {
@@ -92,7 +92,7 @@ test('installs sorted post-commit hooks and cleans its remote directory', async 
 
 test('skips an existing empty hook directory', async () => {
   fsMocks.readdir.mockResolvedValue([]);
-  await expect(deploy({ target: 'vyos@core1', config: '/tmp/config.boot' })).resolves.toBe(0);
+  await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).resolves.toBe(0);
   expect(mocks.exec).toHaveBeenCalledTimes(1);
 });
 
@@ -104,15 +104,15 @@ test('hook setup and install failures', async () => {
   try {
     fsMocks.readdir.mockResolvedValue([{ name: 'hook.sh', isFile: () => true }]);
     mocks.exec.mockResolvedValueOnce({ code: 1, stdout: 'setup out', stderr: '' });
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook directory setup failed: setup out');
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook directory setup failed: setup out');
     mocks.exec.mockReset();
     fsMocks.readdir.mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'install err' }).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook install failed (hook.sh): install err');
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook install failed (hook.sh): install err');
     mocks.exec.mockReset();
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 1, stdout: 'install out', stderr: '' }).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     fsMocks.readdir.mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook install failed (hook.sh): install out');
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook install failed (hook.sh): install out');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -125,10 +125,10 @@ test('handles non-missing hook directory errors and hook cleanup errors', async 
   await writeFile(join(hooks, 'hook.sh'), '#!/bin/sh\n');
   try {
     fsMocks.readdir.mockRejectedValueOnce(new Error('permission denied'));
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).rejects.toThrow('permission denied');
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('permission denied');
     fsMocks.readdir.mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockRejectedValueOnce(new Error('hook cleanup failed')).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') })).resolves.toBe(0);
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).resolves.toBe(0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -138,7 +138,7 @@ test('rejects unsafe post-commit hook names', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
   try {
     fsMocks.readdir.mockResolvedValue([{ name: '../hook.sh', isFile: () => true }]);
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
       .rejects.toThrow('post-commit hook name is invalid');
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -158,7 +158,7 @@ test('tolerates hook rollback cleanup failures', async () => {
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockRejectedValueOnce(new Error('rollback cleanup failed'))
       .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
       .rejects.toThrow('deployment failed');
     expect(mocks.exec).toHaveBeenCalledTimes(5);
   } finally {
@@ -176,14 +176,14 @@ test('reports hook backup failures and tolerates install rollback failures', asy
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'backup err' })
       .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
       .rejects.toThrow('post-commit hook backup failed (hook.sh): backup err');
 
     mocks.exec.mockReset();
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockResolvedValueOnce({ code: 1, stdout: 'backup out', stderr: '' })
       .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
       .rejects.toThrow('post-commit hook backup failed (hook.sh): backup out');
 
     mocks.exec.mockReset();
@@ -192,7 +192,7 @@ test('reports hook backup failures and tolerates install rollback failures', asy
       .mockResolvedValueOnce({ code: 1, stdout: 'install out', stderr: '' })
       .mockRejectedValueOnce(new Error('install rollback failed'))
       .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
-    await expect(deploy({ target: 'vyos@core1', config: join(root, 'config.boot') }))
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
       .rejects.toThrow('post-commit hook install failed (hook.sh): install out');
   } finally {
     await rm(root, { recursive: true, force: true });

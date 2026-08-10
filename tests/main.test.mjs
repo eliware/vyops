@@ -21,8 +21,8 @@ test('dry-run validates config without connecting or pushing', async () => {
   const config = join(directory, 'config.boot');
   await writeFile(config, 'system {\n    host-name test\n}\n');
   try {
-    const result = await run(process.execPath, [entrypoint, '--dry-run', 'vyos@core1', config]);
-    expect(result.stdout).toContain('Configuration valid; dry run for vyos@core1');
+    const result = await run(process.execPath, [entrypoint, '--dry-run', 'testuser@test-router.example.test', config]);
+    expect(result.stdout).toContain('Configuration valid; dry run for testuser@test-router.example.test');
     expect(result.stderr).toBe('');
   } finally {
     await rm(directory, { recursive: true, force: true });

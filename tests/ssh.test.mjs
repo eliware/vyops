@@ -153,21 +153,21 @@ test('interactive runs commands, handles pager and commit confirmation', async (
   stream.emit('data', 'router output');
   stream.emit('data', '\n:');
   expect(stream.writes).toEqual(['first\n', ' ']);
-  stream.emit('data', '\nvyos@core1.purinton.us#');
+  stream.emit('data', '\ntestuser@test-router.example.test#');
   expect(stream.writes).toEqual(['first\n', ' ', 'second\n']);
   stream.stderr.emit('data', 'warning');
   stream.emit('data', 'Proceed? [Y/n]');
   expect(stream.writes).toEqual(['first\n', ' ', 'second\n', 'y\n']);
-  stream.emit('data', '\nvyos@core1.purinton.us#');
+  stream.emit('data', '\ntestuser@test-router.example.test#');
   await expect(promise).resolves.toContain('Proceed? [Y/n]');
-  stream.emit('data', '\nvyos@core1.purinton.us#');
+  stream.emit('data', '\ntestuser@test-router.example.test#');
   expect(stream.ended).toBe(true);
 });
 
 test('interactive rejects a failed structured command', async () => {
   const client = new MockClient();
   const promise = interactive(client, [{ command: 'save', reject: /save failed/i }]);
-  client.shellStream.emit('data', 'save failed\nvyos@core1.purinton.us# ');
+  client.shellStream.emit('data', 'save failed\ntestuser@test-router.example.test# ');
   await expect(promise).rejects.toThrow('interactive command failed: save');
 });
 
