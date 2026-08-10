@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import packageJson from '../package.json' with { type: 'json' };
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 
@@ -12,7 +13,7 @@ test('prints help and version without external effects', async () => {
   expect(help.stdout).toMatch(/Usage:/);
 
   const version = await run(process.execPath, [entrypoint, '--version']);
-  expect(version.stdout.trim()).toBe('[INFO] 1.0.0');
+  expect(version.stdout.trim()).toBe(`[INFO] ${packageJson.version}`);
 });
 
 test('dry-run validates config without connecting or pushing', async () => {
