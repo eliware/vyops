@@ -237,7 +237,11 @@ export function interactive(client, commands, log = () => {}) {
         log(`VyOS interactive shell closed; settled=${settled}; index=${index}/${commands.length}`);
         clearTimeout(timer);
         if (!settled && !timedOut) {
-          if (commands.length === 0) resolve(output);
+          const finalCommand = commands.at(-1);
+          const expectedClose = typeof finalCommand === 'string'
+            ? finalCommand === 'exit'
+            : finalCommand?.command === 'exit';
+          if (commands.length === 0 || (index >= commands.length && expectedClose)) resolve(output);
           else reject(new Error('interactive SSH closed before command sequence completed'));
         }
       });

@@ -192,6 +192,11 @@ test('interactive handles shell, stream, close, and timeout failures', async () 
   closeClient.shellStream.emit('close');
   await expect(closePromise).rejects.toThrow('interactive SSH closed before command sequence completed');
 
+  const exitClient = new MockClient();
+  const exitPromise = interactive(exitClient, ['exit']);
+  exitClient.shellStream.emit('close');
+  await expect(exitPromise).resolves.toBe('');
+
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
   const timeoutClient = new MockClient();
   const timeoutPromise = interactive(timeoutClient, ['x']);
