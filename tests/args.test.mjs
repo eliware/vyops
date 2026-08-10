@@ -5,8 +5,8 @@ test('parses target and config', () => {
 });
 
 test('parses dry-run and force switches', () => {
-  expect(parseArgs(['--dry-run', '--force', 'vyos@core1', '/tmp/config.boot'])).toEqual({
-    target: 'vyos@core1', config: '/tmp/config.boot', dryRun: true, force: true,
+  expect(parseArgs(['--dry-run', '--force', '--debug', 'vyos@core1', '/tmp/config.boot'])).toEqual({
+    target: 'vyos@core1', config: '/tmp/config.boot', dryRun: true, force: true, debug: true,
   });
 });
 

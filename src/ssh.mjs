@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { fs } from '@eliware/common';
+import { fs, log } from '@eliware/common';
 import ssh2 from 'ssh2';
 
 const { Client, utils } = ssh2;
@@ -69,12 +69,13 @@ function verifyKnownHost(host, key, knownHosts) {
 
 export async function connect(target) {
   const { username, host } = parseTarget(target);
+  log.debug(`[vyops] SSH connecting: ${username}@${host}`);
   const privateKey = await fs.promises.readFile(process.env.VYOPS_SSH_KEY || `${process.env.HOME}/.ssh/id_rsa`);
   const knownHostsPath = `${process.env.HOME}/.ssh/known_hosts`;
   const knownHosts = await fs.promises.readFile(knownHostsPath, 'utf8');
   return new Promise((resolve, reject) => {
     const client = new Client();
-    client.once('ready', () => resolve(client));
+    client.once('ready', () => { log.debug(`[vyops] SSH connected: ${username}@${host}`); resolve(client); });
     client.once('error', reject);
     client.once('close', () => activeClients.delete(client));
     activeClients.add(client);
@@ -91,6 +92,7 @@ export async function connect(target) {
 }
 
 export function exec(client, command) {
+  log.debug(`[vyops] SSH exec: ${command}`);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`SSH command timed out: ${command}`)), OPERATION_TIMEOUT);
     client.exec(command, (error, stream) => {
@@ -109,6 +111,7 @@ export function exec(client, command) {
 }
 
 export async function upload(client, local, remote, mode = 0o600) {
+  log.debug(`[vyops] SFTP upload: ${local} -> ${remote}`);
   const data = await fs.promises.readFile(local);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`SFTP upload timed out: ${remote}`)), OPERATION_TIMEOUT);
@@ -123,6 +126,7 @@ export async function upload(client, local, remote, mode = 0o600) {
 }
 
 export function download(client, remote, local) {
+  log.debug(`[vyops] SFTP download: ${remote} -> ${local}`);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`SFTP download timed out: ${remote}`)), OPERATION_TIMEOUT);
     client.sftp((error, sftp) => {

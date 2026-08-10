@@ -1,2 +1,4 @@
 #!/usr/bin/env node
-import './src/main.mjs';
+
+if (process.argv.includes('--debug')) process.env.LOG_LEVEL = 'debug';
+await import('./src/main.mjs');

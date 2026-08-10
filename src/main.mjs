@@ -11,6 +11,7 @@ const signals = registerSignals({ log, shutdownHook: async () => closeAll() });
 
 try {
   const args = parseArgs(process.argv.slice(2));
+  log.debug(`[vyops] arguments parsed: target=${args.target || '-'} config=${args.config || '-'}`);
   if (args.help) {
     log.info(usage);
     process.exit(0);
@@ -19,7 +20,9 @@ try {
     log.info(packageJson.version);
     process.exit(0);
   }
+  log.debug(`[vyops] validating config: ${args.config}`);
   await readAndValidateConfig(args.config);
+  log.debug('[vyops] config validation complete');
   if (args.dryRun) {
     log.info(`Configuration valid; dry run for ${args.target}`);
     process.exit(0);
@@ -28,7 +31,9 @@ try {
     log.info('Latest commit is Pushback and config is unchanged; skipping deployment');
     process.exit(0);
   }
+  log.debug('[vyops] deployment starting');
   await deploy(args);
+  log.debug('[vyops] deployment complete; starting Git pushback');
   if (await pushBack(args.config, { force: args.force })) log.info('Pushback committed and pushed');
   log.info('Deployment successful');
 } catch (error) {
