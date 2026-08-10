@@ -30,8 +30,7 @@ function wildcardMatch(pattern, value) {
 
 function hostMatches(pattern, hosts) {
   if (pattern.startsWith('|1|')) {
-    const [, version, salt, digest] = pattern.split('|');
-    if (version !== '1') return false;
+    const [, , salt, digest] = pattern.split('|');
     if (!salt || !digest) return false;
     return hosts.some(host => createHmac('sha1', Buffer.from(salt, 'base64')).update(host).digest('base64') === digest);
   }
@@ -208,7 +207,7 @@ export function interactive(client, commands, log = () => {}) {
             settled = true;
             clearTimeout(timer);
             stream.close();
-            reject(new Error(`interactive command failed: ${typeof currentItem === 'string' ? currentItem : currentItem.command}`));
+            reject(new Error(`interactive command failed: ${currentItem.command}`));
             return;
           }
           if (index >= commands.length) {

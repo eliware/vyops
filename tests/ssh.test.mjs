@@ -3,6 +3,7 @@ import { writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { jest } from '@jest/globals';
+import { fs } from '@eliware/common';
 
 class MockStream extends EventEmitter {
   constructor() {
@@ -270,6 +271,17 @@ test('host verifier handles valid hashed and malformed key entries', async () =>
   await rm(dir, { recursive: true, force: true });
 });
 
+test('host verifier rejects malformed hashes and matching negated hosts', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
+  await mkdir(join(dir, '.ssh'), { recursive: true });
+  await writeFile(join(dir, '.ssh/id_rsa'), 'key');
+  await writeFile(join(dir, '.ssh/known_hosts'), '|2|salt|digest ssh-ed25519 AAAA\n|1||| ssh-ed25519 AAAA\n!router router ssh-ed25519 AAAA\n');
+  process.env.HOME = dir;
+  const client = await connect('vyos@router');
+  await expect(new Promise(resolve => client.options.hostVerifier(Buffer.alloc(0), resolve))).resolves.toBe(false);
+  await rm(dir, { recursive: true, force: true });
+});
+
 test('exec handles stream errors and timeout', async () => {
   const client = new MockClient();
   client.execCallback = (_command, callback) => {
@@ -284,6 +296,24 @@ test('exec handles stream errors and timeout', async () => {
   jest.advanceTimersByTime(60000);
   await expect(promise).rejects.toThrow('SSH command timed out: slow');
   jest.useRealTimers();
+});
+
+test('SFTP upload and download time out', async () => {
+  const readFile = jest.spyOn(fs.promises, 'readFile').mockResolvedValue(Buffer.from('config'));
+  jest.useFakeTimers();
+  const client = new MockClient();
+  client.sftpClient.writeFile = () => {};
+  client.sftpClient.fastGet = () => {};
+  const uploadPromise = upload(client, '/local', '/remote').catch(error => error);
+  await Promise.resolve();
+  await Promise.resolve();
+  jest.advanceTimersByTime(60000);
+  await expect(uploadPromise).resolves.toMatchObject({ message: 'SFTP upload timed out: /remote' });
+  const downloadPromise = download(client, '/remote', '/local').catch(error => error);
+  jest.advanceTimersByTime(60000);
+  await expect(downloadPromise).resolves.toMatchObject({ message: 'SFTP download timed out: /remote' });
+  jest.useRealTimers();
+  readFile.mockRestore();
 });
 
 test('close handles null and error', async () => {
