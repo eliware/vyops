@@ -1,5 +1,17 @@
 # Release Notes
 
+## 1.0.5
+
+- Create nested temporary directories before uploading synchronized scripts.
+- Fix deployment of nested files such as systemd units and boot scripts.
+
+Verification:
+
+- `npm test`
+- `npm run lint`
+- `npm run audit`
+- `npm run validate:package`
+
 ## 1.0.4
 
 - Synchronize the complete repository `scripts/` tree to `/config/scripts`.

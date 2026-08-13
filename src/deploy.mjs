@@ -53,6 +53,11 @@ async function installScripts(client, config, log, runId) {
       const mode = (await fs.promises.stat(local)).mode & 0o777;
       const backedUp = await exec(client, `if sudo test -e ${JSON.stringify(installed)}; then sudo mkdir -p ${JSON.stringify(`${backupDir}/${parent}`)} && sudo cp -p -- ${JSON.stringify(installed)} ${JSON.stringify(backup)}; fi`);
       if (backedUp.code !== 0) throw new Error(`script backup failed (${name}): ${backedUp.stderr || backedUp.stdout}`.trim());
+      if (parent !== '.') {
+        const remoteParent = `${remoteDir}/${parent}`;
+        const remoteParentResult = await exec(client, `mkdir -p ${JSON.stringify(remoteParent)}`);
+        if (remoteParentResult.code !== 0) throw new Error(`script upload directory setup failed (${name}): ${remoteParentResult.stderr || remoteParentResult.stdout}`.trim());
+      }
       await upload(client, local, remote);
       const installedResult = await exec(client, `sudo mkdir -p ${JSON.stringify(`${installDir}/${parent}`)} && sudo install -m ${mode.toString(8)} ${JSON.stringify(remote)} ${JSON.stringify(installed)}`);
       if (installedResult.code !== 0) throw new Error(`script install failed (${name}): ${installedResult.stderr || installedResult.stdout}`.trim());
