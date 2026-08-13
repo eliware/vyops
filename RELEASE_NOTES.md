@@ -1,5 +1,19 @@
 # Release Notes
 
+## 1.0.4
+
+- Synchronize the complete repository `scripts/` tree to `/config/scripts`.
+- Preserve script file modes and transactionally back up and roll back all
+  synchronized paths.
+- Add recursive synchronization coverage for nested script directories.
+
+Verification:
+
+- `npm test`
+- `npm run lint`
+- `npm run audit`
+- `npm run validate:package`
+
 ## 1.0.2
 
 - Hardened SSH host verification with the user's `known_hosts` file.

@@ -7,7 +7,8 @@
 - SSH-key authentication via `ssh2`.
 - Native VyOS curly-brace configuration validation.
 - Candidate load, `compare`, `commit-confirm`, confirmation, and save.
-- Post-commit hook installation from `scripts/commit/post-hooks.d/`.
+- Complete `scripts/` tree synchronization, including post-commit hooks,
+  boot scripts, binaries, and nested support files.
 - Pushback of confirmed `/config/config.boot` changes to the current Git repository.
 
 ## Requirements

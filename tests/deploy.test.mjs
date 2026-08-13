@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { jest } from '@jest/globals';
 
-const fsMocks = { readdir: jest.fn() };
+const fsMocks = { readdir: jest.fn(), stat: jest.fn() };
 const mocks = {
   connect: jest.fn(),
   download: jest.fn(),
@@ -28,6 +28,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   delete process.env.VYOPS_DEBUG;
   fsMocks.readdir.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
+  fsMocks.stat.mockResolvedValue({ mode: 0o100755 });
   mocks.connect.mockResolvedValue(client());
   mocks.download.mockResolvedValue(undefined);
   mocks.exec.mockResolvedValue({ code: 0, stdout: '', stderr: '' });
@@ -76,7 +77,7 @@ test('propagates download failures and tolerates cleanup failures', async () => 
 
 test('installs sorted post-commit hooks and cleans its remote directory', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
-  const hooks = join(root, 'scripts', 'commit', 'post-hooks.d');
+  const hooks = join(root, 'scripts');
   await mkdir(hooks, { recursive: true });
   await writeFile(join(hooks, 'b.sh'), '#!/bin/sh\n');
   await writeFile(join(hooks, 'a.sh'), '#!/bin/sh\n');
@@ -90,6 +91,22 @@ test('installs sorted post-commit hooks and cleans its remote directory', async 
   }
 });
 
+test('recursively installs the complete scripts tree', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
+  const scripts = join(root, 'scripts');
+  await mkdir(join(scripts, 'commit', 'post-hooks.d'), { recursive: true });
+  try {
+    fsMocks.readdir
+      .mockResolvedValueOnce([{ name: 'commit', isDirectory: () => true }])
+      .mockResolvedValueOnce([{ name: 'post-hooks.d', isDirectory: () => true }])
+      .mockResolvedValueOnce([{ name: 'check.sh', isFile: () => true }]);
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).resolves.toBe(0);
+    expect(mocks.upload).toHaveBeenCalledWith(expect.anything(), join(scripts, 'commit', 'post-hooks.d', 'check.sh'), expect.stringContaining('/.scripts.'));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('skips an existing empty hook directory', async () => {
   fsMocks.readdir.mockResolvedValue([]);
   await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).resolves.toBe(0);
@@ -98,21 +115,21 @@ test('skips an existing empty hook directory', async () => {
 
 test('hook setup and install failures', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
-  const hooks = join(root, 'scripts', 'commit', 'post-hooks.d');
+  const hooks = join(root, 'scripts');
   await mkdir(hooks, { recursive: true });
   await writeFile(join(hooks, 'hook.sh'), '#!/bin/sh\n');
   try {
     fsMocks.readdir.mockResolvedValue([{ name: 'hook.sh', isFile: () => true }]);
     mocks.exec.mockResolvedValueOnce({ code: 1, stdout: 'setup out', stderr: '' });
-    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook directory setup failed: setup out');
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('script directory setup failed: setup out');
     mocks.exec.mockReset();
     fsMocks.readdir.mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'install err' }).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
-    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook install failed (hook.sh): install err');
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('script install failed (hook.sh): install err');
     mocks.exec.mockReset();
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }).mockResolvedValueOnce({ code: 1, stdout: 'install out', stderr: '' }).mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     fsMocks.readdir.mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
-    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('post-commit hook install failed (hook.sh): install out');
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).rejects.toThrow('script install failed (hook.sh): install out');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -120,7 +137,7 @@ test('hook setup and install failures', async () => {
 
 test('handles non-missing hook directory errors and hook cleanup errors', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
-  const hooks = join(root, 'scripts', 'commit', 'post-hooks.d');
+  const hooks = join(root, 'scripts');
   await mkdir(hooks, { recursive: true });
   await writeFile(join(hooks, 'hook.sh'), '#!/bin/sh\n');
   try {
@@ -139,7 +156,7 @@ test('rejects unsafe post-commit hook names', async () => {
   try {
     fsMocks.readdir.mockResolvedValue([{ name: '../hook.sh', isFile: () => true }]);
     await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
-      .rejects.toThrow('post-commit hook name is invalid');
+      .rejects.toThrow('script path is invalid');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -147,7 +164,7 @@ test('rejects unsafe post-commit hook names', async () => {
 
 test('tolerates hook rollback cleanup failures', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
-  const hooks = join(root, 'scripts', 'commit', 'post-hooks.d');
+  const hooks = join(root, 'scripts');
   await mkdir(hooks, { recursive: true });
   await writeFile(join(hooks, 'hook.sh'), '#!/bin/sh\n');
   try {
@@ -168,7 +185,7 @@ test('tolerates hook rollback cleanup failures', async () => {
 
 test('reports hook backup failures and tolerates install rollback failures', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
-  const hooks = join(root, 'scripts', 'commit', 'post-hooks.d');
+  const hooks = join(root, 'scripts');
   await mkdir(hooks, { recursive: true });
   await writeFile(join(hooks, 'hook.sh'), '#!/bin/sh\n');
   try {
@@ -177,14 +194,14 @@ test('reports hook backup failures and tolerates install rollback failures', asy
       .mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'backup err' })
       .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
-      .rejects.toThrow('post-commit hook backup failed (hook.sh): backup err');
+      .rejects.toThrow('script backup failed (hook.sh): backup err');
 
     mocks.exec.mockReset();
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockResolvedValueOnce({ code: 1, stdout: 'backup out', stderr: '' })
       .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
-      .rejects.toThrow('post-commit hook backup failed (hook.sh): backup out');
+      .rejects.toThrow('script backup failed (hook.sh): backup out');
 
     mocks.exec.mockReset();
     mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
@@ -193,7 +210,7 @@ test('reports hook backup failures and tolerates install rollback failures', asy
       .mockRejectedValueOnce(new Error('install rollback failed'))
       .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
-      .rejects.toThrow('post-commit hook install failed (hook.sh): install out');
+      .rejects.toThrow('script install failed (hook.sh): install out');
   } finally {
     await rm(root, { recursive: true, force: true });
   }

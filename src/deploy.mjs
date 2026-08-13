@@ -11,42 +11,55 @@ export function extractCompare(output) {
   return match?.[1].replace(/^\[edit\]\s*$/gm, '').trim() ?? '';
 }
 
-async function installPostCommitHooks(client, config, log, runId) {
-  const hooksDir = eliwarePath(config, '..', 'scripts', 'commit', 'post-hooks.d');
+async function listScripts(directory, relative = '') {
+  const entries = await fs.promises.readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const path = relative ? eliwarePath(relative, entry.name) : entry.name;
+    if (entry.isDirectory?.()) {
+      files.push(...await listScripts(eliwarePath(directory, entry.name), path));
+    } else if (entry.isFile?.()) {
+      files.push(path);
+    }
+  }
+  return files.sort();
+}
+
+async function installScripts(client, config, log, runId) {
+  const scriptsDir = eliwarePath(config, '..', 'scripts');
   let names;
   try {
-    names = (await fs.promises.readdir(hooksDir, { withFileTypes: true }))
-      .filter(entry => entry.isFile())
-      .map(entry => entry.name)
-      .sort();
+    names = await listScripts(scriptsDir);
   } catch (error) {
     if (error.code === 'ENOENT') return null;
     throw error;
   }
   if (!names.length) return null;
-  if (names.some(name => !name || name === '.' || name === '..' || /[\\/]/.test(name))) {
-    throw new Error('post-commit hook name is invalid');
+  if (names.some(name => !name || name === '.' || name === '..' || name.startsWith('/') || name.split('/').includes('..'))) {
+    throw new Error('script path is invalid');
   }
-  const remoteDir = `/home/vyos/.post-hooks.${runId}`;
-  const backupDir = `/home/vyos/.post-hooks-backup.${runId}`;
-  const installDir = '/config/scripts/commit/post-hooks.d';
-  const made = await exec(client, `mkdir -p ${JSON.stringify(remoteDir)} && sudo mkdir -p ${JSON.stringify(installDir)} ${JSON.stringify(backupDir)}`);
-  if (made.code !== 0) throw new Error(`post-commit hook directory setup failed: ${made.stderr || made.stdout}`.trim());
+  const remoteDir = `/home/vyos/.scripts.${runId}`;
+  const backupDir = `/home/vyos/.scripts-backup.${runId}`;
+  const installDir = '/config/scripts';
+  const made = await exec(client, `mkdir -p ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)} && sudo mkdir -p ${JSON.stringify(installDir)}`);
+  if (made.code !== 0) throw new Error(`script directory setup failed: ${made.stderr || made.stdout}`.trim());
   try {
     for (const name of names) {
-      const local = eliwarePath(hooksDir, name);
+      const local = eliwarePath(scriptsDir, name);
       const remote = `${remoteDir}/${name}`;
       const installed = `${installDir}/${name}`;
       const backup = `${backupDir}/${name}`;
-      const backedUp = await exec(client, `if sudo test -e ${JSON.stringify(installed)}; then sudo cp -p -- ${JSON.stringify(installed)} ${JSON.stringify(backup)}; fi`);
-      if (backedUp.code !== 0) throw new Error(`post-commit hook backup failed (${name}): ${backedUp.stderr || backedUp.stdout}`.trim());
+      const parent = eliwarePath(name, '..');
+      const mode = (await fs.promises.stat(local)).mode & 0o777;
+      const backedUp = await exec(client, `if sudo test -e ${JSON.stringify(installed)}; then sudo mkdir -p ${JSON.stringify(`${backupDir}/${parent}`)} && sudo cp -p -- ${JSON.stringify(installed)} ${JSON.stringify(backup)}; fi`);
+      if (backedUp.code !== 0) throw new Error(`script backup failed (${name}): ${backedUp.stderr || backedUp.stdout}`.trim());
       await upload(client, local, remote);
-      const installedResult = await exec(client, `sudo install -m 755 ${JSON.stringify(remote)} ${JSON.stringify(installed)}`);
-      if (installedResult.code !== 0) throw new Error(`post-commit hook install failed (${name}): ${installedResult.stderr || installedResult.stdout}`.trim());
-      log(`installed post-commit hook: ${name}`);
+      const installedResult = await exec(client, `sudo mkdir -p ${JSON.stringify(`${installDir}/${parent}`)} && sudo install -m ${mode.toString(8)} ${JSON.stringify(remote)} ${JSON.stringify(installed)}`);
+      if (installedResult.code !== 0) throw new Error(`script install failed (${name}): ${installedResult.stderr || installedResult.stdout}`.trim());
+      log(`installed script: ${name}`);
     }
   } catch (error) {
-    await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; for f in ${JSON.stringify(backupDir)}/*; do [ -e "$f" ] && sudo mv -- "$f" ${JSON.stringify(installDir)}/; done; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(cleanupError => log(`hook rollback failed: ${cleanupError.message}`));
+    await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(cleanupError => log(`script rollback failed: ${cleanupError.message}`));
     throw error;
   }
   return async committed => {
@@ -54,7 +67,7 @@ async function installPostCommitHooks(client, config, log, runId) {
       await exec(client, `sudo rm -rf -- ${JSON.stringify(backupDir)}; rm -rf -- ${JSON.stringify(remoteDir)}`).catch(error => log(`hook cleanup failed: ${error.message}`));
       return;
     }
-    await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; for f in ${JSON.stringify(backupDir)}/*; do [ -e "$f" ] && sudo mv -- "$f" ${JSON.stringify(installDir)}/; done; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(error => log(`hook rollback failed: ${error.message}`));
+    await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(error => log(`script rollback failed: ${error.message}`));
   };
 }
 
@@ -70,7 +83,7 @@ export async function deploy({ target, config }) {
     debugLog(`uploading config: ${config}`);
     await upload(client, config, remote);
     debugLog(`upload complete: ${remote}`);
-    finalizeHooks = await installPostCommitHooks(client, config, debugLog, runId);
+    finalizeHooks = await installScripts(client, config, debugLog, runId);
     debugLog('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
