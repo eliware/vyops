@@ -1,5 +1,22 @@
 # Release Notes
 
+## 1.0.6
+
+- Add `--backup` to download the active `config.boot` and complete
+  `/config/scripts` tree into a local backup directory.
+- Fail promptly on VyOS load and commit errors instead of waiting indefinitely
+  for confirmation prompts.
+- Preserve synchronized scripts when post-commit local config download fails.
+- Include staged configuration changes in Git pushback detection.
+- Expand CLI, deployment, backup, Git, and SSH regression coverage.
+
+Verification:
+
+- `npm test` (100% coverage across statements, branches, functions, and lines)
+- `npm run lint`
+- `npm run audit`
+- `npm run validate:package`
+
 ## 1.0.5
 
 - Create nested temporary directories before uploading synchronized scripts.

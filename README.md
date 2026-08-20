@@ -110,7 +110,7 @@ Deployments require existing SSH keys and a reachable VyOS target. The workflow 
 
 ## Support
 
-Repository: `git@github.com:eliware/vyops-js.git`
+Repository: `git@github.com:eliware/vyops.git`
 
 Open an issue or provide a focused patch with tests and validation results.
 
