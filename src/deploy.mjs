@@ -76,10 +76,10 @@ async function installScripts(client, config, log, runId) {
   };
 }
 
-export async function deploy({ target, config }) {
+export async function deploy({ target, config, password }) {
   const debugLog = message => log.debug(`[vyops] ${message}`);
   debugLog(`connecting: ${target}`);
-  const client = await connect(target);
+  const client = password === undefined ? await connect(target) : await connect(target, { password });
   debugLog('SSH connected');
   let finalizeHooks;
   let hooksFinalized = false;
@@ -95,6 +95,7 @@ export async function deploy({ target, config }) {
     const output = await interactive(client, [
       'configure',
       { command: `load ${remote}`, reject: /(?:load failed|commit failed|commit aborted|cannot commit|configuration (?:commit )?failed|invalid configuration|error|invalid)/i },
+      'run set terminal length 0',
       "printf '%s\\n' '--- compare ---'",
       'compare',
       "printf '%s\\n' '--- end compare ---'",

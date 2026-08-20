@@ -80,6 +80,17 @@ test('connect uses the default key path', async () => {
   await rm(keyDir, { recursive: true, force: true });
 });
 
+test('connect supports password authentication without reading a private key', async () => {
+  const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
+  process.env.HOME = keyDir;
+  await mkdir(join(keyDir, '.ssh'), { recursive: true });
+  await writeFile(join(keyDir, '.ssh/known_hosts'), 'router ssh-ed25519 AAAA\n');
+  const client = await connect('vyos@router', { password: 'bootstrap-secret' });
+  expect(client.options).toMatchObject({ username: 'vyos', password: 'bootstrap-secret' });
+  expect(client.options.privateKey).toBeUndefined();
+  await rm(keyDir, { recursive: true, force: true });
+});
+
 test('connect rejects host-only targets and connection errors', async () => {
   const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
   const key = join(keyDir, 'key');
@@ -162,6 +173,16 @@ test('interactive runs commands, handles pager and commit confirmation', async (
   await expect(promise).resolves.toContain('Proceed? [Y/n]');
   stream.emit('data', '\ntestuser@test-router.example.test#');
   expect(stream.ended).toBe(true);
+});
+
+test('interactive handles VyOS return-only pager prompts', async () => {
+  const client = new MockClient();
+  const promise = interactive(client, ['first']);
+  const stream = client.shellStream;
+  stream.emit('data', 'No next tag (press RETURN)');
+  expect(stream.writes).toEqual(['first\n', '\n']);
+  stream.emit('close');
+  await expect(promise).rejects.toThrow('interactive SSH closed before command sequence completed');
 });
 
 test('interactive rejects a failed structured command', async () => {

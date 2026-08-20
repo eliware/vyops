@@ -4,7 +4,7 @@
 
 ## Features
 
-- SSH-key authentication via `ssh2`.
+- SSH-key authentication via `ssh2`, with optional password bootstrap via stdin.
 - Native VyOS curly-brace configuration validation.
 - Candidate load, `compare`, `commit-confirm`, confirmation, and save.
 - Complete `scripts/` tree synchronization, including post-commit hooks,
@@ -39,6 +39,14 @@ vyops   Deploy or dry-run a configuration.
 | `LOG_LEVEL` | No | `info` | Winston log level (`error`, `warn`, `info`, `http`, `verbose`, `debug`, or `silly`). |
 
 The target must be supplied as `user@host`. The config must use native VyOS curly-brace syntax.
+
+For a router that has not received its SSH key yet, provide the SSH password through stdin:
+
+```sh
+printf '%s\n' "$VYOS_PASSWORD" | vyops --password-stdin vyos@new-router config.boot
+```
+
+Password mode still requires the target host key to be present in `known_hosts`; it does not disable host verification. Passwords are not accepted as command-line arguments or written to logs.
 
 ## Usage
 

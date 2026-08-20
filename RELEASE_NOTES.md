@@ -1,5 +1,20 @@
 # Release Notes
 
+## 1.0.7
+
+- Add password-based SSH bootstrap through the secure `--password-stdin` mode.
+- Preserve strict `known_hosts` verification when using password authentication.
+- Handle VyOS return-only pager prompts and disable paging before deployment compares.
+- Add packaged CLI, password-authentication, backup failure, and deployment regression tests.
+- Add opt-in real-VyOS integration test scaffolding for dry-run and backup workflows.
+
+Verification:
+
+- `npm test` (100% coverage across statements, branches, functions, and lines)
+- `npm run lint`
+- `npm run audit`
+- `npm run validate:package`
+
 ## 1.0.6
 
 - Add `--backup` to download the active `config.boot` and complete

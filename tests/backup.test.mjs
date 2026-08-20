@@ -27,6 +27,11 @@ test('backs up config and nested scripts', async () => {
   expect(mocks.close).toHaveBeenCalled();
 });
 
+test('passes a bootstrap password through to SSH', async () => {
+  await expect(backup({ target: 'vyos@router', config: '/tmp/backup', password: 'bootstrap-secret' })).resolves.toBe(0);
+  expect(mocks.connect).toHaveBeenCalledWith('vyos@router', { password: 'bootstrap-secret' });
+});
+
 test('rejects unsafe remote script paths and closes SSH', async () => {
   mocks.exec.mockResolvedValue({ code: 0, stdout: '/config/scripts/../private\n', stderr: '' });
   await expect(backup({ target: 'vyos@router', config: '/tmp/backup' })).rejects.toThrow('unsafe remote script path');
@@ -41,4 +46,17 @@ test.each([
   await expect(backup({ target: 'vyos@router', config: '/tmp/backup' }))
     .rejects.toThrow(`could not list remote scripts: ${stderr || stdout}`);
   expect(mocks.close).toHaveBeenCalled();
+});
+
+test('closes SSH when downloading the backup fails', async () => {
+  mocks.download.mockRejectedValueOnce(new Error('config download failed'));
+  await expect(backup({ target: 'vyos@router', config: '/tmp/backup' }))
+    .rejects.toThrow('config download failed');
+  expect(mocks.close).toHaveBeenCalled();
+});
+
+test('does not enumerate scripts when config download fails', async () => {
+  mocks.download.mockRejectedValueOnce(new Error('config download failed'));
+  await expect(backup({ target: 'vyos@router', config: '/tmp/backup' })).rejects.toThrow();
+  expect(mocks.exec).not.toHaveBeenCalled();
 });

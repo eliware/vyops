@@ -16,6 +16,12 @@ test('parses backup switch', () => {
   });
 });
 
+test('parses password stdin switch', () => {
+  expect(parseArgs(['--password-stdin', 'vyos@router', '/tmp/config.boot'])).toEqual({
+    target: 'vyos@router', config: '/tmp/config.boot', passwordStdin: true,
+  });
+});
+
 test('parses help and version switches', () => {
   expect(parseArgs(['--help'])).toEqual({ help: true });
   expect(parseArgs(['--version'])).toEqual({ version: true });

@@ -60,7 +60,14 @@ test('deploys config, downloads live state, and logs when debug is enabled', asy
 
 test('deploys without compare output when debug is disabled', async () => {
   await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).resolves.toBe(0);
-  expect(mocks.interactive.mock.calls[0][1]).toEqual(expect.arrayContaining([expect.objectContaining({ command: 'commit-confirm 5' })]));
+  const commands = mocks.interactive.mock.calls[0][1];
+  expect(commands).toEqual(expect.arrayContaining([expect.objectContaining({ command: 'commit-confirm 5' })]));
+  expect(commands.indexOf('run set terminal length 0')).toBeLessThan(commands.indexOf("printf '%s\\n' '--- compare ---'"));
+});
+
+test('passes bootstrap passwords through to SSH without logging them', async () => {
+  await expect(deploy({ target: 'vyos@router', config: '/tmp/config.boot', password: 'bootstrap-secret' })).resolves.toBe(0);
+  expect(mocks.connect).toHaveBeenCalledWith('vyos@router', { password: 'bootstrap-secret' });
 });
 
 test('rejects router failures and always cleans up', async () => {

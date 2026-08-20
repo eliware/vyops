@@ -67,10 +67,12 @@ function verifyKnownHost(host, key, knownHosts) {
   return matched;
 }
 
-export async function connect(target) {
+export async function connect(target, { password } = {}) {
   const { username, host } = parseTarget(target);
   log.debug(`[vyops] SSH connecting: ${username}@${host}`);
-  const privateKey = await fs.promises.readFile(process.env.VYOPS_SSH_KEY || `${process.env.HOME}/.ssh/id_rsa`);
+  const privateKey = password === undefined
+    ? await fs.promises.readFile(process.env.VYOPS_SSH_KEY || `${process.env.HOME}/.ssh/id_rsa`)
+    : undefined;
   const knownHostsPath = `${process.env.HOME}/.ssh/known_hosts`;
   const knownHosts = await fs.promises.readFile(knownHostsPath, 'utf8');
   return new Promise((resolve, reject) => {
@@ -84,6 +86,7 @@ export async function connect(target) {
       username,
       agent: process.env.SSH_AUTH_SOCK,
       privateKey,
+      ...(password === undefined ? {} : { password }),
       hostVerifier: (key, callback) => callback(verifyKnownHost(host, key, knownHosts)),
       readyTimeout: CONNECT_TIMEOUT,
       authTimeout: CONNECT_TIMEOUT,
@@ -190,12 +193,16 @@ export function interactive(client, commands, log = () => {}) {
           reject(new Error(`interactive command failed: ${currentItem.command}`));
           return;
         }
-        const pager = /(?:^|\n):\s*$/.test(cleaned) || /--More--\s*$/i.test(cleaned);
+        const pagerReturn = /No next tag\s*\(press RETURN\)/i.test(cleaned);
+        const pager = /(?:^|\n):\s*$/.test(cleaned)
+          || /--More--\s*$/i.test(cleaned)
+          || pagerReturn;
         log(`state after data: index=${index}, waiting=${waiting}, answering=${answering}, prompt=${prompt(cleaned)}, pager=${pager}, bytes=${text.length}`);
         if (pager) {
-          log('pager prompt detected; sending space');
-          stream.write(' ');
-          log('write complete: space');
+          const key = pagerReturn ? '\n' : ' ';
+          log(`pager prompt detected; sending ${pagerReturn ? 'return' : 'space'}`);
+          stream.write(key);
+          log(`write complete: ${pagerReturn ? 'return' : 'space'}`);
           return;
         }
         if (/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned) && !answering) {

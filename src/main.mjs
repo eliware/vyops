@@ -6,6 +6,7 @@ import { readAndValidateConfig } from './validate.mjs';
 import { pushBack, shouldSkip } from './git.mjs';
 import { closeAll } from './ssh.mjs';
 import { log, registerHandlers, registerSignals } from '@eliware/common';
+import { readFile } from 'node:fs/promises';
 
 const errors = registerHandlers({ log });
 const signals = registerSignals({ log, shutdownHook: async () => closeAll() });
@@ -20,6 +21,10 @@ try {
   if (args.version) {
     log.info(packageJson.version);
     process.exit(0);
+  }
+  if (args.passwordStdin) {
+    args.password = (await readFile(0, 'utf8')).replace(/\r?\n$/, '');
+    if (!args.password) throw new Error('password-stdin received an empty password');
   }
   if (args.backup) {
     await backup(args);

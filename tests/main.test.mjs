@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 
 const run = promisify(execFile);
 const entrypoint = join(process.cwd(), 'vyops.mjs');
+const binEntrypoint = join(process.cwd(), 'bin', 'vyops');
 
 test('prints help and version without external effects', async () => {
   const help = await run(process.execPath, [entrypoint, '--help']);
@@ -14,6 +15,11 @@ test('prints help and version without external effects', async () => {
 
   const version = await run(process.execPath, [entrypoint, '--version']);
   expect(version.stdout.trim()).toBe(`[INFO] ${packageJson.version}`);
+});
+
+test('packaged bin entrypoint invokes the CLI', async () => {
+  const result = await run(binEntrypoint, ['--help']);
+  expect(result.stdout).toMatch(/Usage:/);
 });
 
 test('dry-run validates config without connecting or pushing', async () => {

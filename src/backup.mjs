@@ -7,8 +7,8 @@ function remoteScriptPath(value) {
   return name;
 }
 
-export async function backup({ target, config }) {
-  const client = await connect(target);
+export async function backup({ target, config, password }) {
+  const client = password === undefined ? await connect(target) : await connect(target, { password });
   try {
     await fs.promises.mkdir(config, { recursive: true });
     await fs.promises.mkdir(path(config, 'scripts'), { recursive: true });
