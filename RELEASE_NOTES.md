@@ -1,5 +1,20 @@
 # Release Notes
 
+## 1.0.8
+
+- Fail immediately with a redacted VyOS error when confirmed commits reject a
+  configuration after the confirmation prompt.
+- Prevent malformed PKI and other validation failures from appearing to hang
+  at the commit-confirm step.
+- Add regression coverage for post-prompt validation errors and structured
+  failures without detail text.
+
+Verification:
+
+- `npm test` (100% coverage across statements, branches, functions, and lines)
+- `npm run lint`
+- `npm run audit`
+
 ## 1.0.7
 
 - Add password-based SSH bootstrap through the secure `--password-stdin` mode.
