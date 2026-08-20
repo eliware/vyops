@@ -167,6 +167,12 @@ export function interactive(client, commands, log = () => {}) {
       const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
       const title = new RegExp(`${String.fromCharCode(27)}\\][^${String.fromCharCode(7)}]*(?:${String.fromCharCode(7)}|${String.fromCharCode(27)}\\\\)`, 'g');
       const clean = value => value.replace(ansi, '').replace(title, '').replace(/\r/g, '');
+      const failureDetail = value => value.split('\n')
+        .map(line => line.trim())
+        .find(line => /(?:failed|failure|invalid|error|aborted|pending)/i.test(line))
+        ?.replace(/(certificate|private key|key)\s+"[^"]+"/ig, '$1 "[redacted]"')
+        .replace(/\s+/g, ' ')
+        .slice(0, 240);
       const prompt = value => /(?:^|\n)[A-Za-z0-9._-]+@[A-Za-z0-9._:-]+(?::~\$|#)\s*$/.test(value);
       const sendNext = () => {
         if (waiting || index >= commands.length) return;
@@ -190,7 +196,8 @@ export function interactive(client, commands, log = () => {}) {
           settled = true;
           clearTimeout(timer);
           stream.close();
-          reject(new Error(`interactive command failed: ${currentItem.command}`));
+          const detail = failureDetail(cleaned);
+          reject(new Error(`interactive command failed: ${currentItem.command}${detail ? ` (${detail})` : ''}`));
           return;
         }
         const pagerReturn = /No next tag\s*\(press RETURN\)/i.test(cleaned);

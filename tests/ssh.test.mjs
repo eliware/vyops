@@ -199,6 +199,22 @@ test('interactive rejects a structured command error before a prompt arrives', a
   await expect(promise).rejects.toThrow('interactive command failed: commit-confirm 5');
 });
 
+test('interactive reports structured failures without a matching detail line', async () => {
+  const client = new MockClient();
+  const promise = interactive(client, [{ command: 'load /tmp/config', reject: /^x/ }]);
+  client.shellStream.emit('data', 'x');
+  await expect(promise).rejects.toThrow('interactive command failed: load /tmp/config');
+});
+
+test('interactive rejects commit-confirm after VyOS reports a validation error', async () => {
+  const client = new MockClient();
+  const promise = interactive(client, [{ command: 'commit-confirm 5', reject: /(?:commit failed|commit aborted|invalid|error)/i }]);
+  client.shellStream.emit('data', 'commit-confirm will automatically reload previous config in 5 minutes\nProceed ? [Y/n] ');
+  expect(client.shellStream.writes).toEqual(['commit-confirm 5\n', 'y\n']);
+  client.shellStream.emit('data', 'Initialized commit-confirm; 5 minutes to confirm before reload\n[pki] Invalid private key on certificate "sangahnoona.com"');
+  await expect(promise).rejects.toThrow('interactive command failed: commit-confirm 5 ([pki] Invalid private key on certificate "[redacted]")');
+});
+
 test('interactive handles an empty command list', async () => {
   const client = new MockClient();
   const promise = interactive(client, []);
