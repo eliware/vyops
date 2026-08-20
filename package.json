@@ -1,6 +1,6 @@
 {
     "name": "@eliware/vyops",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "description": "Deploy native VyOS configuration files over SSH.",
     "main": "vyops.mjs",
     "scripts": {
@@ -21,12 +21,12 @@
     ],
     "type": "module",
     "dependencies": {
-        "@eliware/common": "^1.1.7",
+        "@eliware/common": "^1.1.8",
         "ssh2": "^1.17.0"
     },
     "devDependencies": {
         "jest": "^30.4.2",
-        "oxlint": "^1.77.0"
+        "oxlint": "^1.79.0"
     },
     "bin": {
         "vyops": "./bin/vyops"
