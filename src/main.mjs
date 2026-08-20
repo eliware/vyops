@@ -1,6 +1,7 @@
 import { parseArgs, usage } from './args.mjs';
 import packageJson from '../package.json' with { type: 'json' };
 import { deploy } from './deploy.mjs';
+import { backup } from './backup.mjs';
 import { readAndValidateConfig } from './validate.mjs';
 import { pushBack, shouldSkip } from './git.mjs';
 import { closeAll } from './ssh.mjs';
@@ -18,6 +19,11 @@ try {
   }
   if (args.version) {
     log.info(packageJson.version);
+    process.exit(0);
+  }
+  if (args.backup) {
+    await backup(args);
+    log.info(`Backup successful: ${args.config}`);
     process.exit(0);
   }
   log.debug(`[vyops] validating config: ${args.config}`);

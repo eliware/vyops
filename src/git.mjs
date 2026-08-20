@@ -75,7 +75,7 @@ export async function pushBack(config, { force = false } = {}) {
   const repo = root.trim();
   return withRepositoryLock(repo, async () => {
     const relative = config.startsWith(`${repo}/`) ? config.slice(repo.length + 1) : config;
-    const { stdout: diff } = await git(['diff', '--', relative], repo);
+    const { stdout: diff } = await git(['diff', 'HEAD', '--', relative], repo);
     if (!diff) return false;
     await git(['add', '--', relative], repo);
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);

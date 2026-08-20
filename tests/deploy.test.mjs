@@ -75,6 +75,22 @@ test('propagates download failures and tolerates cleanup failures', async () => 
   await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).rejects.toThrow('download failed');
 });
 
+test('does not roll back committed hooks when syncing the config fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
+  const hooks = join(root, 'scripts');
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, 'hook.sh'), '#!/bin/sh\n');
+  try {
+    fsMocks.readdir.mockResolvedValue([{ name: 'hook.sh', isFile: () => true }]);
+    mocks.download.mockRejectedValue(new Error('download failed'));
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
+      .rejects.toThrow('download failed');
+    expect(mocks.exec.mock.calls.some(([, command]) => command.includes('sudo rm -f') && command.includes('/config/scripts/'))).toBe(false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('installs sorted post-commit hooks and cleans its remote directory', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
   const hooks = join(root, 'scripts');
@@ -111,6 +127,35 @@ test('skips an existing empty hook directory', async () => {
   fsMocks.readdir.mockResolvedValue([]);
   await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).resolves.toBe(0);
   expect(mocks.exec).toHaveBeenCalledTimes(1);
+});
+
+test('ignores directory entries that are neither files nor directories', async () => {
+  fsMocks.readdir.mockResolvedValue([{ name: 'ignored', isFile: () => false, isDirectory: () => false }]);
+  await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).resolves.toBe(0);
+  expect(mocks.exec).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  ['stderr', 'directory setup error', ''],
+  ['stdout', '', 'directory setup output'],
+])('reports nested script upload directory setup failures using %s', async (_label, stderr, stdout) => {
+  const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
+  const scripts = join(root, 'scripts');
+  await mkdir(join(scripts, 'commit'), { recursive: true });
+  try {
+    fsMocks.readdir
+      .mockResolvedValueOnce([{ name: 'commit', isDirectory: () => true }])
+      .mockResolvedValueOnce([{ name: 'hook.sh', isFile: () => true }]);
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 1, stdout, stderr })
+      .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
+      .rejects.toThrow(`script upload directory setup failed (commit/hook.sh): ${stderr || stdout}`);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('hook setup and install failures', async () => {

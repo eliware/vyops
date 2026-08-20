@@ -171,6 +171,13 @@ test('interactive rejects a failed structured command', async () => {
   await expect(promise).rejects.toThrow('interactive command failed: save');
 });
 
+test('interactive rejects a structured command error before a prompt arrives', async () => {
+  const client = new MockClient();
+  const promise = interactive(client, [{ command: 'commit-confirm 5', reject: /commit failed|error/i }]);
+  client.shellStream.emit('data', 'Configuration commit failed; rollback in progress');
+  await expect(promise).rejects.toThrow('interactive command failed: commit-confirm 5');
+});
+
 test('interactive handles an empty command list', async () => {
   const client = new MockClient();
   const promise = interactive(client, []);

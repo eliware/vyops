@@ -28,3 +28,27 @@ test('dry-run validates config without connecting or pushing', async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('invalid config exits nonzero without attempting deployment', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'vyops-test-'));
+  const config = join(directory, 'config.boot');
+  await writeFile(config, 'system {\n    host-name broken\n');
+  try {
+    await expect(run(process.execPath, [entrypoint, '--dry-run', 'testuser@test-router.example.test', config]))
+      .rejects.toMatchObject({ code: 1, stdout: expect.stringContaining('unbalanced braces') });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('invalid invocation exits nonzero', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'vyops-test-'));
+  const config = join(directory, 'config.boot');
+  await writeFile(config, 'system {\n    host-name test\n}\n');
+  try {
+    await expect(run(process.execPath, [entrypoint, '--dry-run', 'router', config, 'extra']))
+      .rejects.toMatchObject({ code: 1, stdout: expect.stringContaining('Usage:') });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

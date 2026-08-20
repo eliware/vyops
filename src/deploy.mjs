@@ -82,6 +82,8 @@ export async function deploy({ target, config }) {
   const client = await connect(target);
   debugLog('SSH connected');
   let finalizeHooks;
+  let hooksFinalized = false;
+  let deploymentCommitted = false;
   const runId = randomUUID();
   const remote = `/home/vyos/.config.deploy.${runId}`;
   try {
@@ -92,25 +94,29 @@ export async function deploy({ target, config }) {
     debugLog('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
-      { command: `load ${remote}`, reject: /(?:load failed|error|invalid)/i },
+      { command: `load ${remote}`, reject: /(?:load failed|commit failed|commit aborted|cannot commit|configuration (?:commit )?failed|invalid configuration|error|invalid)/i },
       "printf '%s\\n' '--- compare ---'",
       'compare',
       "printf '%s\\n' '--- end compare ---'",
-      { command: 'commit-confirm 5', reject: /(?:commit failed|error|invalid)/i },
+      { command: 'commit-confirm 5', reject: /(?:commit failed|commit aborted|cannot commit|configuration (?:commit )?failed|invalid configuration|error|invalid)/i },
       { command: 'confirm', reject: /(?:confirm failed|error|invalid)/i },
       { command: 'save', reject: /(?:save failed|error|invalid)/i },
       'exit',
       'exit',
     ], debugLog);
     debugLog(`interactive sequence returned (${output.length} bytes)`);
+    deploymentCommitted = true;
     const compare = extractCompare(output);
     if (compare) log.info(compare);
-    if (finalizeHooks) await finalizeHooks(true);
     debugLog(`syncing live config: /config/config.boot -> ${config}`);
     await download(client, '/config/config.boot', config);
+    if (finalizeHooks) {
+      hooksFinalized = true;
+      await finalizeHooks(true);
+    }
     return 0;
   } catch (error) {
-    if (finalizeHooks) await finalizeHooks(false);
+    if (finalizeHooks && !hooksFinalized && !deploymentCommitted) await finalizeHooks(false);
     throw error;
   } finally {
     debugLog('cleaning up remote file');

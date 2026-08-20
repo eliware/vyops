@@ -9,6 +9,7 @@ const requiredFiles = [
   'bin/vyops',
   'src/args.mjs',
   'src/deploy.mjs',
+  'src/backup.mjs',
   'src/git.mjs',
   'src/main.mjs',
   'src/ssh.mjs',

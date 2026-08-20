@@ -55,7 +55,12 @@ Console switches:
 ./vyops.mjs --version
 ./vyops.mjs --dry-run vyos@core1 /path/to/config.boot
 ./vyops.mjs --force --debug vyos@core1 /path/to/config.boot
+./vyops.mjs --backup vyos@core1 /path/to/backup
 ```
+
+`--backup` downloads the active `/config/config.boot` and the complete
+`/config/scripts` tree into the destination directory. It does not enter
+configuration mode or modify the router.
 
 `--dry-run` validates the config and skips SSH, commit, save, download, and Git pushback.
 

@@ -117,6 +117,22 @@ test('pushBack commits and pushes a changed config', async () => {
   }
 });
 
+test('pushBack includes staged config changes', async () => {
+  const { directory, config } = await repository();
+  const previous = process.cwd();
+  process.chdir(directory);
+  try {
+    await writeFile(config, 'system {\n    host-name staged\n}\n');
+    await git(directory, 'add', 'config.boot');
+    await expect(pushBack(config)).rejects.toThrow('No configured push destination');
+    await expect(run('git', ['show', '--format=%s', '--stat', '--oneline', 'HEAD'], { cwd: directory }))
+      .resolves.toMatchObject({ stdout: expect.stringContaining('Pushback ') });
+  } finally {
+    process.chdir(previous);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('git checks use the config directory instead of the process cwd', async () => {
   const { directory, config } = await repository();
   const previous = process.cwd();

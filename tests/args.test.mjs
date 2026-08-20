@@ -10,6 +10,12 @@ test('parses dry-run and force switches', () => {
   });
 });
 
+test('parses backup switch', () => {
+  expect(parseArgs(['--backup', 'vyos@router', '/tmp/backup'])).toEqual({
+    target: 'vyos@router', config: '/tmp/backup', backup: true,
+  });
+});
+
 test('parses help and version switches', () => {
   expect(parseArgs(['--help'])).toEqual({ help: true });
   expect(parseArgs(['--version'])).toEqual({ version: true });

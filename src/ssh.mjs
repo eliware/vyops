@@ -183,6 +183,13 @@ export function interactive(client, commands, log = () => {}) {
         response += text;
         log(`recv (${text.length} bytes): ${JSON.stringify(text)}`);
         const cleaned = clean(response);
+        if (waiting && typeof currentItem !== 'string' && currentItem.reject?.test(cleaned)) {
+          settled = true;
+          clearTimeout(timer);
+          stream.close();
+          reject(new Error(`interactive command failed: ${currentItem.command}`));
+          return;
+        }
         const pager = /(?:^|\n):\s*$/.test(cleaned) || /--More--\s*$/i.test(cleaned);
         log(`state after data: index=${index}, waiting=${waiting}, answering=${answering}, prompt=${prompt(cleaned)}, pager=${pager}, bytes=${text.length}`);
         if (pager) {
@@ -207,13 +214,6 @@ export function interactive(client, commands, log = () => {}) {
           answering = false;
           waiting = false;
           log(`response [${index}]:\n${cleaned}`);
-          if (typeof currentItem !== 'string' && currentItem.reject?.test(cleaned)) {
-            settled = true;
-            clearTimeout(timer);
-            stream.close();
-            reject(new Error(`interactive command failed: ${currentItem.command}`));
-            return;
-          }
           if (index >= commands.length) {
             settled = true;
             clearTimeout(timer);
