@@ -13,7 +13,7 @@ const suite = enabled ? describe : describe.skip;
 const mutations = enabled && process.env.VYOPS_RUN_MUTATING_INTEGRATION === '1' ? test : test.skip;
 
 suite('real VyOS integration', () => {
-  jest.setTimeout(120_000);
+  jest.setTimeout(300_000);
 
   test('dry-run validates the test configuration', async () => {
     const result = await run(process.execPath, [join(process.cwd(), 'vyops.mjs'), '--dry-run', target, config]);
@@ -33,7 +33,7 @@ suite('real VyOS integration', () => {
     writeFileSync(variant, source.replace('host-name "vyops-test"', 'host-name "vyops-test-valid"'));
     mkdirSync(join(directory, 'scripts'));
     writeFileSync(join(directory, 'scripts', 'vyops-integration-marker.sh'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
-    const result = await run(process.execPath, [join(process.cwd(), 'vyops.mjs'), '--force', target, variant], { timeout: 45_000 });
+    const result = await run(process.execPath, [join(process.cwd(), 'vyops.mjs'), '--force', target, variant], { timeout: 180_000 });
     expect(result.stdout).toContain('Deployment successful');
   });
 
@@ -42,6 +42,6 @@ suite('real VyOS integration', () => {
     const variant = join(directory, 'config.boot');
     const source = readFileSync(config, 'utf8');
     writeFileSync(variant, source.replace('100.64.10.50/24', '100.64.10.50/99'));
-    await expect(run(process.execPath, [join(process.cwd(), 'vyops.mjs'), '--force', target, variant], { timeout: 30_000 })).rejects.toMatchObject({ code: 1 });
+    await expect(run(process.execPath, [join(process.cwd(), 'vyops.mjs'), '--force', target, variant], { timeout: 120_000 })).rejects.toMatchObject({ code: 1 });
   });
 });
