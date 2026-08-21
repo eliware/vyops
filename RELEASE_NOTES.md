@@ -1,5 +1,18 @@
 # Release Notes
 
+## 1.0.10
+
+- Make Git integration optional for deployments using standalone config files.
+- Continue downloading the live VyOS configuration after deployment while
+  skipping repository checks and pushback outside a Git repository.
+- Add regression coverage for non-Git and unexpected repository paths.
+
+Verification:
+
+- `npm test` (100% coverage across statements, branches, functions, and lines)
+- `npm run lint`
+- `npm run audit`
+
 ## 1.0.9
 
 - Fix `--password-stdin` to read piped passwords correctly on current Node.js
