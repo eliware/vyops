@@ -1,6 +1,6 @@
 {
     "name": "@eliware/vyops",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "description": "Deploy native VyOS configuration files over SSH.",
     "main": "vyops.mjs",
     "scripts": {
