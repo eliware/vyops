@@ -214,10 +214,10 @@ export function interactive(client, commands, log = () => {}) {
         }
         if (/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned) && !answering) {
           answering = true;
-          log('commit-confirm prompt detected; sending: y');
+          log('commit-confirm prompt detected; sending: yes');
           response = '';
-          stream.write('y\n');
-          log('write complete: y');
+          stream.write('yes\n');
+          log('write complete: yes');
           return;
         }
         const commandComplete = waiting

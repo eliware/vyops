@@ -168,7 +168,7 @@ test('interactive runs commands, handles pager and commit confirmation', async (
   expect(stream.writes).toEqual(['first\n', ' ', 'second\n']);
   stream.stderr.emit('data', 'warning');
   stream.emit('data', 'Proceed? [Y/n]');
-  expect(stream.writes).toEqual(['first\n', ' ', 'second\n', 'y\n']);
+  expect(stream.writes).toEqual(['first\n', ' ', 'second\n', 'yes\n']);
   stream.emit('data', '\ntestuser@test-router.example.test#');
   await expect(promise).resolves.toContain('Proceed? [Y/n]');
   stream.emit('data', '\ntestuser@test-router.example.test#');
@@ -210,7 +210,7 @@ test('interactive rejects commit-confirm after VyOS reports a validation error',
   const client = new MockClient();
   const promise = interactive(client, [{ command: 'commit-confirm 5', reject: /(?:commit failed|commit aborted|invalid|error)/i }]);
   client.shellStream.emit('data', 'commit-confirm will automatically reload previous config in 5 minutes\nProceed ? [Y/n] ');
-  expect(client.shellStream.writes).toEqual(['commit-confirm 5\n', 'y\n']);
+  expect(client.shellStream.writes).toEqual(['commit-confirm 5\n', 'yes\n']);
   client.shellStream.emit('data', 'Initialized commit-confirm; 5 minutes to confirm before reload\n[pki] Invalid private key on certificate "sangahnoona.com"');
   await expect(promise).rejects.toThrow('interactive command failed: commit-confirm 5 ([pki] Invalid private key on certificate "[redacted]")');
 });
