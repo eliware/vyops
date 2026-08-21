@@ -1,5 +1,17 @@
 # Release Notes
 
+## 1.0.9
+
+- Fix `--password-stdin` to read piped passwords correctly on current Node.js
+  runtimes.
+- Restore password-authenticated backup workflows for VyOS hosts.
+
+Verification:
+
+- `npm test` (100% coverage across statements, branches, functions, and lines)
+- `npm run lint`
+- `npm run audit`
+
 ## 1.0.8
 
 - Fail immediately with a redacted VyOS error when confirmed commits reject a
