@@ -1,5 +1,20 @@
 # Release Notes
 
+## 1.0.11
+
+- Fix VyOS 1.5 `commit-confirm` handling by answering confirmation prompts
+  with the full `yes` response.
+- Add real disposable-VyOS integration coverage for deployment, backup,
+  script synchronization, and invalid configuration handling.
+- Allow WAN/VPN latency in opt-in real-router integration tests.
+
+Verification:
+
+- `npm test` (100% coverage across statements, branches, functions, and lines)
+- Real VyOS integration suite (4 tests)
+- `npm run lint`
+- `npm run audit`
+
 ## 1.0.10
 
 - Make Git integration optional for deployments using standalone config files.
