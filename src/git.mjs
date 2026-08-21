@@ -59,10 +59,19 @@ function configDirectory(config) {
   return path(config, '..');
 }
 
+async function repositoryRoot(config) {
+  try {
+    const { stdout } = await git(['rev-parse', '--show-toplevel'], configDirectory(config));
+    return stdout.trim();
+  } catch (error) {
+    if (error.stderr?.includes('not a git repository')) return null;
+    throw error;
+  }
+}
+
 export async function shouldSkip(config) {
-  const cwd = configDirectory(config);
-  const { stdout: root } = await git(['rev-parse', '--show-toplevel'], cwd);
-  const repo = root.trim();
+  const repo = await repositoryRoot(config);
+  if (!repo) return false;
   const relative = config.startsWith(`${repo}/`) ? config.slice(repo.length + 1) : config;
   const { stdout: status } = await git(['status', '--porcelain', '--', relative], repo);
   if (status.trim()) return false;
@@ -71,8 +80,8 @@ export async function shouldSkip(config) {
 }
 
 export async function pushBack(config, { force = false } = {}) {
-  const { stdout: root } = await git(['rev-parse', '--show-toplevel'], configDirectory(config));
-  const repo = root.trim();
+  const repo = await repositoryRoot(config);
+  if (!repo) return false;
   return withRepositoryLock(repo, async () => {
     const relative = config.startsWith(`${repo}/`) ? config.slice(repo.length + 1) : config;
     const { stdout: diff } = await git(['diff', 'HEAD', '--', relative], repo);

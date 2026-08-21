@@ -54,6 +54,29 @@ test('shouldSkip is false for changed config', async () => {
   }
 });
 
+test('Git integration is optional outside a repository', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'vyops-no-git-'));
+  const config = join(directory, 'config.boot');
+  await writeFile(config, 'system {}\n');
+  try {
+    await expect(shouldSkip(config)).resolves.toBe(false);
+    await expect(pushBack(config)).resolves.toBe(false);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('Git integration propagates unexpected repository errors', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'vyops-invalid-git-'));
+  const parent = join(directory, 'not-a-directory');
+  await writeFile(parent, 'not a directory\n');
+  try {
+    await expect(shouldSkip(join(parent, 'config.boot'))).rejects.toThrow();
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('shouldSkip recognizes an unchanged Pushback commit', async () => {
   const { directory, config } = await repository();
   const previous = process.cwd();
