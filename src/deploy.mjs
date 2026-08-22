@@ -67,7 +67,7 @@ async function installScripts(client, config, log, runId) {
     await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(cleanupError => log(`script rollback failed: ${cleanupError.message}`));
     throw error;
   }
-  return async (committed, activeClient = client) => {
+  return async (committed, activeClient) => {
     if (committed) {
       await exec(activeClient, `sudo rm -rf -- ${JSON.stringify(backupDir)}; rm -rf -- ${JSON.stringify(remoteDir)}`).catch(error => log(`hook cleanup failed: ${error.message}`));
       return;
