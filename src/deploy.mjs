@@ -67,19 +67,19 @@ async function installScripts(client, config, log, runId) {
     await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(cleanupError => log(`script rollback failed: ${cleanupError.message}`));
     throw error;
   }
-  return async committed => {
+  return async (committed, activeClient = client) => {
     if (committed) {
-      await exec(client, `sudo rm -rf -- ${JSON.stringify(backupDir)}; rm -rf -- ${JSON.stringify(remoteDir)}`).catch(error => log(`hook cleanup failed: ${error.message}`));
+      await exec(activeClient, `sudo rm -rf -- ${JSON.stringify(backupDir)}; rm -rf -- ${JSON.stringify(remoteDir)}`).catch(error => log(`hook cleanup failed: ${error.message}`));
       return;
     }
-    await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(error => log(`script rollback failed: ${error.message}`));
+    await exec(activeClient, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(error => log(`script rollback failed: ${error.message}`));
   };
 }
 
 export async function deploy({ target, config, password }) {
   const debugLog = message => log.debug(`[vyops] ${message}`);
   debugLog(`connecting: ${target}`);
-  const client = password === undefined ? await connect(target) : await connect(target, { password });
+  let client = password === undefined ? await connect(target) : await connect(target, { password });
   debugLog('SSH connected');
   let finalizeHooks;
   let hooksFinalized = false;
@@ -91,6 +91,9 @@ export async function deploy({ target, config, password }) {
     await upload(client, config, remote);
     debugLog(`upload complete: ${remote}`);
     finalizeHooks = await installScripts(client, config, debugLog, runId);
+    debugLog('reconnecting before interactive deployment sequence');
+    await close(client);
+    client = password === undefined ? await connect(target) : await connect(target, { password });
     debugLog('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
@@ -99,7 +102,7 @@ export async function deploy({ target, config, password }) {
       "printf '%s\\n' '--- compare ---'",
       'compare',
       "printf '%s\\n' '--- end compare ---'",
-      { command: 'commit-confirm 5', reject: /(?:commit failed|commit aborted|cannot commit|configuration (?:commit )?failed|invalid configuration|error|invalid)/i },
+      { command: 'commit-confirm 5', reject: /(?:commit failed|commit aborted|cannot commit|configuration (?:commit )?failed|invalid configuration)/i },
       { command: 'confirm', reject: /(?:confirm failed|error|invalid)/i },
       { command: 'save', reject: /(?:save failed|error|invalid)/i },
       'exit',
@@ -113,11 +116,11 @@ export async function deploy({ target, config, password }) {
     await download(client, '/config/config.boot', config);
     if (finalizeHooks) {
       hooksFinalized = true;
-      await finalizeHooks(true);
+      await finalizeHooks(true, client);
     }
     return 0;
   } catch (error) {
-    if (finalizeHooks && !hooksFinalized && !deploymentCommitted) await finalizeHooks(false);
+    if (finalizeHooks && !hooksFinalized && !deploymentCommitted) await finalizeHooks(false, client);
     throw error;
   } finally {
     debugLog('cleaning up remote file');

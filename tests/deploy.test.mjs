@@ -53,6 +53,7 @@ test('deploys config, downloads live state, and logs when debug is enabled', asy
   const config = '/tmp/config.boot';
   const result = await deploy({ target: 'testuser@test-router.example.test', config });
   expect(result).toBe(0);
+  expect(mocks.connect).toHaveBeenCalledTimes(2);
   expect(mocks.connect).toHaveBeenCalledWith('testuser@test-router.example.test');
   expect(mocks.upload).toHaveBeenCalledWith(expect.anything(), config, expect.stringMatching(/^\/home\/vyos\/\.config\.deploy\.[0-9a-f-]{36}$/));
   expect(mocks.download).toHaveBeenCalledWith(expect.anything(), '/config/config.boot', config);
@@ -63,6 +64,15 @@ test('deploys without compare output when debug is disabled', async () => {
   const commands = mocks.interactive.mock.calls[0][1];
   expect(commands).toEqual(expect.arrayContaining([expect.objectContaining({ command: 'commit-confirm 5' })]));
   expect(commands.indexOf('run set terminal length 0')).toBeLessThan(commands.indexOf("printf '%s\\n' '--- compare ---'"));
+  expect(commands.find(item => item.command === 'commit-confirm 5').reject.test('WARNING: update-check unable to retrieve data: ConnectionError')).toBe(false);
+  expect(commands.find(item => item.command === 'commit-confirm 5').reject.test('configuration commit failed')).toBe(true);
+});
+
+test('reconnects before opening the interactive deployment shell', async () => {
+  await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).resolves.toBe(0);
+  expect(mocks.close).toHaveBeenCalledTimes(2);
+  expect(mocks.connect).toHaveBeenCalledTimes(2);
+  expect(mocks.interactive.mock.invocationCallOrder[0]).toBeGreaterThan(mocks.close.mock.invocationCallOrder[0]);
 });
 
 test('passes bootstrap passwords through to SSH without logging them', async () => {
