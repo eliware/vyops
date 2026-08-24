@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
+import { relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { path } from '@eliware/common';
 
@@ -59,6 +60,10 @@ function configDirectory(config) {
   return path(config, '..');
 }
 
+function relativeConfigPath(repo, config) {
+  return relative(repo, resolve(config));
+}
+
 async function repositoryRoot(config) {
   try {
     const { stdout } = await git(['rev-parse', '--show-toplevel'], configDirectory(config));
@@ -72,8 +77,8 @@ async function repositoryRoot(config) {
 export async function shouldSkip(config) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
-  const relative = config.startsWith(repo) ? config.slice(repo.length).replace(/^[/\\]/, '') : config;
-  const { stdout: status } = await git(['status', '--porcelain', '--', relative], repo);
+  const relativePath = relativeConfigPath(repo, config);
+  const { stdout: status } = await git(['status', '--porcelain', '--', relativePath], repo);
   if (status.trim()) return false;
   const { stdout: subject } = await git(['log', '-1', '--format=%s'], repo);
   return subject.trim().startsWith('Pushback ');
@@ -83,12 +88,12 @@ export async function pushBack(config, { force = false } = {}) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
   return withRepositoryLock(repo, async () => {
-    const relative = config.startsWith(repo) ? config.slice(repo.length).replace(/^[/\\]/, '') : config;
-    const { stdout: diff } = await git(['diff', 'HEAD', '--', relative], repo);
+    const relativePath = relativeConfigPath(repo, config);
+    const { stdout: diff } = await git(['diff', 'HEAD', '--', relativePath], repo);
     if (!diff) return false;
-    await git(['add', '--', relative], repo);
+    await git(['add', '--', relativePath], repo);
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-    await git(['commit', '--only', '-m', `Pushback ${timestamp}`, '--', relative], repo);
+    await git(['commit', '--only', '-m', `Pushback ${timestamp}`, '--', relativePath], repo);
     await git(['push'], repo);
     return true;
   }, force);
