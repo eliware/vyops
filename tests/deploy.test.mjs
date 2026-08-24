@@ -153,9 +153,11 @@ test('recursively installs the complete scripts tree', async () => {
     fsMocks.readdir
       .mockResolvedValueOnce([{ name: 'commit', isDirectory: () => true }])
       .mockResolvedValueOnce([{ name: 'post-hooks.d', isDirectory: () => true }])
-      .mockResolvedValueOnce([{ name: 'check.sh', isFile: () => true }]);
+      .mockResolvedValueOnce([{ name: '95-reconcile', isFile: () => true }]);
+    fsMocks.stat.mockResolvedValue({ mode: 0o100666 });
     await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).resolves.toBe(0);
-    expect(mocks.upload).toHaveBeenCalledWith(expect.anything(), join(scripts, 'commit', 'post-hooks.d', 'check.sh'), expect.stringContaining('/.scripts.'));
+    expect(mocks.upload).toHaveBeenCalledWith(expect.anything(), join(scripts, 'commit', 'post-hooks.d', '95-reconcile'), expect.stringContaining('/.scripts.'));
+    expect(mocks.exec.mock.calls.some(([, command]) => command.includes('install -m 755'))).toBe(true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
