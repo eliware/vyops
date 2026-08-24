@@ -10,7 +10,7 @@
         "test:gaps": "node scripts/test-gaps.mjs",
         "pack": "npm pack --dry-run",
         "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs",
-        "audit": "npm audit --omit=dev --audit-level=moderate"
+        "audit": "node scripts/audit.mjs"
     },
     "keywords": [
         "vyos",
