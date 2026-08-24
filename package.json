@@ -4,10 +4,9 @@
     "description": "Deploy native VyOS configuration files over SSH.",
     "main": "vyops.mjs",
     "scripts": {
-        "lint": "npx oxlint .",
-        "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --silent --coverage",
+        "lint": "eliware-test --lint",
+        "test": "eliware-test --forceExit",
         "deploy": "./vyops.mjs",
-        "test:gaps": "node scripts/test-gaps.mjs",
         "pack": "npm pack --dry-run",
         "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs",
         "audit": "node scripts/audit.mjs"
@@ -22,11 +21,10 @@
     "type": "module",
     "dependencies": {
         "@eliware/common": "^1.1.8",
-        "ssh2": "^1.17.0"
+        "@eliware/ssh-client": "^1.2.0"
     },
     "devDependencies": {
-        "jest": "^30.4.2",
-        "oxlint": "^1.79.0"
+        "@eliware/test": "^1.0.3"
     },
     "bin": {
         "vyops": "./bin/vyops"

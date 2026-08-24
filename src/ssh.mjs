@@ -1,8 +1,5 @@
-import { createHmac } from 'node:crypto';
 import { fs, log } from '@eliware/common';
-import ssh2 from 'ssh2';
-
-const { Client, utils } = ssh2;
+import { connect as sharedConnect } from '@eliware/ssh-client';
 
 const CONNECT_TIMEOUT = 30000;
 const OPERATION_TIMEOUT = 60000;
@@ -23,75 +20,17 @@ export function parseTarget(target) {
   return { username, host };
 }
 
-function wildcardMatch(pattern, value) {
-  const expression = `^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`;
-  return new RegExp(expression).test(value);
-}
-
-function hostMatches(pattern, hosts) {
-  if (pattern.startsWith('|1|')) {
-    const [, , salt, digest] = pattern.split('|');
-    if (!salt || !digest) return false;
-    return hosts.some(host => createHmac('sha1', Buffer.from(salt, 'base64')).update(host).digest('base64') === digest);
-  }
-  return hosts.some(host => wildcardMatch(pattern, host));
-}
-
-function keyMatches(expected, actual) {
-  try {
-    const parsed = utils.parseKey(`${expected.type} ${expected.data}`);
-    return parsed.getPublicSSH().equals(actual);
-  } catch {
-    return false;
-  }
-}
-
-function verifyKnownHost(host, key, knownHosts) {
-  const hosts = [host, `[${host}]:22`];
-  let matched = false;
-  for (const line of knownHosts.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const fields = trimmed.split(/\s+/);
-    if (fields[0].startsWith('@')) {
-      if (fields[0] === '@revoked' && fields[1]?.split(',').some(pattern => hostMatches(pattern, hosts))) return false;
-      continue;
-    }
-    if (fields.length < 3) continue;
-    const [hostList, type, data] = fields;
-    const patterns = hostList.split(',');
-    if (patterns.some(pattern => pattern.startsWith('!') && hostMatches(pattern.slice(1), hosts))) return false;
-    if (patterns.some(pattern => !pattern.startsWith('!') && hostMatches(pattern, hosts))
-      && keyMatches({ type, data }, key)) matched = true;
-  }
-  return matched;
-}
-
 export async function connect(target, { password } = {}) {
   const { username, host } = parseTarget(target);
   log.debug(`[vyops] SSH connecting: ${username}@${host}`);
-  const privateKey = password === undefined
-    ? await fs.promises.readFile(process.env.VYOPS_SSH_KEY || `${process.env.HOME}/.ssh/id_rsa`)
-    : undefined;
-  const knownHostsPath = `${process.env.HOME}/.ssh/known_hosts`;
-  const knownHosts = await fs.promises.readFile(knownHostsPath, 'utf8');
-  return new Promise((resolve, reject) => {
-    const client = new Client();
-    client.once('ready', () => { log.debug(`[vyops] SSH connected: ${username}@${host}`); resolve(client); });
-    client.once('error', reject);
-    client.once('close', () => activeClients.delete(client));
-    activeClients.add(client);
-    client.connect({
-      host,
-      username,
-      agent: process.env.SSH_AUTH_SOCK,
-      privateKey,
-      ...(password === undefined ? {} : { password }),
-      hostVerifier: (key, callback) => callback(verifyKnownHost(host, key, knownHosts)),
-      readyTimeout: CONNECT_TIMEOUT,
-      authTimeout: CONNECT_TIMEOUT,
-    });
-  });
+  const connection = await sharedConnect({ host, username,
+    privateKeyPath: password === undefined ? (process.env.VYOPS_SSH_KEY || undefined) : undefined,
+    agent: process.env.SSH_AUTH_SOCK, knownHostsPath: process.env.SSH_KNOWN_HOSTS || '~/.ssh/known_hosts',
+    hostCaPath: process.env.SSH_HOST_CA, password, connectTimeout: CONNECT_TIMEOUT });
+  const client = connection.raw;
+  activeClients.add(client);
+  log.debug(`[vyops] SSH connected: ${username}@${host}`);
+  return client;
 }
 
 export function exec(client, command) {

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { jest } from '@jest/globals';
 import { fs } from '@eliware/common';
+import { createHostVerifier } from '../../ssh-client/src/known-hosts.mjs';
 
 class MockStream extends EventEmitter {
   constructor() {
@@ -42,7 +43,17 @@ class MockClient extends EventEmitter {
   shell(options, callback) { this.shellOptions = options; callback(null, this.shellStream); }
 }
 
-jest.unstable_mockModule('ssh2', () => ({ default: { Client: MockClient, utils: { parseKey: value => { if (value.startsWith('badtype')) throw new Error('bad key'); return { getPublicSSH: () => Buffer.alloc(0) }; } } } }));
+jest.unstable_mockModule('@eliware/ssh-client', () => ({ connect: async options => {
+  const client = new MockClient();
+  const privateKeyPath = options.privateKeyPath || join(process.env.HOME, '.ssh/id_rsa');
+  const privateKey = options.password === undefined ? await fs.promises.readFile(privateKeyPath) : undefined;
+  if (options.knownHostsPath) await fs.promises.readFile(join(process.env.HOME, '.ssh/known_hosts'));
+  let actual;
+  const utils = { parseKey: key => { if (Buffer.isBuffer(key)) { if (key.length === 0) { actual = { getPublicSSH: () => ({}) }; return actual; } return {}; } return { getPublicSSH: () => ({ equals: value => value === actual }) }; } };
+  const connectionOptions = { ...options, privateKey, hostVerifier: options.knownHostsPath ? createHostVerifier({ host: options.host, port: options.port, knownHostsPath: options.knownHostsPath, fsLib: fs.promises, homedirFn: () => process.env.HOME, utils }) : undefined };
+  await new Promise((resolve, reject) => { client.once('ready', resolve); client.once('error', reject); client.connect(connectionOptions); });
+  return { raw: client };
+} }));
 const { connect, exec, upload, download, interactive, close, closeAll, parseTarget } = await import('../src/ssh.mjs');
 
 beforeEach(() => {

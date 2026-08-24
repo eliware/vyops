@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 import { fs, path as eliwarePath, log } from '@eliware/common';
 import { close, connect, download, exec, interactive, upload } from './ssh.mjs';
 
@@ -59,7 +60,7 @@ async function installScripts(client, config, log, runId) {
       if (parent !== '.') {
         const remoteParent = `${remoteDir}/${parent}`;
         const remoteParentResult = await exec(client, `mkdir -p ${JSON.stringify(remoteParent)}`);
-        if (remoteParentResult.code !== 0) throw new Error(`script upload directory setup failed (${name}): ${remoteParentResult.stderr || remoteParentResult.stdout}`.trim());
+        if (remoteParentResult.code !== 0) throw new Error(`script upload directory setup failed (${join(parent, name.slice(parent.length + 1))}): ${remoteParentResult.stderr || remoteParentResult.stdout}`.trim());
       }
       await upload(client, local, remote);
       const installedResult = await exec(client, `sudo mkdir -p ${JSON.stringify(`${installDir}/${parent}`)} && sudo install -m ${mode.toString(8)} ${JSON.stringify(remote)} ${JSON.stringify(installed)}`);
