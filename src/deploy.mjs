@@ -15,7 +15,7 @@ async function listScripts(directory, relative = '') {
   const entries = await fs.promises.readdir(directory, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
-    const path = relative ? eliwarePath(relative, entry.name) : entry.name;
+    const path = (relative ? eliwarePath(relative, entry.name) : entry.name).replaceAll('\\\\', '/');
     if (entry.isDirectory?.()) {
       files.push(...await listScripts(eliwarePath(directory, entry.name), path));
     } else if (entry.isFile?.()) {
