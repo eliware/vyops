@@ -115,6 +115,14 @@ test('shouldSkip accepts a repository-relative config path', async () => {
   }
 });
 
+test('handles absolute config paths with normalized separators', async () => {
+  const { directory, config } = await repository();
+  const normalizedConfig = config.replaceAll('\\', '/');
+  await expect(shouldSkip(normalizedConfig)).resolves.toBe(false);
+  await expect(pushBack(normalizedConfig)).resolves.toBe(false);
+  await rm(directory, { recursive: true, force: true });
+});
+
 test('pushBack commits and pushes a changed config', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'vyops-remote-'));
   const remote = join(directory, 'remote.git');

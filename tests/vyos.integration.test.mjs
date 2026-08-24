@@ -41,7 +41,7 @@ suite('real VyOS integration', () => {
     const directory = mkdtempSync(join(tmpdir(), 'vyops-integration-invalid-'));
     const variant = join(directory, 'config.boot');
     const source = readFileSync(config, 'utf8');
-    writeFileSync(variant, source.replace('100.64.10.50/24', '100.64.10.50/99'));
+    writeFileSync(variant, source.replace('10.0.0.240/24', '10.0.0.240/99'));
     await expect(run(process.execPath, [join(process.cwd(), 'vyops.mjs'), '--force', target, variant], { timeout: 120_000 })).rejects.toMatchObject({ code: 1 });
   });
 });

@@ -21,9 +21,9 @@ beforeEach(() => {
 
 test('backs up config and nested scripts', async () => {
   await expect(backup({ target: 'vyos@router', config: '/tmp/backup' })).resolves.toBe(0);
-  expect(mocks.download).toHaveBeenNthCalledWith(1, expect.anything(), '/config/config.boot', '/tmp/backup/config.boot');
-  expect(mocks.download).toHaveBeenNthCalledWith(2, expect.anything(), '/config/scripts/foo.sh', '/tmp/backup/scripts/foo.sh');
-  expect(mocks.download).toHaveBeenNthCalledWith(3, expect.anything(), '/config/scripts/nested/bar', '/tmp/backup/scripts/nested/bar');
+  expect(mocks.download).toHaveBeenNthCalledWith(1, expect.anything(), '/config/config.boot', join('/tmp/backup', 'config.boot'));
+  expect(mocks.download).toHaveBeenNthCalledWith(2, expect.anything(), '/config/scripts/foo.sh', join('/tmp/backup', 'scripts', 'foo.sh'));
+  expect(mocks.download).toHaveBeenNthCalledWith(3, expect.anything(), '/config/scripts/nested/bar', join('/tmp/backup', 'scripts', 'nested', 'bar'));
   expect(mocks.close).toHaveBeenCalled();
 });
 

@@ -122,6 +122,7 @@ export async function upload(client, local, remote, mode = 0o600) {
       if (error) { clearTimeout(timer); return reject(error); }
       sftp.writeFile(remote, data, { mode }, error2 => {
         clearTimeout(timer);
+        sftp.end?.();
         return error2 ? reject(error2) : resolve();
       });
     });
@@ -136,6 +137,7 @@ export function download(client, remote, local) {
       if (error) { clearTimeout(timer); return reject(error); }
       sftp.fastGet(remote, local, error2 => {
         clearTimeout(timer);
+        sftp.end?.();
         return error2 ? reject(error2) : resolve();
       });
     });

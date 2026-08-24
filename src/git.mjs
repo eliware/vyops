@@ -72,7 +72,7 @@ async function repositoryRoot(config) {
 export async function shouldSkip(config) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
-  const relative = config.startsWith(`${repo}/`) ? config.slice(repo.length + 1) : config;
+  const relative = config.startsWith(repo) ? config.slice(repo.length).replace(/^[/\\]/, '') : config;
   const { stdout: status } = await git(['status', '--porcelain', '--', relative], repo);
   if (status.trim()) return false;
   const { stdout: subject } = await git(['log', '-1', '--format=%s'], repo);
@@ -83,7 +83,7 @@ export async function pushBack(config, { force = false } = {}) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
   return withRepositoryLock(repo, async () => {
-    const relative = config.startsWith(`${repo}/`) ? config.slice(repo.length + 1) : config;
+    const relative = config.startsWith(repo) ? config.slice(repo.length).replace(/^[/\\]/, '') : config;
     const { stdout: diff } = await git(['diff', 'HEAD', '--', relative], repo);
     if (!diff) return false;
     await git(['add', '--', relative], repo);

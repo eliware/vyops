@@ -112,6 +112,9 @@ export async function deploy({ target, config, password }) {
     deploymentCommitted = true;
     const compare = extractCompare(output);
     if (compare) log.info(compare);
+    debugLog('reconnecting after interactive deployment sequence');
+    await close(client);
+    client = password === undefined ? await connect(target) : await connect(target, { password });
     debugLog(`syncing live config: /config/config.boot -> ${config}`);
     await download(client, '/config/config.boot', config);
     if (finalizeHooks) {

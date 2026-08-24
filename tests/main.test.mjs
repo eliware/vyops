@@ -18,7 +18,9 @@ test('prints help and version without external effects', async () => {
 });
 
 test('packaged bin entrypoint invokes the CLI', async () => {
-  const result = await run(binEntrypoint, ['--help']);
+  const result = process.platform === 'win32'
+    ? await run(process.execPath, [binEntrypoint, '--help'])
+    : await run(binEntrypoint, ['--help']);
   expect(result.stdout).toMatch(/Usage:/);
 });
 

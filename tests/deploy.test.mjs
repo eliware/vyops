@@ -53,7 +53,7 @@ test('deploys config, downloads live state, and logs when debug is enabled', asy
   const config = '/tmp/config.boot';
   const result = await deploy({ target: 'testuser@test-router.example.test', config });
   expect(result).toBe(0);
-  expect(mocks.connect).toHaveBeenCalledTimes(2);
+  expect(mocks.connect).toHaveBeenCalledTimes(3);
   expect(mocks.connect).toHaveBeenCalledWith('testuser@test-router.example.test');
   expect(mocks.upload).toHaveBeenCalledWith(expect.anything(), config, expect.stringMatching(/^\/home\/vyos\/\.config\.deploy\.[0-9a-f-]{36}$/));
   expect(mocks.download).toHaveBeenCalledWith(expect.anything(), '/config/config.boot', config);
@@ -70,8 +70,8 @@ test('deploys without compare output when debug is disabled', async () => {
 
 test('reconnects before opening the interactive deployment shell', async () => {
   await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' })).resolves.toBe(0);
-  expect(mocks.close).toHaveBeenCalledTimes(2);
-  expect(mocks.connect).toHaveBeenCalledTimes(2);
+  expect(mocks.close).toHaveBeenCalledTimes(3);
+  expect(mocks.connect).toHaveBeenCalledTimes(3);
   expect(mocks.interactive.mock.invocationCallOrder[0]).toBeGreaterThan(mocks.close.mock.invocationCallOrder[0]);
 });
 
@@ -169,7 +169,7 @@ test.each([
       .mockResolvedValueOnce({ code: 1, stdout, stderr })
       .mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
-      .rejects.toThrow(`script upload directory setup failed (commit/hook.sh): ${stderr || stdout}`);
+    .rejects.toThrow(`script upload directory setup failed (${join('commit', 'hook.sh')}): ${stderr || stdout}`);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

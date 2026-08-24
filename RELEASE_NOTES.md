@@ -1,5 +1,12 @@
 # Release Notes
 
+## Unreleased
+
+- Close SFTP channels after uploads and downloads to prevent SSH channel exhaustion during script synchronization.
+- Reconnect after interactive deployments before downloading live configuration and cleaning up remote files.
+- Make Git path handling and the `test:gaps` coverage command portable across Windows and Linux.
+- Expand Windows and real-VyOS integration coverage to maintain 100% statements, branches, functions, and lines coverage.
+
 ## 1.0.11
 
 - Fix VyOS 1.5 `commit-confirm` handling by answering confirmation prompts
