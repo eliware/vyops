@@ -49,7 +49,7 @@ async function installScripts(client, config, log, runId) {
       const remote = `${remoteDir}/${name}`;
       const installed = `${installDir}/${name}`;
       const backup = `${backupDir}/${name}`;
-      const parent = eliwarePath(name, '..');
+      const parent = eliwarePath(name, '..').replaceAll(String.fromCharCode(92), '/');
       const mode = /\.(?:sh|script)$/.test(name)
         || /^(?:commit[/\\]post-hooks\.d[/\\])/.test(name)
         ? 0o755
