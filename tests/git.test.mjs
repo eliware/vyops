@@ -115,6 +115,19 @@ test('shouldSkip accepts a repository-relative config path', async () => {
   }
 });
 
+test('shouldSkip checks changed repository-relative config paths', async () => {
+  const { directory, config } = await repository();
+  const previous = process.cwd();
+  process.chdir(directory);
+  try {
+    await writeFile(config, 'system {\n    host-name changed\n}\n');
+    await expect(shouldSkip('config.boot')).resolves.toBe(false);
+  } finally {
+    process.chdir(previous);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('handles absolute config paths with normalized separators', async () => {
   const { directory, config } = await repository();
   const normalizedConfig = config.replaceAll('\\', '/');
@@ -158,6 +171,19 @@ test('pushBack includes staged config changes', async () => {
     await expect(pushBack(config)).rejects.toThrow('No configured push destination');
     await expect(run('git', ['show', '--format=%s', '--stat', '--oneline', 'HEAD'], { cwd: directory }))
       .resolves.toMatchObject({ stdout: expect.stringContaining('Pushback ') });
+  } finally {
+    process.chdir(previous);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('pushBack handles a changed repository-relative config path', async () => {
+  const { directory, config } = await repository();
+  const previous = process.cwd();
+  process.chdir(directory);
+  try {
+    await writeFile(config, 'system {\n    host-name changed\n}\n');
+    await expect(pushBack('config.boot')).rejects.toThrow('No configured push destination');
   } finally {
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
