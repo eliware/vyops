@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
 
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const child = spawn(npm, ['test'], { shell: process.platform === 'win32', stdio: ['inherit', 'pipe', 'pipe'] });
+const npm = process.env.npm_execpath ? process.execPath : (process.platform === 'win32' ? 'npm.cmd' : 'npm');
+const args = process.env.npm_execpath ? [process.env.npm_execpath, 'test'] : ['test'];
+const child = spawn(npm, args, { shell: false, stdio: ['inherit', 'pipe', 'pipe'] });
 let output = '';
 
 child.stdout.on('data', data => {
