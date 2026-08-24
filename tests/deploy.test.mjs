@@ -124,6 +124,27 @@ test('installs sorted post-commit hooks and cleans its remote directory', async 
   }
 });
 
+test('installs shell scripts as executable regardless of local mode', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
+  const scripts = join(root, 'scripts');
+  await mkdir(scripts, { recursive: true });
+  await writeFile(join(root, 'config.boot'), 'system {}\n');
+  await writeFile(join(scripts, 'hook.sh'), '#!/bin/sh\n');
+  await writeFile(join(scripts, 'settings.env'), 'KEY=value\n');
+  fsMocks.readdir.mockResolvedValue([
+    { name: 'hook.sh', isFile: () => true },
+    { name: 'settings.env', isFile: () => true },
+  ]);
+  fsMocks.stat.mockResolvedValue({ mode: 0o100666 });
+  try {
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).resolves.toBe(0);
+    expect(mocks.exec.mock.calls.some(([, command]) => command.includes('install -m 755'))).toBe(true);
+    expect(mocks.exec.mock.calls.some(([, command]) => command.includes('install -m 666'))).toBe(true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('recursively installs the complete scripts tree', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
   const scripts = join(root, 'scripts');

@@ -50,7 +50,9 @@ async function installScripts(client, config, log, runId) {
       const installed = `${installDir}/${name}`;
       const backup = `${backupDir}/${name}`;
       const parent = eliwarePath(name, '..');
-      const mode = (await fs.promises.stat(local)).mode & 0o777;
+      const mode = /\.(?:sh|script)$/.test(name)
+        ? 0o755
+        : (await fs.promises.stat(local)).mode & 0o777;
       const backedUp = await exec(client, `if sudo test -e ${JSON.stringify(installed)}; then sudo mkdir -p ${JSON.stringify(`${backupDir}/${parent}`)} && sudo cp -p -- ${JSON.stringify(installed)} ${JSON.stringify(backup)}; fi`);
       if (backedUp.code !== 0) throw new Error(`script backup failed (${name}): ${backedUp.stderr || backedUp.stdout}`.trim());
       if (parent !== '.') {
