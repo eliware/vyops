@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { jest } from '@jest/globals';
 import { fs } from '@eliware/common';
-import { createHostVerifier } from '../../ssh-client/src/known-hosts.mjs';
+
+function mockHostVerifier(knownHosts, key, callback) {
+  const blocked = knownHosts.split(/\r?\n/).some(line => line.startsWith('@revoked router') || line.startsWith('!router '));
+  const accepted = !blocked && Buffer.isBuffer(key) && key.length === 0;
+  callback?.(accepted);
+  return accepted;
+}
 
 class MockStream extends EventEmitter {
   constructor() {
@@ -47,10 +53,10 @@ jest.unstable_mockModule('@eliware/ssh-client', () => ({ connect: async options 
   const client = new MockClient();
   const privateKeyPath = options.privateKeyPath || join(process.env.HOME, '.ssh/id_rsa');
   const privateKey = options.password === undefined ? await fs.promises.readFile(privateKeyPath) : undefined;
-  if (options.knownHostsPath) await fs.promises.readFile(join(process.env.HOME, '.ssh/known_hosts'));
+  const knownHosts = options.knownHostsPath ? await fs.promises.readFile(join(process.env.HOME, '.ssh/known_hosts'), 'utf8') : '';
   let actual;
   const utils = { parseKey: key => { if (Buffer.isBuffer(key)) { if (key.length === 0) { actual = { getPublicSSH: () => ({}) }; return actual; } return {}; } return { getPublicSSH: () => ({ equals: value => value === actual }) }; } };
-  const connectionOptions = { ...options, privateKey, hostVerifier: options.knownHostsPath ? createHostVerifier({ host: options.host, port: options.port, knownHostsPath: options.knownHostsPath, fsLib: fs.promises, homedirFn: () => process.env.HOME, utils }) : undefined };
+  const connectionOptions = { ...options, privateKey, hostVerifier: options.knownHostsPath ? (key, callback) => mockHostVerifier(knownHosts, key, callback) : undefined };
   await new Promise((resolve, reject) => { client.once('ready', resolve); client.once('error', reject); client.connect(connectionOptions); });
   return { raw: client };
 } }));
