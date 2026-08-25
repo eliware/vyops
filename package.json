@@ -1,12 +1,12 @@
 {
     "name": "@eliware/vyops",
-    "version": "2.0.0",
-    "description": "Deploy native VyOS configuration files over SSH.",
+    "version": "2.1.0",
+    "description": "Preflight, release, and back up native VyOS configuration bundles over SSH.",
     "main": "vyops.mjs",
     "scripts": {
         "lint": "eliware-test --lint",
         "test": "eliware-test",
-        "deploy": "./vyops.mjs",
+        "deploy": "node vyops.mjs",
         "pack": "npm pack --dry-run",
         "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs",
         "audit": "node scripts/audit.mjs"

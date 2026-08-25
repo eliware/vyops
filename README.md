@@ -28,7 +28,7 @@ npm install
 The package provides:
 
 ```text
-vyops   Deploy or dry-run a configuration.
+vyops   Preflight or release a configuration bundle.
 ```
 
 ## Configuration
@@ -41,22 +41,29 @@ vyops   Deploy or dry-run a configuration.
 | `SSH_HOST_CA` | No | unset | Trusted SSH host-CA public key for certificate verification. |
 | `LOG_LEVEL` | No | `info` | Winston log level (`error`, `warn`, `info`, `http`, `verbose`, `debug`, or `silly`). |
 
-The target must be supplied as `user@host`. The config must use native VyOS curly-brace syntax.
+The config must use native VyOS curly-brace syntax. The bundle's `system host-name`
+and single `system login user` entry provide the release target automatically.
 
 For a router that has not received its SSH key yet, provide the SSH password through stdin:
 
 ```sh
-printf '%s\n' "$VYOS_PASSWORD" | vyops --password-stdin vyos@new-router config.boot
+printf '%s\n' "$VYOS_PASSWORD" | vyops release --password-stdin /path/to/config.boot
 ```
 
 Password mode still requires the target host key to be present in `known_hosts`; it does not disable host verification. Passwords are not accepted as command-line arguments or written to logs.
 
 ## Usage
 
-Deploy:
+Preflight a bundle without connecting:
 
 ```sh
-vyops vyos@core1 /path/to/config.boot
+vyops preflight /path/to/config.boot
+```
+
+Release a bundle:
+
+```sh
+vyops release /path/to/config.boot
 ```
 
 Console switches:
@@ -64,16 +71,19 @@ Console switches:
 ```sh
 vyops --help
 vyops --version
-vyops --dry-run vyos@core1 /path/to/config.boot
-vyops --force --debug vyos@core1 /path/to/config.boot
-vyops --backup vyos@core1 /path/to/backup
+vyops --debug preflight /path/to/config.boot
+vyops release --force --debug /path/to/config.boot
+vyops backup vyos@core1 /path/to/backup
 ```
 
-`--backup` downloads the active `/config/config.boot` and the complete
+`backup` downloads the active `/config/config.boot` and the complete
 `/config/scripts` tree into the destination directory. It does not enter
 configuration mode or modify the router.
 
-`--dry-run` validates the config and skips SSH, commit, save, download, and Git pushback.
+`preflight` validates the config and recursively checks the `scripts/` tree before
+any SSH connection. Executable scripts must use LF line endings, a supported
+shell shebang, and valid executable intent. `release` runs the same checks before
+uploading or changing the router.
 
 The deployment workflow:
 

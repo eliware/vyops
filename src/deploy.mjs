@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { readFile as readLocalFile } from 'node:fs/promises';
 import { fs, path as eliwarePath, log } from '@eliware/common';
 import { close, connect, download, exec, interactive, upload } from './ssh.mjs';
 
@@ -51,7 +52,14 @@ async function installScripts(client, config, log, runId) {
       const installed = `${installDir}/${name}`;
       const backup = `${backupDir}/${name}`;
       const parent = eliwarePath(name, '..').replaceAll(String.fromCharCode(92), '/');
-      const mode = /\.(?:sh|script)$/.test(name)
+      let content = Buffer.alloc(0);
+      try { content = await readLocalFile(local); }
+      /* istanbul ignore next -- missing files are only possible with a mocked directory listing. */
+      catch (error) {
+        /* istanbul ignore next -- missing files are only possible with a mocked directory listing. */
+        if (error.code !== 'ENOENT') throw error;
+      }
+      const mode = content.toString('utf8').startsWith('#!') || /\.(?:sh|script)$/.test(name)
         || /^(?:commit[/\\]post-hooks\.d[/\\])/.test(name)
         ? 0o755
         : (await fs.promises.stat(local)).mode & 0o777;
@@ -127,7 +135,10 @@ export async function deploy({ target, config, password }) {
     }
     return 0;
   } catch (error) {
-    if (finalizeHooks && !hooksFinalized && !deploymentCommitted) await finalizeHooks(false, client);
+    if (finalizeHooks && !hooksFinalized) {
+      await finalizeHooks(deploymentCommitted, client);
+      hooksFinalized = true;
+    }
     throw error;
   } finally {
     debugLog('cleaning up remote file');

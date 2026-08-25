@@ -1,5 +1,19 @@
 # Release Notes
 
+## 2.1.0
+
+- **Breaking:** Replace the legacy positional deployment and `--dry-run`
+  workflows with the first-class `preflight`, `release`, and `backup`
+  commands.
+- Add bundle preflight validation for recursively synchronized scripts,
+  including CRLF detection, shell shebang validation, and executable intent.
+- Derive the release SSH target from the configuration's `system host-name`
+  and single `system login user` entry.
+- Normalize executable script deployment permissions to `0755` and clean up
+  script staging after post-commit synchronization failures.
+- Allow command switches such as `--debug` and `--password-stdin` before or
+  after the command name.
+
 ## 2.0.0
 
 - **Breaking:** Replace the direct `ssh2` integration with the shared

@@ -103,6 +103,7 @@ test('does not roll back committed hooks when syncing the config fails', async (
     await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
       .rejects.toThrow('download failed');
     expect(mocks.exec.mock.calls.some(([, command]) => command.includes('sudo rm -f') && command.includes('/config/scripts/'))).toBe(false);
+    expect(mocks.exec.mock.calls.some(([, command]) => command.includes('sudo rm -rf') && command.includes('.scripts-backup.'))).toBe(true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -24,13 +24,13 @@ test('packaged bin entrypoint invokes the CLI', async () => {
   expect(result.stdout).toMatch(/Usage:/);
 });
 
-test('dry-run validates config without connecting or pushing', async () => {
+test('preflight validates config without connecting or pushing', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'vyops-test-'));
   const config = join(directory, 'config.boot');
-  await writeFile(config, 'system {\n    host-name test\n}\n');
+  await writeFile(config, 'system {\n    host-name test\n    login {\n        user vyos {\n        }\n    }\n}\n');
   try {
-    const result = await run(process.execPath, [entrypoint, '--dry-run', 'testuser@test-router.example.test', config]);
-    expect(result.stdout).toContain('Configuration valid; dry run for testuser@test-router.example.test');
+  const result = await run(process.execPath, [entrypoint, 'preflight', config]);
+  expect(result.stdout).toContain('Preflight successful');
     expect(result.stderr).toBe('');
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -42,7 +42,7 @@ test('invalid config exits nonzero without attempting deployment', async () => {
   const config = join(directory, 'config.boot');
   await writeFile(config, 'system {\n    host-name broken\n');
   try {
-    await expect(run(process.execPath, [entrypoint, '--dry-run', 'testuser@test-router.example.test', config]))
+  await expect(run(process.execPath, [entrypoint, 'preflight', config]))
       .rejects.toMatchObject({ code: 1, stdout: expect.stringContaining('unbalanced braces') });
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -54,7 +54,7 @@ test('invalid invocation exits nonzero', async () => {
   const config = join(directory, 'config.boot');
   await writeFile(config, 'system {\n    host-name test\n}\n');
   try {
-    await expect(run(process.execPath, [entrypoint, '--dry-run', 'router', config, 'extra']))
+  await expect(run(process.execPath, [entrypoint, 'preflight', config, 'extra']))
       .rejects.toMatchObject({ code: 1, stdout: expect.stringContaining('Usage:') });
   } finally {
     await rm(directory, { recursive: true, force: true });

@@ -3,6 +3,7 @@ import packageJson from '../package.json' with { type: 'json' };
 import { deploy } from './deploy.mjs';
 import { backup } from './backup.mjs';
 import { readAndValidateConfig } from './validate.mjs';
+import { validateBundle, targetFromConfig } from './bundle.mjs';
 import { pushBack, shouldSkip } from './git.mjs';
 import { closeAll } from './ssh.mjs';
 import { log, registerHandlers, registerSignals } from '@eliware/common';
@@ -31,18 +32,26 @@ try {
     args.password = await readPasswordStdin();
     if (!args.password) throw new Error('password-stdin received an empty password');
   }
-  if (args.backup) {
+  if (args.command === 'backup') {
     await backup(args);
     log.info(`Backup successful: ${args.config}`);
     process.exit(0);
   }
-  log.debug(`[vyops] validating config: ${args.config}`);
-  await readAndValidateConfig(args.config);
-  log.debug('[vyops] config validation complete');
-  if (args.dryRun) {
-    log.info(`Configuration valid; dry run for ${args.target}`);
+  if (args.command === 'preflight') {
+    const text = await readAndValidateConfig(args.config);
+    const { target, scripts } = await validateBundle(args.config, text);
+    log.info(`Preflight successful: ${target} (${scripts.length} script files)`);
     process.exit(0);
   }
+  if (args.command === 'release') {
+    const text = await readAndValidateConfig(args.config);
+    await validateBundle(args.config, text);
+    args.target = targetFromConfig(text);
+  }
+  log.debug(`[vyops] validating config: ${args.config}`);
+  const configText = await readAndValidateConfig(args.config);
+  if (args.command === 'release') await validateBundle(args.config, configText, { extractTarget: true });
+  log.debug('[vyops] config validation complete');
   if (!args.force && await shouldSkip(args.config)) {
     log.info('Latest commit is Pushback and config is unchanged; skipping deployment');
     process.exit(0);

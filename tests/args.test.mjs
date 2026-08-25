@@ -1,26 +1,13 @@
 import { parseArgs } from '../src/args.mjs';
 
-test('parses target and config', () => {
-  expect(parseArgs(['testuser@test-router.example.test', '/tmp/config.boot'])).toEqual({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot' });
-});
+test('parses preflight', () => expect(parseArgs(['preflight', 'config.boot'])).toEqual({ command: 'preflight', config: 'config.boot' }));
 
-test('parses dry-run and force switches', () => {
-  expect(parseArgs(['--dry-run', '--force', '--debug', 'testuser@test-router.example.test', '/tmp/config.boot'])).toEqual({
-    target: 'testuser@test-router.example.test', config: '/tmp/config.boot', dryRun: true, force: true, debug: true,
-  });
-});
+test('parses release switches', () => expect(parseArgs(['release', '--force', '--debug', '--password-stdin', 'config.boot'])).toEqual({ command: 'release', config: 'config.boot', force: true, debug: true, passwordStdin: true }));
 
-test('parses backup switch', () => {
-  expect(parseArgs(['--backup', 'vyos@router', '/tmp/backup'])).toEqual({
-    target: 'vyos@router', config: '/tmp/backup', backup: true,
-  });
-});
+test('parses backup', () => expect(parseArgs(['backup', 'vyos@router', '/tmp/backup'])).toEqual({ command: 'backup', target: 'vyos@router', config: '/tmp/backup' }));
+test('accepts switches before a command', () => expect(parseArgs(['--debug', '--password-stdin', 'backup', 'vyos@router', '/tmp/backup'])).toEqual({ command: 'backup', target: 'vyos@router', config: '/tmp/backup', debug: true, passwordStdin: true }));
 
-test('parses password stdin switch', () => {
-  expect(parseArgs(['--password-stdin', 'vyos@router', '/tmp/config.boot'])).toEqual({
-    target: 'vyos@router', config: '/tmp/config.boot', passwordStdin: true,
-  });
-});
+test('rejects legacy syntax', () => expect(() => parseArgs(['--dry-run', 'vyos@router', 'config.boot'])).toThrow(/Usage:/));
 
 test('parses help and version switches', () => {
   expect(parseArgs(['--help'])).toEqual({ help: true });
@@ -29,10 +16,10 @@ test('parses help and version switches', () => {
 
 test('rejects missing or extra positional arguments', () => {
   expect(() => parseArgs([])).toThrow(/Usage:/);
-  expect(() => parseArgs(['testuser@test-router.example.test'])).toThrow(/Usage:/);
-  expect(() => parseArgs(['testuser@test-router.example.test', 'config.boot', 'extra'])).toThrow(/Usage:/);
+  expect(() => parseArgs(['release'])).toThrow(/Usage:/);
+  expect(() => parseArgs(['preflight', 'config.boot', 'extra'])).toThrow(/Usage:/);
 });
 
 test('rejects unknown switches', () => {
-  expect(() => parseArgs(['--bogus', 'testuser@test-router.example.test', '/tmp/config.boot'])).toThrow(/Usage:/);
+  expect(() => parseArgs(['release', '--bogus', 'config.boot'])).toThrow(/Usage:/);
 });
