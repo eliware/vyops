@@ -29,9 +29,11 @@ export async function validateBundle(config, text, { extractTarget = true } = {}
   for (const { file, name } of scripts) {
     const data = await fs.readFile(file);
     const firstLine = data.toString('utf8').split(/\n/, 1)[0].replace(/\r$/, '');
-    const executable = firstLine.startsWith('#!') || /(?:\.sh|\.script)$/.test(name)
+    const binary = /\.exe$/i.test(name);
+    const executable = binary || firstLine.startsWith('#!') || /(?:\.sh|\.script)$/.test(name)
       || /^(?:commit\/post-hooks\.d\/|vyos-(?:pre|post)config-bootup\.script$)/.test(name);
     if (!executable) continue;
+    if (binary) continue;
     if (data.includes(13)) scriptError(name, 'uses CRLF line endings; convert to LF');
     if (!firstLine.startsWith('#!')) scriptError(name, 'is executable but has no shebang');
     const interpreter = firstLine.slice(2).trim().split(/\s+/, 1)[0];

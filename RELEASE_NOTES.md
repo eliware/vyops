@@ -1,5 +1,13 @@
 # Release Notes
 
+## 2.1.1
+
+- Fix deployment of `.exe` files in the synchronized `scripts/` tree by
+  applying executable permissions (`0755`).
+- Treat `.exe` files as binaries during preflight instead of applying
+  shell-script shebang and line-ending checks.
+- Add regression coverage for executable `.exe` deployment.
+
 ## 2.1.0
 
 - **Breaking:** Replace the legacy positional deployment and `--dry-run`

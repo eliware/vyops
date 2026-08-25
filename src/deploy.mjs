@@ -59,7 +59,7 @@ async function installScripts(client, config, log, runId) {
         /* istanbul ignore next -- missing files are only possible with a mocked directory listing. */
         if (error.code !== 'ENOENT') throw error;
       }
-      const mode = content.toString('utf8').startsWith('#!') || /\.(?:sh|script)$/.test(name)
+      const mode = content.toString('utf8').startsWith('#!') || /\.(?:sh|script|exe)$/i.test(name)
         || /^(?:commit[/\\]post-hooks\.d[/\\])/.test(name)
         ? 0o755
         : (await fs.promises.stat(local)).mode & 0o777;

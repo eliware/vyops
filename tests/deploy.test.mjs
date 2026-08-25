@@ -131,9 +131,11 @@ test('installs shell scripts as executable regardless of local mode', async () =
   await mkdir(scripts, { recursive: true });
   await writeFile(join(root, 'config.boot'), 'system {}\n');
   await writeFile(join(scripts, 'hook.sh'), '#!/bin/sh\n');
+  await writeFile(join(scripts, 'helper.exe'), Buffer.from([0, 1, 2]));
   await writeFile(join(scripts, 'settings.env'), 'KEY=value\n');
   fsMocks.readdir.mockResolvedValue([
     { name: 'hook.sh', isFile: () => true },
+    { name: 'helper.exe', isFile: () => true },
     { name: 'settings.env', isFile: () => true },
   ]);
   fsMocks.stat.mockResolvedValue({ mode: 0o100666 });
