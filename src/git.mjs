@@ -60,8 +60,12 @@ function configDirectory(config) {
   return path(config, '..');
 }
 
-function relativeConfigPath(repo, config) {
-  return relative(repo, resolve(config));
+async function relativeConfigPath(repo, config) {
+  const [canonicalRepo, canonicalConfig] = await Promise.all([
+    fs.realpath(repo),
+    fs.realpath(resolve(config)),
+  ]);
+  return relative(canonicalRepo, canonicalConfig);
 }
 
 async function repositoryRoot(config) {
@@ -77,7 +81,7 @@ async function repositoryRoot(config) {
 export async function shouldSkip(config) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
-  const relativePath = relativeConfigPath(repo, config);
+  const relativePath = await relativeConfigPath(repo, config);
   const { stdout: status } = await git(['status', '--porcelain', '--', relativePath], repo);
   if (status.trim()) return false;
   const { stdout: subject } = await git(['log', '-1', '--format=%s'], repo);
@@ -88,7 +92,7 @@ export async function pushBack(config, { force = false } = {}) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
   return withRepositoryLock(repo, async () => {
-    const relativePath = relativeConfigPath(repo, config);
+    const relativePath = await relativeConfigPath(repo, config);
     const { stdout: diff } = await git(['diff', 'HEAD', '--', relativePath], repo);
     if (!diff) return false;
     await git(['add', '--', relativePath], repo);
