@@ -4,7 +4,8 @@
 
 ## Features
 
-- SSH-key authentication via `ssh2`, with optional password bootstrap via stdin.
+- SSH-key authentication via the shared `@eliware/ssh-client` library, with
+  optional password bootstrap via stdin.
 - Native VyOS curly-brace configuration validation.
 - Candidate load, `compare`, `commit-confirm`, confirmation, and save.
 - Complete `scripts/` tree synchronization, including post-commit hooks,
@@ -35,7 +36,9 @@ vyops   Deploy or dry-run a configuration.
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
 | `VYOPS_SSH_KEY` | No | `$HOME/.ssh/id_rsa` | Private SSH key path. |
-| `SSH_AUTH_SOCK` | No | unset | SSH agent socket passed to `ssh2`. |
+| `SSH_AUTH_SOCK` | No | unset | SSH agent socket passed to the shared SSH client. |
+| `SSH_KNOWN_HOSTS` | No | `~/.ssh/known_hosts` | Known-hosts file used for host verification. |
+| `SSH_HOST_CA` | No | unset | Trusted SSH host-CA public key for certificate verification. |
 | `LOG_LEVEL` | No | `info` | Winston log level (`error`, `warn`, `info`, `http`, `verbose`, `debug`, or `silly`). |
 
 The target must be supplied as `user@host`. The config must use native VyOS curly-brace syntax.
@@ -53,17 +56,17 @@ Password mode still requires the target host key to be present in `known_hosts`;
 Deploy:
 
 ```sh
-./vyops.mjs vyos@core1 /path/to/config.boot
+vyops vyos@core1 /path/to/config.boot
 ```
 
 Console switches:
 
 ```sh
-./vyops.mjs --help
-./vyops.mjs --version
-./vyops.mjs --dry-run vyos@core1 /path/to/config.boot
-./vyops.mjs --force --debug vyos@core1 /path/to/config.boot
-./vyops.mjs --backup vyos@core1 /path/to/backup
+vyops --help
+vyops --version
+vyops --dry-run vyos@core1 /path/to/config.boot
+vyops --force --debug vyos@core1 /path/to/config.boot
+vyops --backup vyos@core1 /path/to/backup
 ```
 
 `--backup` downloads the active `/config/config.boot` and the complete

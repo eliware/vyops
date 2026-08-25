@@ -13,6 +13,14 @@
 - Make Git path handling and the `test:gaps` coverage command portable across Windows and Linux.
 - Expand Windows and real-VyOS integration coverage to maintain 100% statements, branches, functions, and lines coverage.
 
+Verification:
+
+- `npm test` (100% coverage across statements, branches, functions, and lines)
+- `npm run lint`
+- `npm audit --omit=dev --audit-level=moderate`
+- `npm run validate:package`
+- CLI smoke test on Ubuntu and Windows
+
 ## 1.0.11
 
 - Fix VyOS 1.5 `commit-confirm` handling by answering confirmation prompts
