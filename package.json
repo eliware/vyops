@@ -1,6 +1,6 @@
 {
     "name": "@eliware/vyops",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "description": "Preflight, release, and back up native VyOS configuration bundles over SSH.",
     "main": "vyops.mjs",
     "scripts": {
