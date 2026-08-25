@@ -1,7 +1,13 @@
 # Release Notes
 
-## Unreleased
+## 2.0.0
 
+- **Breaking:** Replace the direct `ssh2` integration with the shared
+  `@eliware/ssh-client` library for SSH, SFTP, interactive sessions, and
+  SSH host-CA verification.
+- Update `@eliware/ssh-client` to 2.0.0 and `@eliware/test` to 2.0.0.
+- Add cross-platform Windows and Ubuntu CI validation, including package,
+  audit, lint, and CLI smoke checks.
 - Close SFTP channels after uploads and downloads to prevent SSH channel exhaustion during script synchronization.
 - Reconnect after interactive deployments before downloading live configuration and cleaning up remote files.
 - Make Git path handling and the `test:gaps` coverage command portable across Windows and Linux.
