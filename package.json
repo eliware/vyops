@@ -21,10 +21,10 @@
     "type": "module",
     "dependencies": {
         "@eliware/common": "^1.1.8",
-        "@eliware/ssh-client": "^1.2.0"
+        "@eliware/ssh-client": "^2.0.0"
     },
     "devDependencies": {
-        "@eliware/test": "^1.0.3"
+        "@eliware/test": "^2.0.0"
     },
     "bin": {
         "vyops": "./bin/vyops"
