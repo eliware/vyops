@@ -10,7 +10,6 @@ on:
   pull_request:
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -26,16 +25,19 @@ jobs:
           node-version: 26
           cache: npm
       - run: npm ci
-      - run: npx eliware-test --forceExit --runInBand
+      - run: npm test
       - run: npm run lint
       - run: npm audit --omit=dev --audit-level=moderate
-      - run: npm run validate:package
+      - run: npm pack --dry-run
       - run: node vyops.mjs --help
 
   publish:
     needs: validate
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

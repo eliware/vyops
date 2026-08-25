@@ -5,7 +5,7 @@
     "main": "vyops.mjs",
     "scripts": {
         "lint": "eliware-test --lint",
-        "test": "eliware-test --forceExit",
+        "test": "eliware-test",
         "deploy": "./vyops.mjs",
         "pack": "npm pack --dry-run",
         "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs",
