@@ -1,0 +1,14 @@
+version: 1
+on:
+  push:
+    deployments:
+      - target: dev
+        cwd: /opt/vyops
+        commands:
+          - git pull --ff-only
+          - npm ci
+          - npm test
+          - npm run lint
+          - npm audit --omit=dev --audit-level=moderate
+          - npm pack --dry-run
+          - node vyops.mjs --help
