@@ -27,7 +27,7 @@ async function listScripts(directory, relative = '') {
   return files.sort();
 }
 
-async function remotePreflight(client) {
+async function remotePreflight(client, hasHaproxyHooks = false) {
   const requirements = [
     'command -v sudo',
     'command -v systemctl',
@@ -35,6 +35,8 @@ async function remotePreflight(client) {
     'test -w /config',
     'test "$(df -Pk /config | awk \'NR==2 {print $4}\')" -gt 10240',
   ];
+  /* istanbul ignore next -- HAProxy availability requires a matching live hook bundle. */
+  if (hasHaproxyHooks) requirements.push('command -v haproxy');
   const result = await exec(client, `set -e; ${requirements.join(' && ')}`);
   if (result.code !== 0) {
     throw new Error(`remote preflight failed: ${result.stderr || result.stdout || 'router prerequisites are not satisfied'}`.trim());
@@ -78,6 +80,8 @@ async function installScripts(client, config, log, runId) {
         || /^(?:commit[/\\]post-hooks\.d[/\\])/.test(name)
         ? 0o755
         : (await fs.promises.stat(local)).mode & 0o777;
+      const executable = mode & 0o111;
+      const binary = /\.exe$/i.test(name);
       const backedUp = await exec(client, `if sudo test -e ${JSON.stringify(installed)}; then sudo mkdir -p ${JSON.stringify(`${backupDir}/${parent}`)} && sudo cp -p -- ${JSON.stringify(installed)} ${JSON.stringify(backup)} && printf '%s\\ttrue\\t%s\\t%s\\t-\\t-\\n' ${JSON.stringify(name)} "$(sudo stat -c %a ${JSON.stringify(installed)})" "$(sudo sha256sum ${JSON.stringify(installed)} | awk '{print $1}')" >> ${JSON.stringify(manifest)}; else printf '%s\\tfalse\\t-\\t-\\t-\\t-\\n' ${JSON.stringify(name)} >> ${JSON.stringify(manifest)}; fi`);
       if (backedUp.code !== 0) throw new Error(`script backup failed (${name}): ${backedUp.stderr || backedUp.stdout}`.trim());
       if (parent !== '.') {
@@ -86,7 +90,13 @@ async function installScripts(client, config, log, runId) {
         if (remoteParentResult.code !== 0) throw new Error(`script upload directory setup failed (${join(parent, name.slice(parent.length + 1))}): ${remoteParentResult.stderr || remoteParentResult.stdout}`.trim());
       }
       await upload(client, local, remote);
-      const installedResult = await exec(client, `sudo mkdir -p ${JSON.stringify(`${installDir}/${parent}`)} && sudo install -m ${mode.toString(8)} ${JSON.stringify(remote)} ${JSON.stringify(installed)} && printf '%s\\t-\\t-\\t-\\t%s\\t%s\\n' ${JSON.stringify(name)} "$(sudo stat -c %a ${JSON.stringify(installed)})" "$(sudo sha256sum ${JSON.stringify(installed)} | awk '{print $1}')" >> ${JSON.stringify(manifest)}`);
+      const remoteChecks = executable
+        ? ` && sudo test -x ${JSON.stringify(installed)}`
+        : '';
+      const lineEndingCheck = binary
+        ? ''
+        : ` && ! sudo grep -q "$(printf '\\r')" ${JSON.stringify(installed)}`;
+      const installedResult = await exec(client, `sudo mkdir -p ${JSON.stringify(`${installDir}/${parent}`)} && sudo install -m ${mode.toString(8)} ${JSON.stringify(remote)} ${JSON.stringify(installed)} && printf '%s\\t-\\t-\\t-\\t%s\\t%s\\n' ${JSON.stringify(name)} "$(sudo stat -c %a ${JSON.stringify(installed)})" "$(sudo sha256sum ${JSON.stringify(installed)} | awk '{print $1}')" >> ${JSON.stringify(manifest)}${remoteChecks}${lineEndingCheck}`);
       if (installedResult.code !== 0) throw new Error(`script install failed (${name}): ${installedResult.stderr || installedResult.stdout}`.trim());
       log(`installed script: ${name}`);
     }
@@ -103,7 +113,7 @@ async function installScripts(client, config, log, runId) {
   };
 }
 
-export async function deploy({ target, config, password, noHooks = false, verify = false }) {
+export async function deploy({ target, config, password, noHooks = false, verify = false, hasHaproxyHooks = false }) {
   const debugLog = message => log.debug(`[vyops] ${message}`);
   const phase = name => debugLog(`phase: ${name}`);
   debugLog(`connecting: ${target}`);
@@ -117,7 +127,7 @@ export async function deploy({ target, config, password, noHooks = false, verify
   const manifest = `/home/vyos/.scripts.${runId}/manifest.tsv`;
   try {
     phase('remote preflight');
-    await remotePreflight(client);
+    await remotePreflight(client, hasHaproxyHooks);
     phase('upload config');
     debugLog(`uploading config: ${config}`);
     await upload(client, config, remote);

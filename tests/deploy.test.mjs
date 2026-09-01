@@ -171,6 +171,26 @@ test('installs shell scripts as executable regardless of local mode', async () =
     await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') })).resolves.toBe(0);
     expect(mocks.exec.mock.calls.some(([, command]) => command.includes('install -m 755'))).toBe(true);
     expect(mocks.exec.mock.calls.some(([, command]) => command.includes('install -m 666'))).toBe(true);
+    expect(mocks.exec.mock.calls.some(([, command]) => command.includes('test -x'))).toBe(true);
+    expect(mocks.exec.mock.calls.some(([, command]) => command.includes("printf '\\r'"))).toBe(true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('aborts before interactive deployment when remote script validation fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'vyops-deploy-'));
+  const scripts = join(root, 'scripts');
+  await mkdir(scripts, { recursive: true });
+  await writeFile(join(scripts, 'hook.sh'), '#!/bin/sh\n');
+  fsMocks.readdir.mockResolvedValue([{ name: 'hook.sh', isFile: () => true }]);
+  mocks.exec.mockImplementation(async (_client, command) => command.includes('printf \'\\r\'')
+    ? { code: 1, stdout: '', stderr: 'CRLF detected' }
+    : { code: 0, stdout: '', stderr: '' });
+  try {
+    await expect(deploy({ target: 'testuser@test-router.example.test', config: join(root, 'config.boot') }))
+      .rejects.toThrow('script install failed (hook.sh): CRLF detected');
+    expect(mocks.interactive).not.toHaveBeenCalled();
   } finally {
     await rm(root, { recursive: true, force: true });
   }

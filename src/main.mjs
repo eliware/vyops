@@ -47,6 +47,7 @@ try {
     const text = await readAndValidateConfig(args.config);
     const bundle = await validateBundle(args.config, text);
     args.target = bundle.target;
+    args.hasHaproxyHooks = bundle.scripts.some(script => /haproxy/i.test(script));
     log.info(`Release target: ${args.target}; config: ${args.config}; scripts: ${bundle.scripts.length}; hooks: ${args.noHooks ? 'disabled' : 'enabled'}; verification: ${args.verify ? 'enabled' : 'disabled'}; pushback: ${args.noPushback ? 'disabled' : 'enabled'}`);
     if (!args.yes) log.warn('Release confirmation: pass --yes to acknowledge the target summary.');
     if (args.noHooks) log.warn('WARNING: --no-hooks disables all synchronized post-commit hooks for this release.');
