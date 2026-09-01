@@ -20,5 +20,6 @@ child.on('close', code => {
     .filter(line => /^\s*(?:All files|[\w.-]+\.mjs)\s+\|/.test(line)
       && !line.includes('|     100 |      100 |     100 |     100 |'));
   if (gaps.length) process.stdout.write(`\nCoverage gaps:\n${gaps.join('\n')}\n`);
-  process.exitCode = code ?? 1;
+  // Preserve the underlying test failure while independently failing on gaps.
+  process.exitCode = code || (gaps.length ? 1 : 0);
 });

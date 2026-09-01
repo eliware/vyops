@@ -39,6 +39,9 @@ vyops   Preflight or release a configuration bundle.
 | `SSH_AUTH_SOCK` | No | unset | SSH agent socket passed to the shared SSH client. |
 | `SSH_KNOWN_HOSTS` | No | `~/.ssh/known_hosts` | Known-hosts file used for host verification. |
 | `SSH_HOST_CA` | No | unset | Trusted SSH host-CA public key for certificate verification. |
+| `VYOPS_CONNECT_TIMEOUT` | No | `30000` | SSH connection timeout in milliseconds. |
+| `VYOPS_OPERATION_TIMEOUT` | No | `60000` | SSH exec/SFTP operation timeout in milliseconds. |
+| `VYOPS_INTERACTIVE_TIMEOUT` | No | `60000` | Interactive VyOS sequence timeout in milliseconds. |
 | `LOG_LEVEL` | No | `info` | Winston log level (`error`, `warn`, `info`, `http`, `verbose`, `debug`, or `silly`). |
 
 The config must use native VyOS curly-brace syntax. The bundle's `system host-name`
@@ -66,6 +69,11 @@ Release a bundle:
 vyops release /path/to/config.boot
 ```
 
+Use `--yes` to acknowledge the printed target summary. Add `--verify` to run
+post-release checks for VRRP, WireGuard, BGP, routes, and HAProxy. Use
+`--no-pushback` to leave Git unchanged, or `--no-hooks` only for emergency
+troubleshooting; the latter prints a prominent warning.
+
 Console switches:
 
 ```sh
@@ -84,6 +92,11 @@ configuration mode or modify the router.
 any SSH connection. Executable scripts must use LF line endings, a supported
 shell shebang, and valid executable intent. `release` runs the same checks before
 uploading or changing the router.
+
+With `--debug`, release logs include operation IDs and deployment phases so an
+individual SSH command, upload, download, timeout, or cleanup event can be
+correlated. Timeout failures discard the affected channel and report the target
+operation without logging credentials.
 
 The deployment workflow:
 

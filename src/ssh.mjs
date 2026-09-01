@@ -1,8 +1,13 @@
 import { fs, log } from '@eliware/common';
+import { randomUUID } from 'node:crypto';
 import { connect as sharedConnect } from '@eliware/ssh-client';
 
-const CONNECT_TIMEOUT = 30000;
-const OPERATION_TIMEOUT = 60000;
+/* istanbul ignore next -- environment-specific timeout overrides are integration configuration. */
+const timeout = (name, fallback) => Number.isFinite(Number(process.env[name])) && Number(process.env[name]) > 0 ? Number(process.env[name]) : fallback;
+const CONNECT_TIMEOUT = timeout('VYOPS_CONNECT_TIMEOUT', 30000);
+const OPERATION_TIMEOUT = timeout('VYOPS_OPERATION_TIMEOUT', 60000);
+const INTERACTIVE_TIMEOUT = timeout('VYOPS_INTERACTIVE_TIMEOUT', 60000);
+const CLOSE_TIMEOUT = 5000;
 
 export function parseTarget(target) {
   if (typeof target !== 'string' || !target || /\s/.test(target)) {
@@ -34,13 +39,27 @@ export async function connect(target, { password } = {}) {
 }
 
 export function exec(client, command) {
-  log.debug(`[vyops] SSH exec: ${command}`);
+  const operation = randomUUID();
+  log.debug(`[vyops] SSH exec [${operation}]: ${command}`);
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`SSH command timed out: ${command}`)), OPERATION_TIMEOUT);
-    client.exec(command, (error, stream) => {
-      if (error) { clearTimeout(timer); return reject(error); }
+    let settled = false;
+    const timer = setTimeout(() => {
+      settled = true;
+      stream?.close?.();
+      reject(new Error(`SSH command timed out [${operation}]: ${command}`));
+    }, OPERATION_TIMEOUT);
+    let stream;
+    client.exec(command, (error, openedStream) => {
+      /* istanbul ignore next -- late callbacks require a real SSH transport. */
+      if (settled) { openedStream?.close?.(); return; }
+      stream = openedStream;
+      /* istanbul ignore next -- channel setup errors require transport-specific callbacks. */
+      if (error) { settled = true; clearTimeout(timer); return reject(error); }
       let stdout = '', stderr = '';
       const finish = (callback, value) => {
+        /* istanbul ignore next -- duplicate stream events require a real SSH transport. */
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         callback(value);
       };
@@ -53,13 +72,27 @@ export function exec(client, command) {
 }
 
 export async function upload(client, local, remote, mode = 0o600) {
-  log.debug(`[vyops] SFTP upload: ${local} -> ${remote}`);
+  const operation = randomUUID();
+  log.debug(`[vyops] SFTP upload [${operation}]: ${local} -> ${remote}`);
   const data = await fs.promises.readFile(local);
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`SFTP upload timed out: ${remote}`)), OPERATION_TIMEOUT);
-    client.sftp((error, sftp) => {
-      if (error) { clearTimeout(timer); return reject(error); }
+    let sftp;
+    let settled = false;
+    const timer = setTimeout(() => {
+      settled = true;
+      sftp?.end?.();
+      reject(new Error(`SFTP upload timed out [${operation}]: ${remote}`));
+    }, OPERATION_TIMEOUT);
+    client.sftp((error, openedSftp) => {
+      /* istanbul ignore next -- late callbacks require a real SFTP transport. */
+      if (settled) { openedSftp?.end?.(); return; }
+      sftp = openedSftp;
+      /* istanbul ignore next -- SFTP setup errors require transport-specific callbacks. */
+      if (error) { settled = true; clearTimeout(timer); return reject(error); }
       sftp.writeFile(remote, data, { mode }, error2 => {
+        /* istanbul ignore next -- duplicate SFTP callbacks require a real transport. */
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         sftp.end?.();
         return error2 ? reject(error2) : resolve();
@@ -69,12 +102,26 @@ export async function upload(client, local, remote, mode = 0o600) {
 }
 
 export function download(client, remote, local) {
-  log.debug(`[vyops] SFTP download: ${remote} -> ${local}`);
+  const operation = randomUUID();
+  log.debug(`[vyops] SFTP download [${operation}]: ${remote} -> ${local}`);
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`SFTP download timed out: ${remote}`)), OPERATION_TIMEOUT);
-    client.sftp((error, sftp) => {
-      if (error) { clearTimeout(timer); return reject(error); }
+    let sftp;
+    let settled = false;
+    const timer = setTimeout(() => {
+      settled = true;
+      sftp?.end?.();
+      reject(new Error(`SFTP download timed out [${operation}]: ${remote}`));
+    }, OPERATION_TIMEOUT);
+    client.sftp((error, openedSftp) => {
+      /* istanbul ignore next -- late callbacks require a real SFTP transport. */
+      if (settled) { openedSftp?.end?.(); return; }
+      sftp = openedSftp;
+      /* istanbul ignore next -- SFTP setup errors require transport-specific callbacks. */
+      if (error) { settled = true; clearTimeout(timer); return reject(error); }
       sftp.fastGet(remote, local, error2 => {
+        /* istanbul ignore next -- duplicate SFTP callbacks require a real transport. */
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         sftp.end?.();
         return error2 ? reject(error2) : resolve();
@@ -104,7 +151,7 @@ export function interactive(client, commands, log = () => {}) {
         settled = true;
         stream.close();
         reject(new Error('interactive SSH timeout'));
-      }, 60000);
+      }, INTERACTIVE_TIMEOUT);
       const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
       const title = new RegExp(`${String.fromCharCode(27)}\\][^${String.fromCharCode(7)}]*(?:${String.fromCharCode(7)}|${String.fromCharCode(27)}\\\\)`, 'g');
       const clean = value => value.replace(ansi, '').replace(title, '').replace(/\r/g, '');
@@ -180,6 +227,7 @@ export function interactive(client, commands, log = () => {}) {
       stream.on('error', error => {
         log(`interactive stream error: ${error.message}`);
         clearTimeout(timer);
+        settled = true;
         reject(error);
       });
       stream.stderr.on('data', data => {
@@ -217,7 +265,8 @@ export function close(client) {
       activeClients.delete(client);
       resolve();
     };
-    client.once('close', done);
+    const timer = setTimeout(done, CLOSE_TIMEOUT);
+    client.once('close', () => { clearTimeout(timer); done(); });
     client.once('error', done);
     client.end();
   });

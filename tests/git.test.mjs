@@ -168,7 +168,7 @@ test('pushBack includes staged config changes', async () => {
   try {
     await writeFile(config, 'system {\n    host-name staged\n}\n');
     await git(directory, 'add', 'config.boot');
-    await expect(pushBack(config)).rejects.toThrow('No configured push destination');
+    await expect(pushBack(config)).rejects.toThrow(/git push failed after local commit [0-9a-f]+; branch: [\s\S]*; upstream: \(none\); error: [\s\S]*; recovery: git push/);
     await expect(run('git', ['show', '--format=%s', '--stat', '--oneline', 'HEAD'], { cwd: directory }))
       .resolves.toMatchObject({ stdout: expect.stringContaining('Pushback ') });
   } finally {

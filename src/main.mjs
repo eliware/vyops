@@ -3,8 +3,8 @@ import packageJson from '../package.json' with { type: 'json' };
 import { deploy } from './deploy.mjs';
 import { backup } from './backup.mjs';
 import { readAndValidateConfig } from './validate.mjs';
-import { validateBundle, targetFromConfig } from './bundle.mjs';
-import { pushBack, shouldSkip } from './git.mjs';
+import { validateBundle } from './bundle.mjs';
+import { pushBack, repositorySnapshot, shouldSkip } from './git.mjs';
 import { closeAll } from './ssh.mjs';
 import { log, registerHandlers, registerSignals } from '@eliware/common';
 
@@ -45,21 +45,26 @@ try {
   }
   if (args.command === 'release') {
     const text = await readAndValidateConfig(args.config);
-    await validateBundle(args.config, text);
-    args.target = targetFromConfig(text);
+    const bundle = await validateBundle(args.config, text);
+    args.target = bundle.target;
+    log.info(`Release target: ${args.target}; config: ${args.config}; scripts: ${bundle.scripts.length}; hooks: ${args.noHooks ? 'disabled' : 'enabled'}; verification: ${args.verify ? 'enabled' : 'disabled'}; pushback: ${args.noPushback ? 'disabled' : 'enabled'}`);
+    if (!args.yes) log.warn('Release confirmation: pass --yes to acknowledge the target summary.');
+    if (args.noHooks) log.warn('WARNING: --no-hooks disables all synchronized post-commit hooks for this release.');
   }
   log.debug(`[vyops] validating config: ${args.config}`);
-  const configText = await readAndValidateConfig(args.config);
-  if (args.command === 'release') await validateBundle(args.config, configText, { extractTarget: true });
+  if (args.command !== 'release') await readAndValidateConfig(args.config);
   log.debug('[vyops] config validation complete');
-  if (!args.force && await shouldSkip(args.config)) {
+  if (!args.force && !args.noPushback && await shouldSkip(args.config)) {
     log.info('Latest commit is Pushback and config is unchanged; skipping deployment');
     process.exit(0);
   }
+  log.debug('[vyops] phase: release / connect');
   log.debug('[vyops] deployment starting');
+  const expectedRepository = !args.noPushback ? await repositorySnapshot(args.config) : null;
   await deploy(args);
+  log.debug('[vyops] phase: pushback');
   log.debug('[vyops] deployment complete; starting Git pushback');
-  if (await pushBack(args.config, { force: args.force })) log.info('Pushback committed and pushed');
+  if (!args.noPushback && await pushBack(args.config, { force: args.force, expectedState: expectedRepository })) log.info('Pushback committed and pushed');
   log.info('Deployment successful');
 } catch (error) {
   log.error(error.message);

@@ -360,7 +360,7 @@ test('exec handles stream errors and timeout', async () => {
   const timeoutClient = new MockClient();
   const promise = exec(timeoutClient, 'slow');
   jest.advanceTimersByTime(60000);
-  await expect(promise).rejects.toThrow('SSH command timed out: slow');
+  await expect(promise).rejects.toThrow(/SSH command timed out \[[0-9a-f-]+\]: slow/);
   jest.useRealTimers();
 });
 
@@ -374,12 +374,39 @@ test('SFTP upload and download time out', async () => {
   await Promise.resolve();
   await Promise.resolve();
   jest.advanceTimersByTime(60000);
-  await expect(uploadPromise).resolves.toMatchObject({ message: 'SFTP upload timed out: /remote' });
+  await expect(uploadPromise).resolves.toMatchObject({ message: expect.stringMatching(/SFTP upload timed out \[[0-9a-f-]+\]: \/remote/) });
   const downloadPromise = download(client, '/remote', '/local').catch(error => error);
   jest.advanceTimersByTime(60000);
-  await expect(downloadPromise).resolves.toMatchObject({ message: 'SFTP download timed out: /remote' });
+  await expect(downloadPromise).resolves.toMatchObject({ message: expect.stringMatching(/SFTP download timed out \[[0-9a-f-]+\]: \/remote/) });
   jest.useRealTimers();
   readFile.mockRestore();
+});
+
+test('ignores SSH and SFTP callbacks that arrive after timeout', async () => {
+  jest.useFakeTimers();
+  const execClient = new MockClient();
+  let execCallback;
+  execClient.execCallback = (_command, callback) => { execCallback = callback; };
+  const execPromise = exec(execClient, 'slow').catch(error => error);
+  jest.advanceTimersByTime(60000);
+  const lateStream = new MockStream();
+  execCallback(null, lateStream);
+  await expect(execPromise).resolves.toMatchObject({ message: expect.stringContaining('SSH command timed out') });
+  expect(lateStream.closed).toBe(true);
+
+  const uploadClient = new MockClient();
+  let sftpCallback;
+  uploadClient.sftp = callback => { sftpCallback = callback; };
+  const readFile = jest.spyOn(fs.promises, 'readFile').mockResolvedValue(Buffer.from('config'));
+  const uploadPromise = upload(uploadClient, '/local', '/remote').catch(error => error);
+  await Promise.resolve();
+  jest.advanceTimersByTime(60000);
+  const lateSftp = { end: jest.fn() };
+  sftpCallback(null, lateSftp);
+  await expect(uploadPromise).resolves.toMatchObject({ message: expect.stringContaining('SFTP upload timed out') });
+  expect(lateSftp.end).toHaveBeenCalled();
+  readFile.mockRestore();
+  jest.useRealTimers();
 });
 
 test('close handles null and error', async () => {

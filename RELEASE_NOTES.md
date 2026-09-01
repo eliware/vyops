@@ -1,5 +1,16 @@
 # Release Notes
 
+## Unreleased
+
+- Added explicit release target summaries and `--yes` acknowledgement support.
+- Added deployment phase and SSH operation identifiers to debug output.
+- Added configurable connect, operation, and interactive timeouts.
+- Hardened script bundle validation, executable mode handling, and cleanup after failed deployments.
+- Added optional post-release router verification and `--no-pushback`/`--no-hooks` controls.
+- Added Git worktree state checks before pushback.
+- Added per-release remote script manifests with pre-existing state, modes, and SHA-256 hashes.
+- Successful releases retain a local copy of the deployment manifest beside the synchronized config.
+
 ## 2.1.1
 
 - Fix deployment of `.exe` files in the synchronized `scripts/` tree by

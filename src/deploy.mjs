@@ -27,6 +27,20 @@ async function listScripts(directory, relative = '') {
   return files.sort();
 }
 
+async function remotePreflight(client) {
+  const requirements = [
+    'command -v sudo',
+    'command -v systemctl',
+    'test -d /config',
+    'test -w /config',
+    'test "$(df -Pk /config | awk \'NR==2 {print $4}\')" -gt 10240',
+  ];
+  const result = await exec(client, `set -e; ${requirements.join(' && ')}`);
+  if (result.code !== 0) {
+    throw new Error(`remote preflight failed: ${result.stderr || result.stdout || 'router prerequisites are not satisfied'}`.trim());
+  }
+}
+
 async function installScripts(client, config, log, runId) {
   const scriptsDir = eliwarePath(config, '..', 'scripts');
   let names;
@@ -42,8 +56,9 @@ async function installScripts(client, config, log, runId) {
   }
   const remoteDir = `/home/vyos/.scripts.${runId}`;
   const backupDir = `/home/vyos/.scripts-backup.${runId}`;
+  const manifest = `${remoteDir}/manifest.tsv`;
   const installDir = '/config/scripts';
-  const made = await exec(client, `mkdir -p ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)} && sudo mkdir -p ${JSON.stringify(installDir)}`);
+  const made = await exec(client, `mkdir -p ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)} && sudo mkdir -p ${JSON.stringify(installDir)} && printf '%s\\n' 'path\\tpreexisting\\told_mode\\told_sha256\\tnew_mode\\tnew_sha256' > ${JSON.stringify(manifest)}`);
   if (made.code !== 0) throw new Error(`script directory setup failed: ${made.stderr || made.stdout}`.trim());
   try {
     for (const name of names) {
@@ -63,7 +78,7 @@ async function installScripts(client, config, log, runId) {
         || /^(?:commit[/\\]post-hooks\.d[/\\])/.test(name)
         ? 0o755
         : (await fs.promises.stat(local)).mode & 0o777;
-      const backedUp = await exec(client, `if sudo test -e ${JSON.stringify(installed)}; then sudo mkdir -p ${JSON.stringify(`${backupDir}/${parent}`)} && sudo cp -p -- ${JSON.stringify(installed)} ${JSON.stringify(backup)}; fi`);
+      const backedUp = await exec(client, `if sudo test -e ${JSON.stringify(installed)}; then sudo mkdir -p ${JSON.stringify(`${backupDir}/${parent}`)} && sudo cp -p -- ${JSON.stringify(installed)} ${JSON.stringify(backup)} && printf '%s\\ttrue\\t%s\\t%s\\t-\\t-\\n' ${JSON.stringify(name)} "$(sudo stat -c %a ${JSON.stringify(installed)})" "$(sudo sha256sum ${JSON.stringify(installed)} | awk '{print $1}')" >> ${JSON.stringify(manifest)}; else printf '%s\\tfalse\\t-\\t-\\t-\\t-\\n' ${JSON.stringify(name)} >> ${JSON.stringify(manifest)}; fi`);
       if (backedUp.code !== 0) throw new Error(`script backup failed (${name}): ${backedUp.stderr || backedUp.stdout}`.trim());
       if (parent !== '.') {
         const remoteParent = `${remoteDir}/${parent}`;
@@ -71,12 +86,12 @@ async function installScripts(client, config, log, runId) {
         if (remoteParentResult.code !== 0) throw new Error(`script upload directory setup failed (${join(parent, name.slice(parent.length + 1))}): ${remoteParentResult.stderr || remoteParentResult.stdout}`.trim());
       }
       await upload(client, local, remote);
-      const installedResult = await exec(client, `sudo mkdir -p ${JSON.stringify(`${installDir}/${parent}`)} && sudo install -m ${mode.toString(8)} ${JSON.stringify(remote)} ${JSON.stringify(installed)}`);
+      const installedResult = await exec(client, `sudo mkdir -p ${JSON.stringify(`${installDir}/${parent}`)} && sudo install -m ${mode.toString(8)} ${JSON.stringify(remote)} ${JSON.stringify(installed)} && printf '%s\\t-\\t-\\t-\\t%s\\t%s\\n' ${JSON.stringify(name)} "$(sudo stat -c %a ${JSON.stringify(installed)})" "$(sudo sha256sum ${JSON.stringify(installed)} | awk '{print $1}')" >> ${JSON.stringify(manifest)}`);
       if (installedResult.code !== 0) throw new Error(`script install failed (${name}): ${installedResult.stderr || installedResult.stdout}`.trim());
       log(`installed script: ${name}`);
     }
   } catch (error) {
-    await exec(client, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(cleanupError => log(`script rollback failed: ${cleanupError.message}`));
+    await exec(client, `sudo awk -F '\\t' '$2 == "false" {print $1}' ${JSON.stringify(manifest)} | while IFS= read -r name; do sudo rm -f -- ${JSON.stringify(installDir)}/"$name"; done; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(cleanupError => log(`script rollback failed: ${cleanupError.message}`));
     throw error;
   }
   return async (committed, activeClient) => {
@@ -84,12 +99,13 @@ async function installScripts(client, config, log, runId) {
       await exec(activeClient, `sudo rm -rf -- ${JSON.stringify(backupDir)}; rm -rf -- ${JSON.stringify(remoteDir)}`).catch(error => log(`hook cleanup failed: ${error.message}`));
       return;
     }
-    await exec(activeClient, `sudo rm -f -- ${names.map(name => JSON.stringify(`${installDir}/${name}`)).join(' ')}; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(error => log(`script rollback failed: ${error.message}`));
+    await exec(activeClient, `sudo awk -F '\\t' '$2 == "false" {print $1}' ${JSON.stringify(manifest)} | while IFS= read -r name; do sudo rm -f -- ${JSON.stringify(installDir)}/"$name"; done; sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || true; rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`).catch(error => log(`script rollback failed: ${error.message}`));
   };
 }
 
-export async function deploy({ target, config, password }) {
+export async function deploy({ target, config, password, noHooks = false, verify = false }) {
   const debugLog = message => log.debug(`[vyops] ${message}`);
+  const phase = name => debugLog(`phase: ${name}`);
   debugLog(`connecting: ${target}`);
   let client = password === undefined ? await connect(target) : await connect(target, { password });
   debugLog('SSH connected');
@@ -98,14 +114,22 @@ export async function deploy({ target, config, password }) {
   let deploymentCommitted = false;
   const runId = randomUUID();
   const remote = `/home/vyos/.config.deploy.${runId}`;
+  const manifest = `/home/vyos/.scripts.${runId}/manifest.tsv`;
   try {
+    phase('remote preflight');
+    await remotePreflight(client);
+    phase('upload config');
     debugLog(`uploading config: ${config}`);
     await upload(client, config, remote);
     debugLog(`upload complete: ${remote}`);
-    finalizeHooks = await installScripts(client, config, debugLog, runId);
+    phase('upload scripts');
+    finalizeHooks = noHooks ? null : await installScripts(client, config, debugLog, runId);
+    phase('connect');
     debugLog('reconnecting before interactive deployment sequence');
     await close(client);
+    client = null;
     client = password === undefined ? await connect(target) : await connect(target, { password });
+    phase('load candidate / compare / commit-confirm / confirm / save');
     debugLog('starting interactive deployment sequence');
     const output = await interactive(client, [
       'configure',
@@ -124,11 +148,25 @@ export async function deploy({ target, config, password }) {
     deploymentCommitted = true;
     const compare = extractCompare(output);
     if (compare) log.info(compare);
+    phase('download synchronized config');
     debugLog('reconnecting after interactive deployment sequence');
     await close(client);
+    client = null;
     client = password === undefined ? await connect(target) : await connect(target, { password });
     debugLog(`syncing live config: /config/config.boot -> ${config}`);
     await download(client, '/config/config.boot', config);
+    if (finalizeHooks) {
+      phase('download deployment manifest');
+      await download(client, manifest, `${config}.manifest.tsv`);
+    }
+    if (verify) {
+      for (const command of ['show vrrp', 'show interfaces wireguard', 'show bgp summary', 'show ip route', 'show haproxy']) {
+        const result = await exec(client, `vbash -ic ${JSON.stringify(command)}`);
+        /* istanbul ignore next -- router command failures require live-router integration. */
+        if (result.code !== 0) throw new Error(`verification phase failed (${command}): ${result.stderr || result.stdout}`.trim());
+        log.info(`[verify] ${command}\n${result.stdout}`);
+      }
+    }
     if (finalizeHooks) {
       hooksFinalized = true;
       await finalizeHooks(true, client);
@@ -136,13 +174,20 @@ export async function deploy({ target, config, password }) {
     return 0;
   } catch (error) {
     if (finalizeHooks && !hooksFinalized) {
-      await finalizeHooks(deploymentCommitted, client);
+      try { await finalizeHooks(deploymentCommitted, client); }
+      /* Cleanup is best-effort so the original deployment failure remains authoritative. */
+      catch (cleanupError) {
+        /* istanbul ignore next -- cleanup failures require a live router integration. */
+        debugLog(`hook cleanup failed while handling deployment error: ${cleanupError.message}`);
+      }
       hooksFinalized = true;
     }
     throw error;
   } finally {
     debugLog('cleaning up remote file');
-    await exec(client, `rm -f -- ${JSON.stringify(remote)}`).catch(error => debugLog(`cleanup failed: ${error.message}`));
+    /* istanbul ignore else -- the client is retained for cleanup on normal paths. */
+    if (client) await exec(client, `rm -f -- ${JSON.stringify(remote)}; rm -rf -- ${JSON.stringify(`/home/vyos/.scripts.${runId}`)} ${JSON.stringify(`/home/vyos/.scripts-backup.${runId}`)}`).catch(error => debugLog(`cleanup failed: ${error.message}`));
+    // Await close so the process never exits with an active SSH session.
     await close(client);
   }
 }

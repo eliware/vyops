@@ -8,6 +8,7 @@ async function filesIn(directory, root = directory) {
   catch (error) { if (error.code === 'ENOENT') return result; throw error; }
   for (const entry of entries) {
     const file = join(directory, entry.name);
+    // Symlinks are intentionally excluded so traversal cannot escape the bundle root.
     if (entry.isDirectory()) result.push(...await filesIn(file, root));
     else if (entry.isFile()) result.push({ file, name: relative(root, file).replaceAll('\\', '/') });
   }
@@ -15,7 +16,7 @@ async function filesIn(directory, root = directory) {
 }
 
 export function targetFromConfig(text) {
-  const host = text.match(/(?:^|\n)\s*host-name\s+(?:"([^"]+)"|'([^']+)'|(\S+))/)?.slice(1).find(Boolean);
+  const host = text.match(/(?:^|\n)\s*host-name\s+(?:"([A-Za-z0-9][A-Za-z0-9._-]*)"|'([A-Za-z0-9][A-Za-z0-9._-]*)'|([A-Za-z0-9][A-Za-z0-9._-]*))(?:\s*(?:#.*)?$)/m)?.slice(1).find(Boolean);
   const users = [...text.matchAll(/(?:^|\n)\s*user\s+([A-Za-z0-9._-]+)\s*\{/g)].map(match => match[1]);
   if (!host) throw new Error('preflight failed: config does not define system host-name');
   if (users.length !== 1) throw new Error(`preflight failed: expected exactly one system login user; found ${users.length}`);

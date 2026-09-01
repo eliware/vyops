@@ -16,7 +16,8 @@ const { backup } = await import('../src/backup.mjs');
 beforeEach(() => {
   jest.clearAllMocks();
   mocks.connect.mockResolvedValue({});
-  mocks.exec.mockResolvedValue({ code: 0, stdout: '/config/scripts/foo.sh\n/config/scripts/nested/bar\n', stderr: '' });
+  mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+    .mockResolvedValue({ code: 0, stdout: '/config/scripts/foo.sh\0/config/scripts/nested/bar\0', stderr: '' });
 });
 
 test('backs up config and nested scripts', async () => {
@@ -33,7 +34,9 @@ test('passes a bootstrap password through to SSH', async () => {
 });
 
 test('rejects unsafe remote script paths and closes SSH', async () => {
-  mocks.exec.mockResolvedValue({ code: 0, stdout: '/config/scripts/../private\n', stderr: '' });
+  mocks.exec.mockImplementation((_client, command) => Promise.resolve(command.includes('type l')
+    ? { code: 0, stdout: '', stderr: '' }
+    : { code: 0, stdout: '/config/scripts/../private\n', stderr: '' }));
   await expect(backup({ target: 'vyos@router', config: '/tmp/backup' })).rejects.toThrow('unsafe remote script path');
   expect(mocks.close).toHaveBeenCalled();
 });
@@ -42,7 +45,9 @@ test.each([
   ['stderr', 'find failed', ''],
   ['stdout', '', 'find output'],
 ])('reports remote script listing failures from %s', async (_label, stderr, stdout) => {
-  mocks.exec.mockResolvedValue({ code: 1, stdout, stderr });
+  mocks.exec.mockImplementation((_client, command) => Promise.resolve(command.includes('type l')
+    ? { code: 0, stdout: '', stderr: '' }
+    : { code: 1, stdout, stderr }));
   await expect(backup({ target: 'vyos@router', config: '/tmp/backup' }))
     .rejects.toThrow(`could not list remote scripts: ${stderr || stdout}`);
   expect(mocks.close).toHaveBeenCalled();

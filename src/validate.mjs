@@ -39,6 +39,7 @@ export function validateConfig(text) {
       if (!q && char === '#') break;
       code += char;
     }
+    // VyOS values use shell-like quoted strings; escaped characters are retained verbatim.
     if (q) fail(line, 'unterminated quote');
 
     const trimmed = code.trim();
