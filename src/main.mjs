@@ -7,6 +7,7 @@ import { validateBundle } from './bundle.mjs';
 import { pushBack, repositorySnapshot, shouldSkip } from './git.mjs';
 import { closeAll } from './ssh.mjs';
 import { log, registerHandlers, registerSignals } from '@eliware/common';
+import { randomUUID } from 'node:crypto';
 
 async function readPasswordStdin() {
   const chunks = [];
@@ -19,7 +20,8 @@ const signals = registerSignals({ log, shutdownHook: async () => closeAll() });
 
 try {
   const args = parseArgs(process.argv.slice(2));
-  log.debug(`[vyops] arguments parsed: target=${args.target || '-'} config=${args.config || '-'}`);
+  args.operationId = randomUUID();
+  log.debug(`[vyops] [deployment ${args.operationId}] arguments parsed: target=${args.target || '-'} config=${args.config || '-'}`);
   if (args.help) {
     log.info(usage);
     process.exit(0);
@@ -48,25 +50,25 @@ try {
     const bundle = await validateBundle(args.config, text);
     args.target = bundle.target;
     args.hasHaproxyHooks = bundle.scripts.some(script => /haproxy/i.test(script));
-    log.info(`Release target: ${args.target}; config: ${args.config}; scripts: ${bundle.scripts.length}; hooks: ${args.noHooks ? 'disabled' : 'enabled'}; verification: ${args.verify ? 'enabled' : 'disabled'}; pushback: ${args.noPushback ? 'disabled' : 'enabled'}`);
-    if (!args.yes) log.warn('Release confirmation: pass --yes to acknowledge the target summary.');
-    if (args.noHooks) log.warn('WARNING: --no-hooks disables all synchronized post-commit hooks for this release.');
+    args.hasBinaryScripts = bundle.scripts.some(script => /\.exe$/i.test(script));
+    log.info(`[deployment ${args.operationId}] Release target: ${args.target}; config: ${args.config}; scripts: ${bundle.scripts.length}; hooks: ${args.noHooks ? 'disabled' : 'enabled'}; verification: ${args.verify ? 'enabled' : 'disabled'}; pushback: ${args.noPushback ? 'disabled' : 'enabled'}`);
+    if (args.noHooks) log.warn(`[deployment ${args.operationId}] WARNING: --no-hooks disables all synchronized post-commit hooks for this release.`);
   }
-  log.debug(`[vyops] validating config: ${args.config}`);
+  log.debug(`[vyops] [deployment ${args.operationId}] validating config: ${args.config}`);
   if (args.command !== 'release') await readAndValidateConfig(args.config);
-  log.debug('[vyops] config validation complete');
+  log.debug(`[vyops] [deployment ${args.operationId}] config validation complete`);
   if (!args.force && !args.noPushback && await shouldSkip(args.config)) {
-    log.info('Latest commit is Pushback and config is unchanged; skipping deployment');
+    log.info(`[deployment ${args.operationId}] Latest commit is Pushback and config is unchanged; skipping deployment`);
     process.exit(0);
   }
-  log.debug('[vyops] phase: release / connect');
-  log.debug('[vyops] deployment starting');
+  log.debug(`[vyops] [deployment ${args.operationId}] phase: release / connect`);
+  log.debug(`[vyops] [deployment ${args.operationId || 'preflight'}] deployment starting`);
   const expectedRepository = !args.noPushback ? await repositorySnapshot(args.config) : null;
   await deploy(args);
-  log.debug('[vyops] phase: pushback');
-  log.debug('[vyops] deployment complete; starting Git pushback');
-  if (!args.noPushback && await pushBack(args.config, { force: args.force, expectedState: expectedRepository })) log.info('Pushback committed and pushed');
-  log.info('Deployment successful');
+  log.debug(`[vyops] [deployment ${args.operationId}] phase: pushback`);
+  log.debug(`[vyops] [deployment ${args.operationId}] deployment complete; starting Git pushback`);
+  if (!args.noPushback && await pushBack(args.config, { force: args.force, expectedState: expectedRepository })) log.info(`[deployment ${args.operationId}] Pushback committed and pushed`);
+  log.info(`[deployment ${args.operationId}] Deployment successful`);
 } catch (error) {
   log.error(error.message);
   process.exitCode = 1;

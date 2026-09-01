@@ -9,6 +9,16 @@ const OPERATION_TIMEOUT = timeout('VYOPS_OPERATION_TIMEOUT', 60000);
 const INTERACTIVE_TIMEOUT = timeout('VYOPS_INTERACTIVE_TIMEOUT', 60000);
 const CLOSE_TIMEOUT = 5000;
 
+function context(client) {
+  return `deployment=${client?.__vyopsDeploymentId || 'unknown'} target=${client?.__vyopsTarget || 'unknown'} phase=${client?.__vyopsPhase || 'unknown'}`;
+}
+
+function timeoutError(message, client) {
+  const error = new Error(message);
+  error.code = 'VYOPS_TIMEOUT';
+  return error;
+}
+
 export function parseTarget(target) {
   if (typeof target !== 'string' || !target || /\s/.test(target)) {
     throw new Error('invalid target; expected user@host');
@@ -33,6 +43,8 @@ export async function connect(target, { password } = {}) {
     agent: process.env.SSH_AUTH_SOCK, knownHostsPath: process.env.SSH_KNOWN_HOSTS || '~/.ssh/known_hosts',
     hostCaPath: process.env.SSH_HOST_CA, password, connectTimeout: CONNECT_TIMEOUT });
   const client = connection.raw;
+  client.__vyopsTarget = target;
+  client.__vyopsPhase = 'connect';
   activeClients.add(client);
   log.debug(`[vyops] SSH connected: ${username}@${host}`);
   return client;
@@ -46,7 +58,8 @@ export function exec(client, command) {
     const timer = setTimeout(() => {
       settled = true;
       stream?.close?.();
-      reject(new Error(`SSH command timed out [${operation}]: ${command}`));
+      client.end?.();
+      reject(timeoutError(`SSH command timed out [${operation}] (${context(client)}): ${command}`, client));
     }, OPERATION_TIMEOUT);
     let stream;
     client.exec(command, (error, openedStream) => {
@@ -81,7 +94,8 @@ export async function upload(client, local, remote, mode = 0o600) {
     const timer = setTimeout(() => {
       settled = true;
       sftp?.end?.();
-      reject(new Error(`SFTP upload timed out [${operation}]: ${remote}`));
+      client.end?.();
+      reject(timeoutError(`SFTP upload timed out [${operation}] (${context(client)}): ${remote}`, client));
     }, OPERATION_TIMEOUT);
     client.sftp((error, openedSftp) => {
       /* istanbul ignore next -- late callbacks require a real SFTP transport. */
@@ -110,7 +124,8 @@ export function download(client, remote, local) {
     const timer = setTimeout(() => {
       settled = true;
       sftp?.end?.();
-      reject(new Error(`SFTP download timed out [${operation}]: ${remote}`));
+      client.end?.();
+      reject(timeoutError(`SFTP download timed out [${operation}] (${context(client)}): ${remote}`, client));
     }, OPERATION_TIMEOUT);
     client.sftp((error, openedSftp) => {
       /* istanbul ignore next -- late callbacks require a real SFTP transport. */
@@ -131,6 +146,7 @@ export function download(client, remote, local) {
 }
 
 export function interactive(client, commands, log = () => {}) {
+  const operation = randomUUID();
   return new Promise((resolve, reject) => {
     client.shell({ term: 'xterm', cols: 160, rows: 48 }, (error, stream) => {
       if (error) return reject(error);
@@ -150,7 +166,9 @@ export function interactive(client, commands, log = () => {}) {
         timedOut = true;
         settled = true;
         stream.close();
-        reject(new Error('interactive SSH timeout'));
+        client.end?.();
+        const command = currentItem ? (typeof currentItem === 'string' ? currentItem : currentItem.command) : 'none';
+        reject(timeoutError(`Interactive SSH timed out [${operation}] (${context(client)}): ${command}`, client));
       }, INTERACTIVE_TIMEOUT);
       const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
       const title = new RegExp(`${String.fromCharCode(27)}\\][^${String.fromCharCode(7)}]*(?:${String.fromCharCode(7)}|${String.fromCharCode(27)}\\\\)`, 'g');
@@ -166,6 +184,10 @@ export function interactive(client, commands, log = () => {}) {
         if (waiting || index >= commands.length) return;
         currentItem = commands[index++];
         const item = currentItem;
+        if (item && typeof item === 'object' && item.phase) {
+          client.__vyopsPhase = item.phase;
+          log(`phase: ${item.phase}`);
+        }
         const command = typeof item === 'string' ? item : item.command;
         response = '';
         waiting = true;

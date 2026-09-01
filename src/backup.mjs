@@ -1,10 +1,22 @@
 import { fs, path, log } from '@eliware/common';
+import { randomUUID } from 'node:crypto';
 import { close, connect, download, exec } from './ssh.mjs';
 
 function remoteScriptPath(value) {
   const name = value.replace(/^\/config\/scripts\/?/, '');
   if (!name || name.startsWith('/') || name.split('/').includes('..')) throw new Error(`unsafe remote script path: ${value}`);
   return name;
+}
+
+export async function validateRemoteScript(client, remote) {
+  const metadata = await exec(client, `test -f ${JSON.stringify(remote)} && test ! -L ${JSON.stringify(remote)} && test "$(realpath -- ${JSON.stringify(remote)})" = ${JSON.stringify(remote)}`);
+  /* istanbul ignore next -- remote metadata failures require a live filesystem race. */
+  if (metadata.code !== 0) throw new Error(`remote script changed or is not a regular file: ${remote}`);
+}
+
+async function snapshotRemoteScript(client, remote, snapshot) {
+  const result = await exec(client, `exec 3<${JSON.stringify(remote)} && test -f /proc/self/fd/3 && test ! -L /proc/self/fd/3 && test "$(realpath -- /proc/self/fd/3)" = ${JSON.stringify(remote)} && cat <&3 > ${JSON.stringify(snapshot)}`);
+  if (result.code !== 0) throw new Error(`remote script changed or is not a regular file: ${remote}`);
 }
 
 export async function backup({ target, config, password }) {
@@ -29,9 +41,16 @@ export async function backup({ target, config, password }) {
     // NUL records preserve valid embedded whitespace in remote filenames.
     const files = result.stdout.split('\0').filter(Boolean).map(remoteScriptPath);
     for (const name of files) {
+      const remote = `/config/scripts/${name}`;
+      const snapshot = `/tmp/.vyops-backup.${randomUUID()}`;
+      await snapshotRemoteScript(client, remote, snapshot);
       const local = path(config, 'scripts', name);
       await fs.promises.mkdir(path(local, '..'), { recursive: true });
-      await download(client, `/config/scripts/${name}`, local);
+      try {
+        await download(client, snapshot, local);
+      } finally {
+        await exec(client, `rm -f -- ${JSON.stringify(snapshot)}`);
+      }
       log.debug(`[vyops] backed up script: ${name}`);
     }
     return 0;

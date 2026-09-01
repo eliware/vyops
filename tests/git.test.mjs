@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { jest } from '@jest/globals';
-import { shouldSkip, pushBack } from '../src/git.mjs';
+import { repositorySnapshot, shouldSkip, pushBack } from '../src/git.mjs';
 
 const run = promisify(execFile);
 
@@ -175,6 +175,17 @@ test('pushBack includes staged config changes', async () => {
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('pushBack refuses a repository changed during deployment', async () => {
+  const { directory, config } = await repository();
+  const snapshot = await repositorySnapshot(config);
+  await writeFile(config, 'system {\n    host-name changed\n}\n');
+  await expect(pushBack(config, { expectedState: { ...snapshot, state: `${snapshot.state}stale` } }))
+    .rejects.toThrow('repository changed during deployment; refusing to commit');
+  await expect(run('git', ['log', '-1', '--format=%s'], { cwd: directory }))
+    .resolves.toMatchObject({ stdout: 'Initial\n' });
+  await rm(directory, { recursive: true, force: true });
 });
 
 test('pushBack handles a changed repository-relative config path', async () => {

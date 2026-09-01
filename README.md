@@ -66,11 +66,13 @@ vyops preflight /path/to/config.boot
 Release a bundle:
 
 ```sh
-vyops release /path/to/config.boot
+vyops release --yes /path/to/config.boot
 ```
 
-Use `--yes` to acknowledge the printed target summary. Add `--verify` to run
+`--yes` is required to acknowledge the printed target summary. Add `--verify` to run
 post-release checks for VRRP, WireGuard, BGP, routes, and HAProxy. Use
+`--verify-binaries` to require staged `.exe` files to be recognized as
+architecture-matching ELF binaries and to match their local SHA-256 hashes. Use
 `--no-pushback` to leave Git unchanged, or `--no-hooks` only for emergency
 troubleshooting; the latter prints a prominent warning.
 
@@ -80,7 +82,7 @@ Console switches:
 vyops --help
 vyops --version
 vyops --debug preflight /path/to/config.boot
-vyops release --force --debug /path/to/config.boot
+vyops release --yes --force --debug /path/to/config.boot
 vyops backup vyos@core1 /path/to/backup
 ```
 
@@ -93,10 +95,20 @@ any SSH connection. Executable scripts must use LF line endings, a supported
 shell shebang, and valid executable intent. `release` runs the same checks before
 uploading or changing the router.
 
+Before upload, `release` also checks `/config` availability and writability,
+free space, `sudo`, and `systemd`; HAProxy is required when the bundle contains
+HAProxy hooks. Uploaded scripts are rechecked remotely for executable mode and
+CR bytes. Releases retain `config.boot.manifest.tsv` beside the synchronized
+config; it records hashes, modes, and pre-existing state and drives rollback.
+
 With `--debug`, release logs include operation IDs and deployment phases so an
 individual SSH command, upload, download, timeout, or cleanup event can be
-correlated. Timeout failures discard the affected channel and report the target
-operation without logging credentials.
+correlated. Timeout failures discard the affected channel and SSH client and
+report the target operation without logging credentials.
+
+The opt-in live backup integration test can be run with
+`VYOPS_LIVE_TARGET=vyos@router VYOPS_LIVE_BACKUP_DEST=/path/to/destination`.
+It is skipped unless both variables are explicitly set.
 
 The deployment workflow:
 

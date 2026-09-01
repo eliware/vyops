@@ -262,7 +262,7 @@ test('interactive handles shell, stream, close, and timeout failures', async () 
   const timeoutClient = new MockClient();
   const timeoutPromise = interactive(timeoutClient, ['x']);
   jest.advanceTimersByTime(60000);
-  await expect(timeoutPromise).rejects.toThrow('interactive SSH timeout');
+  await expect(timeoutPromise).rejects.toThrow(/Interactive SSH timed out \[[0-9a-f-]+\] \(deployment=unknown target=unknown phase=unknown\): x/);
   expect(timeoutClient.shellStream.closed).toBe(true);
   jest.useRealTimers();
 });
@@ -360,7 +360,7 @@ test('exec handles stream errors and timeout', async () => {
   const timeoutClient = new MockClient();
   const promise = exec(timeoutClient, 'slow');
   jest.advanceTimersByTime(60000);
-  await expect(promise).rejects.toThrow(/SSH command timed out \[[0-9a-f-]+\]: slow/);
+  await expect(promise).rejects.toThrow(/SSH command timed out \[[0-9a-f-]+\] \(deployment=unknown target=unknown phase=unknown\): slow/);
   jest.useRealTimers();
 });
 
@@ -374,10 +374,10 @@ test('SFTP upload and download time out', async () => {
   await Promise.resolve();
   await Promise.resolve();
   jest.advanceTimersByTime(60000);
-  await expect(uploadPromise).resolves.toMatchObject({ message: expect.stringMatching(/SFTP upload timed out \[[0-9a-f-]+\]: \/remote/) });
+  await expect(uploadPromise).resolves.toMatchObject({ message: expect.stringMatching(/SFTP upload timed out \[[0-9a-f-]+\] \(deployment=unknown target=unknown phase=unknown\): \/remote/) });
   const downloadPromise = download(client, '/remote', '/local').catch(error => error);
   jest.advanceTimersByTime(60000);
-  await expect(downloadPromise).resolves.toMatchObject({ message: expect.stringMatching(/SFTP download timed out \[[0-9a-f-]+\]: \/remote/) });
+  await expect(downloadPromise).resolves.toMatchObject({ message: expect.stringMatching(/SFTP download timed out \[[0-9a-f-]+\] \(deployment=unknown target=unknown phase=unknown\): \/remote/) });
   jest.useRealTimers();
   readFile.mockRestore();
 });
