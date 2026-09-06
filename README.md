@@ -1,5 +1,7 @@
 # VyOps
 
+Documentation: [docs](docs/README.md) · [specifications](specs/README.md) · [examples](examples/README.md)
+
 > Deploy native VyOS configuration files over SSH and synchronize confirmed router state back to Git.
 
 ## Features
@@ -28,7 +30,7 @@ npm install
 The package provides:
 
 ```text
-vyops   Preflight or release a configuration bundle.
+vyops   Back up, preflight, or release a configuration bundle.
 ```
 
 ## Configuration
@@ -118,8 +120,10 @@ The deployment workflow:
 4. Prints `compare` output.
 5. Runs `commit-confirm`.
 6. Confirms and saves only after confirmation.
-7. Installs local post-commit hooks, when present.
-8. Downloads `/config/config.boot` back to the supplied config path.
+7. Downloads `/config/config.boot` back to the supplied config path (and the
+   deployment manifest when scripts are managed).
+8. Runs the deployed remote post-commit hooks, when present; `--verify` runs
+   the optional operational checks before the hooks.
 9. Removes temporary remote files and closes SSH sessions.
 
 Exit code `0` means success. Non-zero means validation or deployment failure.
