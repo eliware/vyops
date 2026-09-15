@@ -55,7 +55,7 @@ jest.unstable_mockModule('@eliware/ssh-client', () => ({ connect: async options 
   const privateKey = options.password === undefined ? await fs.promises.readFile(privateKeyPath) : undefined;
   const knownHosts = options.knownHostsPath ? await fs.promises.readFile(join(process.env.HOME, '.ssh/known_hosts'), 'utf8') : '';
   let actual;
-  const utils = { parseKey: key => { if (Buffer.isBuffer(key)) { if (key.length === 0) { actual = { getPublicSSH: () => ({}) }; return actual; } return {}; } return { getPublicSSH: () => ({ equals: value => value === actual }) }; } };
+  const _utils = { parseKey: key => { if (Buffer.isBuffer(key)) { if (key.length === 0) { actual = { getPublicSSH: () => ({}) }; return actual; } return {}; } return { getPublicSSH: () => ({ equals: value => value === actual }) }; } };
   const connectionOptions = { ...options, privateKey, hostVerifier: options.knownHostsPath ? (key, callback) => mockHostVerifier(knownHosts, key, callback) : undefined };
   await new Promise((resolve, reject) => { client.once('ready', resolve); client.once('error', reject); client.connect(connectionOptions); });
   return { raw: client };
@@ -144,6 +144,27 @@ test('exec rejects command setup errors', async () => {
   await expect(exec(client, 'bad')).rejects.toThrow('exec failed');
 });
 
+test('exec handles an empty command summary', async () => {
+  const client = new MockClient();
+  client.execCallback = (_command, callback) => {
+    const stream = new MockStream();
+    callback(null, stream);
+    stream.emit('close', 0);
+  };
+  await expect(exec(client, '')).resolves.toEqual({ code: 0, stdout: '', stderr: '' });
+});
+
+test('uses the operation timeout fallback for non-positive configuration', async () => {
+  process.env.VYOPS_OPERATION_TIMEOUT = '0';
+  const client = new MockClient();
+  client.execCallback = (_command, callback) => {
+    const stream = new MockStream();
+    callback(null, stream);
+    stream.emit('close', 0);
+  };
+  await expect(exec(client, 'show version')).resolves.toMatchObject({ code: 0 });
+});
+
 test('upload and download resolve on successful SFTP operations', async () => {
   const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
   const local = join(keyDir, 'local');
@@ -190,6 +211,15 @@ test('interactive runs commands, handles pager and commit confirmation', async (
   await expect(promise).resolves.toContain('Proceed? [Y/n]');
   stream.emit('data', '\ntestuser@test-router.example.test#');
   expect(stream.ended).toBe(true);
+});
+
+test('interactive completes structured command items', async () => {
+  const client = new MockClient();
+  const completed = jest.fn();
+  const promise = interactive(client, [{ phase: 'save', command: 'save' }], jest.fn(), completed);
+  client.shellStream.emit('data', '\ntestuser@test-router.example.test# ');
+  await expect(promise).resolves.toContain('testuser@test-router.example.test');
+  expect(completed).toHaveBeenCalledWith('save');
 });
 
 test('interactive handles VyOS return-only pager prompts', async () => {
@@ -264,7 +294,50 @@ test('interactive handles shell, stream, close, and timeout failures', async () 
   jest.advanceTimersByTime(60000);
   await expect(timeoutPromise).rejects.toThrow(/Interactive SSH timed out \[[0-9a-f-]+\] \(deployment=unknown target=unknown phase=unknown\): x/);
   expect(timeoutClient.shellStream.closed).toBe(true);
+
+  const objectTimeoutClient = new MockClient();
+  const objectTimeoutPromise = interactive(objectTimeoutClient, [{ phase: 'test-phase', command: 'x' }]);
+  jest.advanceTimersByTime(60000);
+  await expect(objectTimeoutPromise).rejects.toThrow(/Interactive SSH timed out/);
+
+  const emptyTimeoutClient = new MockClient();
+  const emptyTimeoutPromise = interactive(emptyTimeoutClient, []);
+  jest.advanceTimersByTime(60000);
+  await expect(emptyTimeoutPromise).rejects.toThrow(/Interactive SSH timed out.*none/);
   jest.useRealTimers();
+});
+
+test('interactive reports structured failures without a matching detail', async () => {
+  const client = new MockClient();
+  const promise = interactive(client, [{ command: 'save', reject: /boom/ }]);
+  client.shellStream.stderr.emit('data', 'boom\n');
+  await expect(promise).rejects.toThrow('interactive command failed: save');
+});
+
+test('interactive rejects structured failures reported on stderr', async () => {
+  const client = new MockClient();
+  const promise = interactive(client, [{ command: 'save', reject: /save failed/i }]);
+  client.shellStream.stderr.emit('data', 'save failed');
+  await expect(promise).rejects.toThrow('interactive command failed: save');
+});
+
+test('uses timeout defaults for invalid and non-positive environment values', async () => {
+  const keyDir = await mkdtemp(join(tmpdir(), 'ssh-test-'));
+  process.env.HOME = keyDir;
+  await mkdir(join(keyDir, '.ssh'), { recursive: true });
+  await writeFile(join(keyDir, '.ssh/id_rsa'), 'default-key');
+  await writeFile(join(keyDir, '.ssh/known_hosts'), 'router ssh-ed25519 AAAA\n');
+  process.env.VYOPS_CONNECT_TIMEOUT = 'invalid';
+  const invalid = await connect('vyos@router');
+  expect(invalid.options.connectTimeout).toBe(30000);
+  process.env.VYOPS_CONNECT_TIMEOUT = '0';
+  const zero = await connect('vyos@router');
+  expect(zero.options.connectTimeout).toBe(30000);
+  process.env.VYOPS_CONNECT_TIMEOUT = '1234';
+  const configured = await connect('vyos@router');
+  expect(configured.options.connectTimeout).toBe(1234);
+  delete process.env.VYOPS_CONNECT_TIMEOUT;
+  await rm(keyDir, { recursive: true, force: true });
 });
 
 test('closeAll ends active SSH clients', async () => {
@@ -276,7 +349,7 @@ test('closeAll ends active SSH clients', async () => {
   process.env.HOME = keyDir;
   process.env.VYOPS_SSH_KEY = key;
   await connect('vyos@router');
-  closeAll();
+  await closeAll();
   expect(MockClient.instances.at(-1).shellStream.closed).toBe(false);
   await rm(keyDir, { recursive: true, force: true });
 });
@@ -349,6 +422,7 @@ test('host verifier rejects malformed hashes and matching negated hosts', async 
 });
 
 test('exec handles stream errors and timeout', async () => {
+  process.env.VYOPS_OPERATION_TIMEOUT = 'not-a-number';
   const client = new MockClient();
   client.execCallback = (_command, callback) => {
     const stream = new MockStream();
@@ -356,12 +430,31 @@ test('exec handles stream errors and timeout', async () => {
     stream.emit('error', new Error('stream error'));
   };
   await expect(exec(client, 'bad')).rejects.toThrow('stream error');
+  client.execCallback = (_command, callback) => {
+    const duplicateStream = new MockStream();
+    callback(null, duplicateStream);
+    duplicateStream.emit('close', 0);
+    duplicateStream.emit('close', 1);
+  };
+  await expect(exec(client, 'duplicate')).resolves.toEqual({ code: 0, stdout: '', stderr: '' });
+  delete process.env.VYOPS_OPERATION_TIMEOUT;
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
   const timeoutClient = new MockClient();
   const promise = exec(timeoutClient, 'slow');
   jest.advanceTimersByTime(60000);
   await expect(promise).rejects.toThrow(/SSH command timed out \[[0-9a-f-]+\] \(deployment=unknown target=unknown phase=unknown\): slow/);
   jest.useRealTimers();
+});
+
+test('exec uses a positive configured operation timeout', async () => {
+  process.env.VYOPS_OPERATION_TIMEOUT = '1';
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+  const client = new MockClient();
+  const promise = exec(client, 'slow-configured');
+  jest.advanceTimersByTime(1);
+  await expect(promise).rejects.toThrow(/SSH command timed out/);
+  jest.useRealTimers();
+  delete process.env.VYOPS_OPERATION_TIMEOUT;
 });
 
 test('SFTP upload and download time out', async () => {
@@ -405,6 +498,33 @@ test('ignores SSH and SFTP callbacks that arrive after timeout', async () => {
   sftpCallback(null, lateSftp);
   await expect(uploadPromise).resolves.toMatchObject({ message: expect.stringContaining('SFTP upload timed out') });
   expect(lateSftp.end).toHaveBeenCalled();
+
+  const duplicateUploadClient = new MockClient();
+  let duplicateUploadCallback;
+  duplicateUploadClient.sftpClient.writeFile = (_remote, _data, _options, callback) => { duplicateUploadCallback = callback; };
+  const duplicateUploadPromise = upload(duplicateUploadClient, '/local', '/remote').catch(error => error);
+  await Promise.resolve();
+  jest.advanceTimersByTime(60000);
+  duplicateUploadCallback(undefined);
+  await expect(duplicateUploadPromise).resolves.toMatchObject({ message: expect.stringContaining('SFTP upload timed out') });
+
+  const downloadClient = new MockClient();
+  let downloadCallback;
+  downloadClient.sftp = callback => { downloadCallback = callback; };
+  const downloadPromise = download(downloadClient, '/remote', '/local').catch(error => error);
+  await Promise.resolve();
+  jest.advanceTimersByTime(60000);
+  const lateDownload = { end: jest.fn() };
+  downloadCallback(null, lateDownload);
+  await expect(downloadPromise).resolves.toMatchObject({ message: expect.stringContaining('SFTP download timed out') });
+  expect(lateDownload.end).toHaveBeenCalled();
+
+  const duplicateDownloadClient = new MockClient();
+  duplicateDownloadClient.sftpClient.fastGet = (_remote, _local, callback) => {
+    callback(undefined);
+    callback(undefined);
+  };
+  await expect(download(duplicateDownloadClient, '/remote', '/local')).resolves.toBeUndefined();
   readFile.mockRestore();
   jest.useRealTimers();
 });

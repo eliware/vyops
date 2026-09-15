@@ -1,9 +1,10 @@
 import { parseArgs, usage } from './args.mjs';
 import packageJson from '../package.json' with { type: 'json' };
-import { deploy } from './deploy.mjs';
-import { backup } from './backup.mjs';
+import { cleanupActiveDeployments, deploy } from './deploy.mjs';
 import { readAndValidateConfig } from './validate.mjs';
-import { validateBundle } from './bundle.mjs';
+import { runBackup } from './commands/backup.mjs';
+import { runPreflight } from './commands/preflight.mjs';
+import { prepareRelease } from './commands/release.mjs';
 import { pushBack, repositorySnapshot, shouldSkip } from './git.mjs';
 import { closeAll } from './ssh.mjs';
 import { log, registerHandlers, registerSignals } from '@eliware/common';
@@ -16,7 +17,7 @@ async function readPasswordStdin() {
 }
 
 const errors = registerHandlers({ log });
-const signals = registerSignals({ log, shutdownHook: async () => closeAll() });
+const signals = registerSignals({ log, shutdownHook: async () => { await closeAll(); await cleanupActiveDeployments(); } });
 
 try {
   const args = parseArgs(process.argv.slice(2));
@@ -35,24 +36,16 @@ try {
     if (!args.password) throw new Error('password-stdin received an empty password');
   }
   if (args.command === 'backup') {
-    await backup(args);
-    log.info(`Backup successful: ${args.config}`);
+    await runBackup(args, log);
     process.exit(0);
   }
   if (args.command === 'preflight') {
-    const text = await readAndValidateConfig(args.config);
-    const { target, scripts } = await validateBundle(args.config, text);
-    log.info(`Preflight successful: ${target} (${scripts.length} script files)`);
+    await runPreflight(args, log);
     process.exit(0);
   }
   if (args.command === 'release') {
     const text = await readAndValidateConfig(args.config);
-    const bundle = await validateBundle(args.config, text);
-    args.target = bundle.target;
-    args.hasHaproxyHooks = bundle.scripts.some(script => /haproxy/i.test(script));
-    args.hasBinaryScripts = bundle.scripts.some(script => /\.exe$/i.test(script));
-    log.info(`[deployment ${args.operationId}] Release target: ${args.target}; config: ${args.config}; scripts: ${bundle.scripts.length}; hooks: ${args.noHooks ? 'disabled' : 'enabled'}; verification: ${args.verify ? 'enabled' : 'disabled'}; pushback: ${args.noPushback ? 'disabled' : 'enabled'}`);
-    if (args.noHooks) log.warn(`[deployment ${args.operationId}] WARNING: --no-hooks disables all synchronized post-commit hooks for this release.`);
+    await prepareRelease(args, text, log);
   }
   log.debug(`[vyops] [deployment ${args.operationId}] validating config: ${args.config}`);
   if (args.command !== 'release') await readAndValidateConfig(args.config);

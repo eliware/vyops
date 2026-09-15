@@ -66,3 +66,37 @@ test('does not enumerate scripts when config download fails', async () => {
   await expect(backup({ target: 'vyos@router', config: '/tmp/backup' })).rejects.toThrow();
   expect(mocks.exec).not.toHaveBeenCalled();
 });
+
+test('rejects failure while inspecting remote symlinks', async () => {
+  mocks.exec.mockReset();
+  mocks.exec.mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'inspection failed' });
+  await expect(backup({ target: 'vyos@router', config: '/tmp/backup' }))
+    .rejects.toThrow('could not inspect remote scripts: inspection failed');
+  expect(mocks.close).toHaveBeenCalled();
+});
+
+test('reports stdout when symlink inspection has no stderr', async () => {
+  mocks.exec.mockReset();
+  mocks.exec.mockResolvedValueOnce({ code: 1, stdout: 'inspection output', stderr: '' });
+  await expect(backup({ target: 'vyos@router', config: '/tmp/backup' }))
+    .rejects.toThrow('could not inspect remote scripts: inspection output');
+});
+
+test('rejects a discovered remote script symlink', async () => {
+  mocks.exec.mockReset();
+  mocks.exec.mockResolvedValueOnce({ code: 0, stdout: '/config/scripts/link.sh\0', stderr: '' });
+  await expect(backup({ target: 'vyos@router', config: '/tmp/backup' }))
+    .rejects.toThrow('remote script symlink rejected: /config/scripts/link.sh');
+  expect(mocks.close).toHaveBeenCalled();
+});
+test('rejects a script replaced before metadata validation', async () => {
+  mocks.exec.mockReset();
+  mocks.exec
+    .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+    .mockResolvedValueOnce({ code: 0, stdout: '/config/scripts/hook.sh\0', stderr: '' })
+    .mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'path changed' });
+  await expect(backup({ target: 'vyos@router', config: '/tmp/backup' }))
+    .rejects.toThrow('remote script changed or is not a regular file: /config/scripts/hook.sh');
+  expect(mocks.download).toHaveBeenCalledTimes(1);
+  expect(mocks.close).toHaveBeenCalled();
+});

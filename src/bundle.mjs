@@ -1,23 +1,49 @@
 import { promises as fs } from 'node:fs';
 import { join, relative } from 'node:path';
 
-async function filesIn(directory, root = directory) {
+async function filesIn(directory, root, fsApi) {
   const result = [];
   let entries;
-  try { entries = await fs.readdir(directory, { withFileTypes: true }); }
+  try { entries = await fsApi.readdir(directory, { withFileTypes: true }); }
   catch (error) { if (error.code === 'ENOENT') return result; throw error; }
   for (const entry of entries) {
     const file = join(directory, entry.name);
     // Symlinks are intentionally excluded so traversal cannot escape the bundle root.
-    if (entry.isDirectory()) result.push(...await filesIn(file, root));
+    if (entry.isDirectory()) result.push(...await filesIn(file, root, fsApi));
     else if (entry.isFile()) result.push({ file, name: relative(root, file).replaceAll('\\', '/') });
   }
   return result;
 }
 
 export function targetFromConfig(text) {
-  const host = text.match(/(?:^|\n)\s*host-name\s+(?:"([A-Za-z0-9][A-Za-z0-9._-]*)"|'([A-Za-z0-9][A-Za-z0-9._-]*)'|([A-Za-z0-9][A-Za-z0-9._-]*))(?:\s*(?:#.*)?$)/m)?.slice(1).find(Boolean);
-  const users = [...text.matchAll(/(?:^|\n)\s*user\s+([A-Za-z0-9._-]+)\s*\{/g)].map(match => match[1]);
+  const block = (source, name) => {
+    const match = new RegExp(`(?:^|\\n)\\s*${name}\\s*\\{`).exec(source);
+    if (!match) return '';
+    const start = match.index + match[0].lastIndexOf('{') + 1;
+    let depth = 1;
+    let quote = '';
+    let comment = false;
+    for (let index = start; index < source.length; index += 1) {
+      const character = source[index];
+      if (comment) {
+        if (character === '\n') comment = false;
+        continue;
+      }
+      if (quote) {
+        if (character === quote && source[index - 1] !== '\\') quote = '';
+        continue;
+      }
+      if (character === '#') { comment = true; continue; }
+      if (character === '"' || character === "'") { quote = character; continue; }
+      if (character === '{') depth += 1;
+      if (character === '}' && --depth === 0) return source.slice(start, index);
+    }
+    return '';
+  };
+  const system = block(text, 'system');
+  const host = system.match(/(?:^|\n)\s*host-name\s+(?:"([A-Za-z0-9][A-Za-z0-9._-]*)"|'([A-Za-z0-9][A-Za-z0-9._-]*)'|([A-Za-z0-9][A-Za-z0-9._-]*))(?:\s*(?:#.*)?$)/m)?.slice(1).find(Boolean);
+  const login = block(system, 'login');
+  const users = [...login.matchAll(/(?:^|\n)\s*user\s+([A-Za-z0-9._-]+)\s*\{/g)].map(match => match[1]);
   if (!host) throw new Error('preflight failed: config does not define system host-name');
   if (users.length !== 1) throw new Error(`preflight failed: expected exactly one system login user; found ${users.length}`);
   return `${users[0]}@${host}`;
@@ -25,13 +51,14 @@ export function targetFromConfig(text) {
 
 function scriptError(name, message) { throw new Error(`preflight failed: scripts/${name} ${message}`); }
 
-export async function validateBundle(config, text, { extractTarget = true } = {}) {
-  const scripts = await filesIn(join(config, '..', 'scripts'));
+export async function validateBundle(config, text, { extractTarget = true, fsApi = fs } = {}) {
+  const scripts = await filesIn(join(config, '..', 'scripts'), join(config, '..', 'scripts'), fsApi);
   for (const { file, name } of scripts) {
-    const data = await fs.readFile(file);
+    const data = await fsApi.readFile(file);
+    const mode = (await fsApi.stat(file)).mode & 0o777;
     const firstLine = data.toString('utf8').split(/\n/, 1)[0].replace(/\r$/, '');
     const binary = /\.exe$/i.test(name);
-    const executable = binary || firstLine.startsWith('#!') || /(?:\.sh|\.script)$/.test(name)
+    const executable = binary || Boolean(mode & 0o111) || firstLine.startsWith('#!') || /(?:\.sh|\.script)$/i.test(name)
       || /^(?:commit\/post-hooks\.d\/|vyos-(?:pre|post)config-bootup\.script$)/.test(name);
     if (!executable) continue;
     if (binary) continue;

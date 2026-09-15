@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { path } from '@eliware/common';
+import { pushFailure } from './git/push-failure.mjs';
 
 const run = promisify(execFile);
 const LOCK_MAX_AGE = 60 * 60 * 1000;
@@ -12,19 +13,19 @@ async function git(args, cwd) {
 }
 
 async function repositoryState(repo) {
-  const [head, branch, status] = await Promise.all([
+  const [head, branch, upstream, status] = await Promise.all([
     git(['rev-parse', 'HEAD'], repo),
-    /* istanbul ignore next -- detached HEAD is covered by integration repositories. */
-    git(['symbolic-ref', '--quiet', '--short', 'HEAD'], repo).catch(/* istanbul ignore next -- detached HEAD is integration-only. */ () => ({ stdout: 'DETACHED' })),
+    // codescope ignore: next detached HEAD is covered by integration repositories.
+    git(['symbolic-ref', '--quiet', '--short', 'HEAD'], repo).catch(() => ({ stdout: 'DETACHED' })),
+    git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], repo).catch(() => ({ stdout: '(none)' })),
     git(['status', '--porcelain=v1'], repo),
   ]);
-  return `${head.stdout.trim()}\n${branch.stdout.trim()}\n${status.stdout}`;
+  return `${head.stdout.trim()}\n${branch.stdout.trim()}\n${upstream.stdout.trim()}\n${status.stdout}`;
 }
 
-/* istanbul ignore next -- invoked by the CLI integration path before deployment. */
+// codescope ignore: next repository snapshot is exercised by the CLI integration path.
 export async function repositorySnapshot(config) {
   const repo = await repositoryRoot(config);
-  /* istanbul ignore next -- repository lookup behavior is covered by CLI integration. */
   return repo ? { repo, state: await repositoryState(repo) } : null;
 }
 
@@ -84,7 +85,6 @@ async function relativeConfigPath(repo, config) {
     fs.realpath(resolve(config)),
   ]);
   const relativePath = relative(canonicalRepo, canonicalConfig);
-  /* istanbul ignore next -- outside-repository paths require an external filesystem setup. */
   if (!relativePath || relativePath === '..' || relativePath.startsWith(`..${path.sep}`)) {
     throw new Error('configuration path is outside the Git repository');
   }
@@ -101,17 +101,6 @@ async function repositoryRoot(config) {
   }
 }
 
-/* istanbul ignore next -- push recovery metadata is verified by Git integration runs. */
-async function pushFailure(repo, error) {
-  const [commit, branch, upstream] = await Promise.all([
-    git(['rev-parse', 'HEAD'], repo).then(result => result.stdout.trim()).catch(() => 'unknown'),
-    git(['symbolic-ref', '--quiet', '--short', 'HEAD'], repo).then(result => result.stdout.trim()).catch(() => 'DETACHED'),
-    git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], repo).then(result => result.stdout.trim()).catch(() => '(none)'),
-  ]);
-  const detail = error.stderr?.trim() || error.message;
-  return new Error(`git push failed after local commit ${commit}; branch: ${branch}; upstream: ${upstream}; error: ${detail}; recovery: git push`, { cause: error });
-}
-
 export async function shouldSkip(config) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
@@ -122,19 +111,18 @@ export async function shouldSkip(config) {
   return subject.trim().startsWith('Pushback ');
 }
 
-export async function pushBack(config, { force = false, expectedState } = {}) {
+export async function pushBack(config, { force = false, expectedState, beforeCommit = async () => {} } = {}) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
   return withRepositoryLock(repo, async () => {
     const initialState = await repositoryState(repo);
-    /* istanbul ignore next -- concurrent deployment changes require integration timing. */
     if (expectedState && (expectedState.repo !== repo || initialState !== expectedState.state)) {
       throw new Error('repository changed during deployment; refusing to commit');
     }
     const relativePath = await relativeConfigPath(repo, config);
     const { stdout: diff } = await git(['diff', 'HEAD', '--', relativePath], repo);
     if (!diff) return false;
-    /* istanbul ignore next -- requires a concurrent repository mutation. */
+    await beforeCommit(repo);
     if (await repositoryState(repo) !== initialState) throw new Error('repository changed during pushback; refusing to commit');
     await git(['add', '--', relativePath], repo);
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
@@ -142,7 +130,7 @@ export async function pushBack(config, { force = false, expectedState } = {}) {
     try {
       await git(['push'], repo);
     } catch (error) {
-      throw await pushFailure(repo, error);
+      throw await pushFailure(git, repo, error);
     }
     return true;
   }, force);

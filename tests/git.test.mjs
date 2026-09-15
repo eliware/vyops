@@ -60,6 +60,7 @@ test('Git integration is optional outside a repository', async () => {
   await writeFile(config, 'system {}\n');
   try {
     await expect(shouldSkip(config)).resolves.toBe(false);
+    await expect(repositorySnapshot(config)).resolves.toBeNull();
     await expect(pushBack(config)).resolves.toBe(false);
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -111,6 +112,34 @@ test('shouldSkip accepts a repository-relative config path', async () => {
     await expect(shouldSkip('config.boot')).resolves.toBe(true);
   } finally {
     process.chdir(previous);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('repository snapshots identify detached HEAD state', async () => {
+  const { directory, config } = await repository();
+  try {
+    await git(directory, 'checkout', '--detach', 'HEAD');
+    await expect(repositorySnapshot(config)).resolves.toMatchObject({ state: expect.stringContaining('\nDETACHED\n') });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('pushback rejects a configuration outside the repository', async () => {
+  const { directory } = await repository();
+  await mkdir(join(directory, 'sub'));
+  const outside = join(directory, '..', 'outside-config.boot');
+  await writeFile(outside, 'system {}\n');
+  const linked = join(directory, 'sub', 'config.boot');
+  const realpath = jest.spyOn(fs, 'realpath').mockImplementation(async value =>
+    String(value) === directory ? directory : outside);
+  try {
+    await expect(pushBack(linked))
+      .rejects.toThrow('configuration path is outside the Git repository');
+  } finally {
+    realpath.mockRestore();
+    await rm(outside, { force: true });
     await rm(directory, { recursive: true, force: true });
   }
 });
@@ -177,6 +206,28 @@ test('pushBack includes staged config changes', async () => {
   }
 });
 
+test('push failure remains clear when repository metadata cannot be read', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'vyops-push-metadata-'));
+  const remote = join(directory, 'remote.git');
+  await git(directory, 'init', '--bare', remote);
+  const repo = join(directory, 'repo');
+  await git(directory, 'clone', remote, repo);
+  await git(repo, 'config', 'user.email', 'test@example.invalid');
+  await git(repo, 'config', 'user.name', 'Test');
+  const config = join(repo, 'config.boot');
+  await writeFile(config, 'system {}\n');
+  await git(repo, 'add', 'config.boot');
+  await git(repo, 'commit', '-m', 'Initial');
+  await git(repo, 'push', '-u', 'origin', 'HEAD');
+  await writeFile(config, 'system {\n    host-name changed\n}\n');
+  await writeFile(join(repo, '.git', 'hooks', 'pre-push'), '#!/bin/sh\nrm -f .git/HEAD\nexit 1\n');
+  try {
+    await expect(pushBack(config)).rejects.toThrow(/git push failed after local commit unknown; branch: DETACHED; upstream: \(none\)/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('pushBack refuses a repository changed during deployment', async () => {
   const { directory, config } = await repository();
   const snapshot = await repositorySnapshot(config);
@@ -186,6 +237,18 @@ test('pushBack refuses a repository changed during deployment', async () => {
   await expect(run('git', ['log', '-1', '--format=%s'], { cwd: directory }))
     .resolves.toMatchObject({ stdout: 'Initial\n' });
   await rm(directory, { recursive: true, force: true });
+});
+
+test('pushBack refuses a repository changed after diff calculation', async () => {
+  const { directory, config } = await repository();
+  await writeFile(config, 'system {\n    host-name changed\n}\n');
+  try {
+    await expect(pushBack(config, {
+      beforeCommit: async repo => writeFile(join(repo, 'created-during-pushback.txt'), 'changed\n'),
+    })).rejects.toThrow('repository changed during pushback; refusing to commit');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('pushBack handles a changed repository-relative config path', async () => {

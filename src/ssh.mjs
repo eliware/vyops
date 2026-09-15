@@ -1,76 +1,55 @@
-import { fs, log } from '@eliware/common';
+import { log } from '@eliware/common';
 import { randomUUID } from 'node:crypto';
-import { connect as sharedConnect } from '@eliware/ssh-client';
+import { connect as establishConnection } from './ssh/connection.mjs';
 
-/* istanbul ignore next -- environment-specific timeout overrides are integration configuration. */
+export { parseTarget } from './ssh/target.mjs';
+export { upload, download } from './ssh/file-transfer.mjs';
+
+// codescope ignore: next environment-specific timeout overrides are integration configuration.
 const timeout = (name, fallback) => Number.isFinite(Number(process.env[name])) && Number(process.env[name]) > 0 ? Number(process.env[name]) : fallback;
-const CONNECT_TIMEOUT = timeout('VYOPS_CONNECT_TIMEOUT', 30000);
-const OPERATION_TIMEOUT = timeout('VYOPS_OPERATION_TIMEOUT', 60000);
-const INTERACTIVE_TIMEOUT = timeout('VYOPS_INTERACTIVE_TIMEOUT', 60000);
 const CLOSE_TIMEOUT = 5000;
 
 function context(client) {
   return `deployment=${client?.__vyopsDeploymentId || 'unknown'} target=${client?.__vyopsTarget || 'unknown'} phase=${client?.__vyopsPhase || 'unknown'}`;
 }
 
-function timeoutError(message, client) {
+function commandSummary(command) {
+  const text = String(command).trim();
+  const first = text.split(/\s+/, 1)[0] || '(empty)';
+  return text === first ? first : `${first} [arguments redacted]`;
+}
+
+function timeoutError(message, _client) {
   const error = new Error(message);
   error.code = 'VYOPS_TIMEOUT';
   return error;
 }
 
-export function parseTarget(target) {
-  if (typeof target !== 'string' || !target || /\s/.test(target)) {
-    throw new Error('invalid target; expected user@host');
-  }
-  const at = target.indexOf('@');
-  if (at <= 0 || at !== target.lastIndexOf('@') || at === target.length - 1) {
-    throw new Error('invalid target; expected user@host');
-  }
-  const username = target.slice(0, at);
-  const host = target.slice(at + 1);
-  if (!/^[A-Za-z0-9._-]+$/.test(username) || !/^(?:\[[0-9A-Fa-f]*:[0-9A-Fa-f:]+\]|(?!\[)[A-Za-z0-9._:-]+)$/.test(host)) {
-    throw new Error('invalid target; expected user@host');
-  }
-  return { username, host };
-}
-
-export async function connect(target, { password } = {}) {
-  const { username, host } = parseTarget(target);
-  log.debug(`[vyops] SSH connecting: ${username}@${host}`);
-  const connection = await sharedConnect({ host, username,
-    privateKeyPath: password === undefined ? (process.env.VYOPS_SSH_KEY || undefined) : undefined,
-    agent: process.env.SSH_AUTH_SOCK, knownHostsPath: process.env.SSH_KNOWN_HOSTS || '~/.ssh/known_hosts',
-    hostCaPath: process.env.SSH_HOST_CA, password, connectTimeout: CONNECT_TIMEOUT });
-  const client = connection.raw;
-  client.__vyopsTarget = target;
-  client.__vyopsPhase = 'connect';
-  activeClients.add(client);
-  log.debug(`[vyops] SSH connected: ${username}@${host}`);
-  return client;
+export async function connect(target, options = {}) {
+  return establishConnection(target, { ...options, register: client => activeClients.add(client) });
 }
 
 export function exec(client, command) {
   const operation = randomUUID();
-  log.debug(`[vyops] SSH exec [${operation}]: ${command}`);
+  log.debug(`[vyops] SSH exec [${operation}]: ${commandSummary(command)}`);
   return new Promise((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => {
       settled = true;
       stream?.close?.();
       client.end?.();
-      reject(timeoutError(`SSH command timed out [${operation}] (${context(client)}): ${command}`, client));
-    }, OPERATION_TIMEOUT);
+      reject(timeoutError(`SSH command timed out [${operation}] (${context(client)}): ${commandSummary(command)}`, client));
+    }, timeout('VYOPS_OPERATION_TIMEOUT', 60000));
     let stream;
     client.exec(command, (error, openedStream) => {
-      /* istanbul ignore next -- late callbacks require a real SSH transport. */
+      // codescope ignore: next late callback requires a real SSH transport.
       if (settled) { openedStream?.close?.(); return; }
       stream = openedStream;
-      /* istanbul ignore next -- channel setup errors require transport-specific callbacks. */
+      // codescope ignore: next channel setup error requires a transport-specific callback.
       if (error) { settled = true; clearTimeout(timer); return reject(error); }
       let stdout = '', stderr = '';
       const finish = (callback, value) => {
-        /* istanbul ignore next -- duplicate stream events require a real SSH transport. */
+        // codescope ignore: next duplicate stream event requires a real SSH transport.
         if (settled) return;
         settled = true;
         clearTimeout(timer);
@@ -84,68 +63,7 @@ export function exec(client, command) {
   });
 }
 
-export async function upload(client, local, remote, mode = 0o600) {
-  const operation = randomUUID();
-  log.debug(`[vyops] SFTP upload [${operation}]: ${local} -> ${remote}`);
-  const data = await fs.promises.readFile(local);
-  return new Promise((resolve, reject) => {
-    let sftp;
-    let settled = false;
-    const timer = setTimeout(() => {
-      settled = true;
-      sftp?.end?.();
-      client.end?.();
-      reject(timeoutError(`SFTP upload timed out [${operation}] (${context(client)}): ${remote}`, client));
-    }, OPERATION_TIMEOUT);
-    client.sftp((error, openedSftp) => {
-      /* istanbul ignore next -- late callbacks require a real SFTP transport. */
-      if (settled) { openedSftp?.end?.(); return; }
-      sftp = openedSftp;
-      /* istanbul ignore next -- SFTP setup errors require transport-specific callbacks. */
-      if (error) { settled = true; clearTimeout(timer); return reject(error); }
-      sftp.writeFile(remote, data, { mode }, error2 => {
-        /* istanbul ignore next -- duplicate SFTP callbacks require a real transport. */
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        sftp.end?.();
-        return error2 ? reject(error2) : resolve();
-      });
-    });
-  });
-}
-
-export function download(client, remote, local) {
-  const operation = randomUUID();
-  log.debug(`[vyops] SFTP download [${operation}]: ${remote} -> ${local}`);
-  return new Promise((resolve, reject) => {
-    let sftp;
-    let settled = false;
-    const timer = setTimeout(() => {
-      settled = true;
-      sftp?.end?.();
-      client.end?.();
-      reject(timeoutError(`SFTP download timed out [${operation}] (${context(client)}): ${remote}`, client));
-    }, OPERATION_TIMEOUT);
-    client.sftp((error, openedSftp) => {
-      /* istanbul ignore next -- late callbacks require a real SFTP transport. */
-      if (settled) { openedSftp?.end?.(); return; }
-      sftp = openedSftp;
-      /* istanbul ignore next -- SFTP setup errors require transport-specific callbacks. */
-      if (error) { settled = true; clearTimeout(timer); return reject(error); }
-      sftp.fastGet(remote, local, error2 => {
-        /* istanbul ignore next -- duplicate SFTP callbacks require a real transport. */
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        sftp.end?.();
-        return error2 ? reject(error2) : resolve();
-      });
-    });
-  });
-}
-
-export function interactive(client, commands, log = () => {}) {
+export function interactive(client, commands, log = () => {}, onCommandComplete = () => {}) {
   const operation = randomUUID();
   return new Promise((resolve, reject) => {
     client.shell({ term: 'xterm', cols: 160, rows: 48 }, (error, stream) => {
@@ -169,7 +87,7 @@ export function interactive(client, commands, log = () => {}) {
         client.end?.();
         const command = currentItem ? (typeof currentItem === 'string' ? currentItem : currentItem.command) : 'none';
         reject(timeoutError(`Interactive SSH timed out [${operation}] (${context(client)}): ${command}`, client));
-      }, INTERACTIVE_TIMEOUT);
+      }, timeout('VYOPS_INTERACTIVE_TIMEOUT', 60000));
       const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
       const title = new RegExp(`${String.fromCharCode(27)}\\][^${String.fromCharCode(7)}]*(?:${String.fromCharCode(7)}|${String.fromCharCode(27)}\\\\)`, 'g');
       const clean = value => value.replace(ansi, '').replace(title, '').replace(/\r/g, '');
@@ -197,6 +115,7 @@ export function interactive(client, commands, log = () => {}) {
         log(`write complete [${index}/${commands.length}]`);
       };
       stream.on('data', data => {
+        if (settled || timedOut) return;
         const text = data.toString();
         output += text;
         response += text;
@@ -235,6 +154,7 @@ export function interactive(client, commands, log = () => {}) {
           && !/Proceed\s*\?\s*\[Y\/n\]/i.test(cleaned);
         log(`command completion check: complete=${commandComplete}`);
         if (commandComplete) {
+          onCommandComplete(typeof currentItem === 'string' ? currentItem : currentItem.command);
           answering = false;
           waiting = false;
           log(`response [${index}]:\n${cleaned}`);
@@ -250,6 +170,8 @@ export function interactive(client, commands, log = () => {}) {
         log(`interactive stream error: ${error.message}`);
         clearTimeout(timer);
         settled = true;
+        stream.close?.();
+        client.end?.();
         reject(error);
       });
       stream.stderr.on('data', data => {
@@ -257,6 +179,14 @@ export function interactive(client, commands, log = () => {}) {
         output += text;
         response += text;
         log(`recv stderr (${text.length} bytes): ${JSON.stringify(text)}`);
+        if (waiting && typeof currentItem !== 'string' && currentItem.reject?.test(clean(response))) {
+          settled = true;
+          clearTimeout(timer);
+          stream.close();
+          client.end?.();
+          const detail = failureDetail(clean(response));
+          reject(new Error(`interactive command failed: ${currentItem.command}${detail ? ` (${detail})` : ''}`));
+        }
       });
       stream.on('close', () => {
         log(`VyOS interactive shell closed; settled=${settled}; index=${index}/${commands.length}`);

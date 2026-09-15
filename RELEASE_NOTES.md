@@ -167,7 +167,18 @@ Verification:
 - `npm run audit`
 - `npm run validate:package`
 
-## 1.0.2
+## 1.0.3 - 2026-08-10
+
+- Expanded README documentation for installation, configuration, usage, security, operations, development, and support.
+- Documented Git pushback behavior and dry-run validation.
+- Added `@eliware/common` logging, filesystem, path, error-handler, and signal-handler integration.
+
+Verification:
+
+- `npm test`
+- `npm run lint`
+
+## 1.0.2 - 2026-08-10
 
 - Hardened SSH host verification with the user's `known_hosts` file.
 - Added validated targets, SSH/SFTP timeouts, randomized remote temporary paths, and awaited cleanup.
@@ -183,14 +194,3 @@ Verification:
 - `npm run lint`
 - `npm run audit`
 - `npm run validate:package`
-
-## 1.0.3 - 2026-08-10
-
-- Expanded README documentation for installation, configuration, usage, security, operations, development, and support.
-- Documented Git pushback behavior and dry-run validation.
-- Added `@eliware/common` logging, filesystem, path, error-handler, and signal-handler integration.
-
-Verification:
-
-- `npm test`
-- `npm run lint`

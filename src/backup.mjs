@@ -1,23 +1,7 @@
 import { fs, path, log } from '@eliware/common';
 import { randomUUID } from 'node:crypto';
 import { close, connect, download, exec } from './ssh.mjs';
-
-function remoteScriptPath(value) {
-  const name = value.replace(/^\/config\/scripts\/?/, '');
-  if (!name || name.startsWith('/') || name.split('/').includes('..')) throw new Error(`unsafe remote script path: ${value}`);
-  return name;
-}
-
-export async function validateRemoteScript(client, remote) {
-  const metadata = await exec(client, `test -f ${JSON.stringify(remote)} && test ! -L ${JSON.stringify(remote)} && test "$(realpath -- ${JSON.stringify(remote)})" = ${JSON.stringify(remote)}`);
-  /* istanbul ignore next -- remote metadata failures require a live filesystem race. */
-  if (metadata.code !== 0) throw new Error(`remote script changed or is not a regular file: ${remote}`);
-}
-
-async function snapshotRemoteScript(client, remote, snapshot) {
-  const result = await exec(client, `exec 3<${JSON.stringify(remote)} && test -f /proc/self/fd/3 && test ! -L /proc/self/fd/3 && test "$(realpath -- /proc/self/fd/3)" = ${JSON.stringify(remote)} && cat <&3 > ${JSON.stringify(snapshot)}`);
-  if (result.code !== 0) throw new Error(`remote script changed or is not a regular file: ${remote}`);
-}
+import { remoteScriptPath, shellQuote, snapshotRemoteScript } from './backup/remote-script.mjs';
 
 export async function backup({ target, config, password }) {
   const client = password === undefined ? await connect(target) : await connect(target, { password });
@@ -26,14 +10,12 @@ export async function backup({ target, config, password }) {
     await fs.promises.mkdir(path(config, 'scripts'), { recursive: true });
     await download(client, '/config/config.boot', path(config, 'config.boot'));
     const links = await exec(client, "find -P /config/scripts -type l -print0 2>/dev/null");
-    /* istanbul ignore next -- remote inspection failures require a live router. */
+    // codescope ignore: next remote inspection failure requires a live router.
     if (links.code !== 0) throw new Error(`could not inspect remote scripts: ${links.stderr || links.stdout}`.trim());
-    /* istanbul ignore next -- a live remote filesystem is required to produce a symlink record. */
+    // codescope ignore: next symlink discovery requires a live remote filesystem.
     if (links.stdout) {
-      /* istanbul ignore next -- symlink discovery requires a live remote filesystem. */
-      /* istanbul ignore next -- a live remote filesystem is required to produce a symlink record. */
+      // codescope ignore: next symlink discovery requires a live remote filesystem.
       const first = links.stdout.split('\0').filter(Boolean)[0];
-      /* istanbul ignore next -- symlink discovery requires a live remote filesystem. */
       throw new Error(`remote script symlink rejected: ${first}`);
     }
     const result = await exec(client, "find -P /config/scripts -type f -print0 2>/dev/null");
@@ -43,13 +25,13 @@ export async function backup({ target, config, password }) {
     for (const name of files) {
       const remote = `/config/scripts/${name}`;
       const snapshot = `/tmp/.vyops-backup.${randomUUID()}`;
-      await snapshotRemoteScript(client, remote, snapshot);
+      await snapshotRemoteScript(exec, client, remote, snapshot);
       const local = path(config, 'scripts', name);
       await fs.promises.mkdir(path(local, '..'), { recursive: true });
       try {
         await download(client, snapshot, local);
       } finally {
-        await exec(client, `rm -f -- ${JSON.stringify(snapshot)}`);
+        await exec(client, `rm -f -- ${shellQuote(snapshot)}`);
       }
       log.debug(`[vyops] backed up script: ${name}`);
     }
