@@ -12,21 +12,26 @@ async function git(args, cwd) {
   return run('git', args, { cwd, encoding: 'utf8' });
 }
 
-async function repositoryState(repo) {
-  const [head, branch, upstream, status] = await Promise.all([
+async function repositoryState(repo, configPath) {
+  const deploymentPaths = [configPath, `${configPath}.manifest.tsv`];
+  const excludedPaths = deploymentPaths.map(value => `:(exclude,literal)${value}`);
+  const [head, branch, upstream, status, stagedDeploymentPaths] = await Promise.all([
     git(['rev-parse', 'HEAD'], repo),
     // codescope ignore: next detached HEAD is covered by integration repositories.
     git(['symbolic-ref', '--quiet', '--short', 'HEAD'], repo).catch(() => ({ stdout: 'DETACHED' })),
     git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], repo).catch(() => ({ stdout: '(none)' })),
-    git(['status', '--porcelain=v1'], repo),
+    git(['status', '--porcelain=v1', '--untracked-files=all', '--', '.', ...excludedPaths], repo),
+    git(['diff', '--cached', '--name-status', '--no-renames', '--', ...deploymentPaths], repo),
   ]);
-  return `${head.stdout.trim()}\n${branch.stdout.trim()}\n${upstream.stdout.trim()}\n${status.stdout}`;
+  return `${head.stdout.trim()}\n${branch.stdout.trim()}\n${upstream.stdout.trim()}\n${stagedDeploymentPaths.stdout}${status.stdout}`;
 }
 
 // codescope ignore: next repository snapshot is exercised by the CLI integration path.
 export async function repositorySnapshot(config) {
   const repo = await repositoryRoot(config);
-  return repo ? { repo, state: await repositoryState(repo) } : null;
+  if (!repo) return null;
+  const configPath = await relativeConfigPath(repo, config);
+  return { repo, state: await repositoryState(repo, configPath) };
 }
 
 async function staleLock(lock) {
@@ -91,6 +96,15 @@ async function relativeConfigPath(repo, config) {
   return relativePath;
 }
 
+async function pushbackPaths(repo, configPath) {
+  const paths = [configPath];
+  const manifestPath = `${configPath}.manifest.tsv`;
+  const tracked = await git(['ls-files', '--error-unmatch', '--', manifestPath], repo).then(() => true, () => false);
+  const present = await fs.access(resolve(repo, manifestPath)).then(() => true, () => false);
+  if (tracked || present) paths.push(manifestPath);
+  return paths;
+}
+
 async function repositoryRoot(config) {
   try {
     const { stdout } = await git(['rev-parse', '--show-toplevel'], configDirectory(config));
@@ -114,19 +128,20 @@ export async function shouldSkip(config) {
 export async function pushBack(config, { force = false, expectedState, beforeCommit = async () => {} } = {}) {
   const repo = await repositoryRoot(config);
   if (!repo) return false;
+  const relativePath = await relativeConfigPath(repo, config);
+  const deploymentPaths = await pushbackPaths(repo, relativePath);
   return withRepositoryLock(repo, async () => {
-    const initialState = await repositoryState(repo);
+    const initialState = await repositoryState(repo, relativePath);
     if (expectedState && (expectedState.repo !== repo || initialState !== expectedState.state)) {
       throw new Error('repository changed during deployment; refusing to commit');
     }
-    const relativePath = await relativeConfigPath(repo, config);
-    const { stdout: diff } = await git(['diff', 'HEAD', '--', relativePath], repo);
+    const { stdout: diff } = await git(['diff', 'HEAD', '--', ...deploymentPaths], repo);
     if (!diff) return false;
     await beforeCommit(repo);
-    if (await repositoryState(repo) !== initialState) throw new Error('repository changed during pushback; refusing to commit');
-    await git(['add', '--', relativePath], repo);
+    if (await repositoryState(repo, relativePath) !== initialState) throw new Error('repository changed during pushback; refusing to commit');
+    await git(['add', '--', ...deploymentPaths], repo);
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-    await git(['commit', '--only', '-m', `Pushback ${timestamp}`, '--', relativePath], repo);
+    await git(['commit', '--only', '-m', `Pushback ${timestamp}`, '--', ...deploymentPaths], repo);
     try {
       await git(['push'], repo);
     } catch (error) {

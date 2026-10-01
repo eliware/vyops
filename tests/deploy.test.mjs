@@ -298,6 +298,25 @@ test('runs optional post-deployment verification commands', async () => {
     .toEqual(['show vrrp', 'show interfaces wireguard', 'show bgp summary', 'show ip route', 'show haproxy']);
 });
 
+test('does not fail verification when optional router services are absent', async () => {
+  const absent = new Map([
+    ['show vrrp', 'VRRP data is not available (process not running or no active groups)'],
+    ['show interfaces wireguard', 'Interface        IP Address\n---------        ----------\n'],
+    ['show bgp summary', '% BGP instance not found'],
+    ['show haproxy', 'Haproxy is not configured'],
+  ]);
+  mocks.exec.mockImplementation(async (_client, command) => {
+    if (!command.startsWith('vbash -ic ')) return { code: 0, stdout: '', stderr: '' };
+    const check = JSON.parse(command.slice('vbash -ic '.length));
+    return absent.has(check)
+      ? { code: 1, stdout: absent.get(check), stderr: '' }
+      : { code: 0, stdout: 'route table available', stderr: '' };
+  });
+  await expect(deploy({ target: 'testuser@test-router.example.test', config: '/tmp/config.boot', verify: true })).resolves.toBe(0);
+  expect(logMock.info).toHaveBeenCalledWith(expect.stringContaining('show bgp summary: optional feature is not configured or active; continuing'));
+  expect(logMock.info).toHaveBeenCalledWith(expect.stringContaining('show interfaces wireguard: no WireGuard interfaces are configured; continuing'));
+});
+
 test('fails when a verification command returns an error', async () => {
   mocks.exec.mockImplementation(async (_client, command) => command.startsWith('vbash -ic')
     ? { code: 1, stdout: '', stderr: 'verification failed' }

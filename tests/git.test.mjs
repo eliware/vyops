@@ -36,7 +36,8 @@ async function repository() {
   await git(directory, 'config', 'user.name', 'Test');
   const config = join(directory, 'config.boot');
   await writeFile(config, 'system {}\n');
-  await git(directory, 'add', 'config.boot');
+  await writeFile(`${config}.manifest.tsv`, 'kind\tpath\n');
+  await git(directory, 'add', 'config.boot', 'config.boot.manifest.tsv');
   await git(directory, 'commit', '-m', 'Initial');
   return { directory, config };
 }
@@ -178,12 +179,16 @@ test('pushBack commits and pushes a changed config', async () => {
   await git(repo, 'add', 'config.boot');
   await git(repo, 'commit', '-m', 'Initial');
   await git(repo, 'push', '-u', 'origin', 'HEAD');
+  const snapshot = await repositorySnapshot(config);
   await writeFile(config, 'system {\n    host-name changed\n}\n');
+  await writeFile(`${config}.manifest.tsv`, 'kind\tpath\nfile\thealth.sh\n');
   const previous = process.cwd();
   process.chdir(repo);
   try {
-    await expect(pushBack(config)).resolves.toBe(true);
+    await expect(pushBack(config, { expectedState: snapshot })).resolves.toBe(true);
     await expect(run('git', ['log', '-1', '--format=%s'], { cwd: repo })).resolves.toMatchObject({ stdout: expect.stringMatching(/^Pushback /) });
+    await expect(run('git', ['show', '--format=', '--name-only', 'HEAD'], { cwd: repo }))
+      .resolves.toMatchObject({ stdout: expect.stringContaining('config.boot.manifest.tsv') });
   } finally {
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
@@ -237,6 +242,19 @@ test('pushBack refuses a repository changed during deployment', async () => {
   await expect(run('git', ['log', '-1', '--format=%s'], { cwd: directory }))
     .resolves.toMatchObject({ stdout: 'Initial\n' });
   await rm(directory, { recursive: true, force: true });
+});
+
+test('pushBack still refuses unrelated repository changes during deployment', async () => {
+  const { directory, config } = await repository();
+  const snapshot = await repositorySnapshot(config);
+  await writeFile(config, 'system {\n    host-name changed\n}\n');
+  await writeFile(join(directory, 'other.txt'), 'concurrent change\n');
+  try {
+    await expect(pushBack(config, { expectedState: snapshot }))
+      .rejects.toThrow('repository changed during deployment; refusing to commit');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('pushBack refuses a repository changed after diff calculation', async () => {

@@ -9,6 +9,8 @@
 - Hardened script bundle validation, executable mode handling, and cleanup after failed deployments.
 - Added optional post-release router verification and `--no-pushback`/`--no-hooks` controls.
 - Added Git worktree state checks before pushback.
+- Allow deployment-synchronized config and manifest files through the pushback concurrency guard while retaining checks for unrelated repository changes; push both files together.
+- Treat absent optional router services as non-blocking verification results.
 - Added per-release remote script manifests with pre-existing state, modes, and SHA-256 hashes.
 - Successful releases retain a local copy of the deployment manifest beside the synchronized config.
 

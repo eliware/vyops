@@ -5,6 +5,7 @@ import { extractCompare } from './deploy/compare.mjs';
 import { remotePreflight } from './deploy/preflight.mjs';
 import { registerDeploymentCleanup } from './deploy/cleanup.mjs';
 import { installScripts } from './deploy/script-sync.mjs';
+import { optionalVerificationStatus } from './deploy/verification-status.mjs';
 
 export { cleanupActiveDeployments } from './deploy/cleanup.mjs';
 
@@ -107,9 +108,11 @@ export async function deploy({ target, config, password, noHooks = false, verify
     if (verify) {
       for (const command of ['show vrrp', 'show interfaces wireguard', 'show bgp summary', 'show ip route', 'show haproxy']) {
         const result = await exec(client, `vbash -ic ${JSON.stringify(command)}`);
+        const optionalStatus = optionalVerificationStatus(command, `${result.stdout}\n${result.stderr}`);
         // codescope ignore: next router command failures require live-router integration.
-        if (result.code !== 0) throw new Error(`verification phase failed (${command}): ${redact(result.stderr || result.stdout)}`.trim());
-        log.info(redact(`[verify] ${command}\n${result.stdout}`));
+        if (result.code !== 0 && !optionalStatus) throw new Error(`verification phase failed (${command}): ${redact(result.stderr || result.stdout)}`.trim());
+        if (optionalStatus) log.info(`[verify] ${command}: ${optionalStatus}; continuing`);
+        else log.info(redact(`[verify] ${command}\n${result.stdout}`));
       }
     }
     phase('run hooks');
