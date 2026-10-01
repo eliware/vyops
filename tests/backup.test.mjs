@@ -26,7 +26,7 @@ test('backs up config and nested scripts', async () => {
   expect(mocks.download).toHaveBeenNthCalledWith(2, expect.anything(), expect.stringMatching(/^\/tmp\/\.vyops-backup\.[0-9a-f-]{36}$/), join('/tmp/backup', 'scripts', 'foo.sh'));
   expect(mocks.download).toHaveBeenNthCalledWith(3, expect.anything(), expect.stringMatching(/^\/tmp\/\.vyops-backup\.[0-9a-f-]{36}$/), join('/tmp/backup', 'scripts', 'nested', 'bar'));
   expect(mocks.exec.mock.calls.some(([, command]) => command.includes('exec 3<') && command.includes('/proc/self/fd/3'))).toBe(true);
-  expect(fsMocks.writeFile).toHaveBeenCalledWith('/tmp/backup.manifest.tsv', 'kind\tpath\nfile\tfoo.sh\nfile\tnested/bar\n', 'utf8');
+  expect(fsMocks.writeFile).toHaveBeenCalledWith(join('/tmp/backup', 'config.boot.manifest.tsv'), 'kind\tpath\nfile\tfoo.sh\nfile\tnested/bar\n', 'utf8');
   expect(mocks.close).toHaveBeenCalled();
 });
 
