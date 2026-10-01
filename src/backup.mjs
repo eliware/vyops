@@ -35,6 +35,8 @@ export async function backup({ target, config, password }) {
       }
       log.debug(`[vyops] backed up script: ${name}`);
     }
+    const manifest = ['kind\tpath', ...files.map(name => `file\t${name}`)].join('\n') + '\n';
+    await fs.promises.writeFile(`${config}.manifest.tsv`, manifest, 'utf8');
     return 0;
   } finally {
     await close(client);

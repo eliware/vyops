@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Reject CR bytes in every non-binary bundle file during local preflight, and record backed-up script paths so later releases can distinguish backup-managed files from unmanaged router content.
 - Added explicit release target summaries and `--yes` acknowledgement support.
 - Added deployment phase and SSH operation identifiers to debug output.
 - Added configurable connect, operation, and interactive timeouts.

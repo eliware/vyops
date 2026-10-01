@@ -47,7 +47,7 @@ test('treats a non-directory scripts path as a traversal error', async () => {
 test.each([
   ['bad.sh', 'echo bad\n', 0o755, 'no shebang'],
   ['bad.sh', '#!/usr/bin/python\n', 0o755, 'unsupported interpreter'],
-  ['bad.sh', '#!/bin/sh\r\necho bad\r\n', 0o755, 'CRLF'],
+  ['bad.sh', '#!/bin/sh\r\necho bad\r\n', 0o755, 'CR bytes'],
 ])('rejects invalid executable script %s', async (name, content, mode, message) => {
   const root = await bundleDirectory();
   try {
@@ -55,6 +55,15 @@ test.each([
     await writeFile(file, content);
     await chmod(file, mode);
     await expect(validateBundle(join(root, 'config.boot'), 'system {}\n', { extractTarget: false })).rejects.toThrow(message);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('rejects CRLF in non-executable text files during local preflight', async () => {
+  const root = await bundleDirectory();
+  try {
+    await writeFile(join(root, 'scripts', 'host-cert.pub'), 'ssh-ed25519 AAAA\r\n');
+    await expect(validateBundle(join(root, 'config.boot'), 'system {}\n', { extractTarget: false }))
+      .rejects.toThrow('preflight failed: scripts/host-cert.pub contains CR bytes; convert to LF');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
