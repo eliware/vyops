@@ -16,6 +16,17 @@ function timeoutError(message) {
 export async function upload(client, local, remote, mode = 0o600) {
   const operation = randomUUID();
   log.debug(`[vyops] SFTP upload [${operation}]: ${local} -> ${remote}`);
+  if (client.__vyopsConnection) {
+    try {
+      await client.__vyopsConnection.upload({ localPath: local, remotePath: remote, mode, timeout: timeout('VYOPS_OPERATION_TIMEOUT', 60000) });
+      return;
+    } catch (error) {
+      if (error.code === 'SSH_TIMEOUT' || error.code === 'SSH_TRANSFER_TIMEOUT') {
+        throw timeoutError(`SFTP upload timed out [${operation}] (${context(client)}): ${remote}`);
+      }
+      throw error;
+    }
+  }
   const data = await fs.promises.readFile(local);
   return new Promise((resolve, reject) => {
     let sftp;
@@ -44,6 +55,15 @@ export async function upload(client, local, remote, mode = 0o600) {
 export function download(client, remote, local) {
   const operation = randomUUID();
   log.debug(`[vyops] SFTP download [${operation}]: ${remote} -> ${local}`);
+  if (client.__vyopsConnection) {
+    return client.__vyopsConnection.download({ remotePath: remote, localPath: local, timeout: timeout('VYOPS_OPERATION_TIMEOUT', 60000) })
+      .catch(error => {
+        if (error.code === 'SSH_TIMEOUT' || error.code === 'SSH_TRANSFER_TIMEOUT') {
+          throw timeoutError(`SFTP download timed out [${operation}] (${context(client)}): ${remote}`);
+        }
+        throw error;
+      });
+  }
   return new Promise((resolve, reject) => {
     let sftp;
     let settled = false;

@@ -15,6 +15,6 @@ export async function validateRemoteScript(exec, client, remote) {
 }
 
 export async function snapshotRemoteScript(exec, client, remote, snapshot) {
-  const result = await exec(client, `exec 3<${shellQuote(remote)} && test -f /proc/self/fd/3 && test ! -L /proc/self/fd/3 && test "$(realpath -- /proc/self/fd/3)" = ${shellQuote(remote)} && cat <&3 > ${shellQuote(snapshot)}`);
+  const result = await exec(client, `exec 3<${shellQuote(remote)} && test -f /proc/self/fd/3 && test "$(realpath -- /proc/self/fd/3)" = ${shellQuote(remote)} && cat <&3 > ${shellQuote(snapshot)}`);
   if (result.code !== 0) throw new Error(`remote script changed or is not a regular file: ${remote}`);
 }
