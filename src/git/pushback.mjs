@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { relative, resolve } from "node:path";
+import { relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { path } from "@eliware/common";
 import { pushFailure } from "./push-failure.mjs";
@@ -20,7 +20,7 @@ export async function relativeConfigPath(repo, config) {
     fs.realpath(resolve(config)),
   ]);
   const relativePath = relative(canonicalRepo, canonicalConfig);
-  if (!relativePath || relativePath === ".." || relativePath.startsWith(`..${path.sep}`)) {
+  if (!relativePath || relativePath === ".." || relativePath.startsWith(`..${sep}`)) {
     throw new Error("configuration path is outside the Git repository");
   }
   return relativePath;

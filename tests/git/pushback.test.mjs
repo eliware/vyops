@@ -39,6 +39,14 @@ test("pushBack returns false when config has no diff", async () => {
   }
 });
 
+test("pushBack returns false when config is outside a Git repository", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "vyops-no-git-test-"));
+  const config = join(directory, "config.boot");
+  await writeFile(config, "system {}\n");
+  await expect(pushBack(config)).resolves.toBe(false);
+  await rm(directory, { recursive: true, force: true });
+});
+
 test("pushback rejects a configuration outside the repository", async () => {
   const { directory } = await repository();
   await mkdir(join(directory, "sub"));

@@ -1,5 +1,5 @@
 import { pushFailure } from "../../src/git/push-failure.mjs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -44,7 +44,9 @@ test("push failure remains clear when repository metadata cannot be read", async
   await git(repo, "commit", "-m", "Initial");
   await git(repo, "push", "-u", "origin", "HEAD");
   await writeFile(config, "system {\n    host-name changed\n}\n");
-  await writeFile(join(repo, ".git", "hooks", "pre-push"), "#!/bin/sh\nrm -f .git/HEAD\nexit 1\n");
+  const hook = join(repo, ".git", "hooks", "pre-push");
+  await writeFile(hook, "#!/bin/sh\nrm -f .git/HEAD\nexit 1\n");
+  await chmod(hook, 0o755);
   try {
     await expect(pushBack(config)).rejects.toThrow(
       /git push failed after local commit unknown; branch: DETACHED; upstream: \(none\)/,
