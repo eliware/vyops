@@ -3,13 +3,17 @@ function cleanupCommand({ manifest, installDir, backupDir, remoteDir }) {
 }
 
 export async function rollbackScripts(exec, log, paths) {
-  await exec(paths.client, cleanupCommand(paths)).catch(error => log.warn(`VyOps cleanup warning: script rollback failed: ${error.message}`));
+  await exec(paths.client, cleanupCommand(paths)).catch((error) =>
+    log.warn(`VyOps cleanup warning: script rollback failed: ${error.message}`),
+  );
 }
 
 export async function finalizeScripts(exec, log, paths) {
   if (paths.committed) {
-    await exec(paths.client, `sudo rm -rf -- ${JSON.stringify(paths.backupDir)}; rm -rf -- ${JSON.stringify(paths.remoteDir)}`)
-      .catch(error => log.warn(`VyOps cleanup warning: hook cleanup failed: ${error.message}`));
+    await exec(
+      paths.client,
+      `sudo rm -rf -- ${JSON.stringify(paths.backupDir)}; rm -rf -- ${JSON.stringify(paths.remoteDir)}`,
+    ).catch((error) => log.warn(`VyOps cleanup warning: hook cleanup failed: ${error.message}`));
     return;
   }
   await rollbackScripts(exec, log, paths);

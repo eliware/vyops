@@ -1,7 +1,7 @@
-import { cleanupActiveDeployments, registerDeploymentCleanup } from '../../src/deploy/cleanup.mjs';
-import { jest } from '@jest/globals';
+import { cleanupActiveDeployments, registerDeploymentCleanup } from "../../src/deploy/cleanup.mjs";
+import { jest } from "@jest/globals";
 
-test('runs registered deployment cleanups and unregisters them', async () => {
+test("runs registered deployment cleanups and unregisters them", async () => {
   const cleanup = jest.fn();
   const unregister = registerDeploymentCleanup(cleanup);
   await cleanupActiveDeployments();

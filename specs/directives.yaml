@@ -1,0 +1,19 @@
+version: "11.0"
+description: "VyOps local preflight and safe script path requirements."
+directives:
+  - id: E-1110
+    dos:
+      - Define the public behavior and validation scope for VyOps.
+    donts:
+      - Do not store credentials or live router data in repository specifications.
+    directives:
+      - id: E-1110.1
+        dos:
+          - Preflight validates the config, script tree, and saved script manifest before a release connects to a router.
+          - Preflight makes no SSH connection.
+          - Script paths are safe relative paths. A path may contain an at sign.
+          - Release rejects absolute paths and paths with traversal segments.
+        donts:
+          - Do not connect to a router during preflight.
+          - Do not reject a safe systemd template path because it contains an at sign.
+          - Do not allow an absolute script path or a traversal path.

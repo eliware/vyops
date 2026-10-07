@@ -1,199 +1,126 @@
 # Release Notes
 
-## Unreleased
+## 11.0.0 — 2026-10-07
 
-- Reject CR bytes in every non-binary bundle file during local preflight, and record backed-up script paths so later releases can distinguish backup-managed files from unmanaged router content.
-- Added explicit release target summaries and `--yes` acknowledgement support.
-- Added deployment phase and SSH operation identifiers to debug output.
-- Added configurable connect, operation, and interactive timeouts.
-- Hardened script bundle validation, executable mode handling, and cleanup after failed deployments.
-- Added optional post-release router verification and `--no-pushback`/`--no-hooks` controls.
-- Added Git worktree state checks before pushback.
-- Allow deployment-synchronized config and manifest files through the pushback concurrency guard while retaining checks for unrelated repository changes; push both files together.
-- Treat absent optional router services as non-blocking verification results.
-- Added per-release remote script manifests with pre-existing state, modes, and SHA-256 hashes.
-- Successful releases retain a local copy of the deployment manifest beside the synchronized config.
+### Changed
 
-## 2.1.1
+- Run local bundle and manifest checks before release operations.
+- Allow `@` in safe relative script paths.
+- Align the package with Eliware repository conventions.
 
-- Fix deployment of `.exe` files in the synchronized `scripts/` tree by
-  applying executable permissions (`0755`).
-- Treat `.exe` files as binaries during preflight instead of applying
-  shell-script shebang and line-ending checks.
-- Add regression coverage for executable `.exe` deployment.
+## 2.1.1 — 2026-08-25
 
-## 2.1.0
+### Fixed
 
-- **Breaking:** Replace the legacy positional deployment and `--dry-run`
-  workflows with the first-class `preflight`, `release`, and `backup`
-  commands.
-- Add bundle preflight validation for recursively synchronized scripts,
-  including CRLF detection, shell shebang validation, and executable intent.
-- Derive the release SSH target from the configuration's `system host-name`
-  and single `system login user` entry.
-- Normalize executable script deployment permissions to `0755` and clean up
-  script staging after post-commit synchronization failures.
-- Allow command switches such as `--debug` and `--password-stdin` before or
-  after the command name.
+- Apply executable permissions to `.exe` files in the synchronized `scripts/` tree.
+- Check `.exe` files as binaries during preflight.
 
-## 2.0.0
+## 2.1.0 — 2026-08-24
 
-- **Breaking:** Replace the direct `ssh2` integration with the shared
-  `@eliware/ssh-client` library for SSH, SFTP, interactive sessions, and
-  SSH host-CA verification.
-- Update `@eliware/ssh-client` to 2.0.0 and `@eliware/test` to 2.0.0.
-- Add cross-platform Windows and Ubuntu CI validation, including package,
-  audit, lint, and CLI smoke checks.
-- Close SFTP channels after uploads and downloads to prevent SSH channel exhaustion during script synchronization.
-- Reconnect after interactive deployments before downloading live configuration and cleaning up remote files.
-- Make Git path handling and the `test:gaps` coverage command portable across Windows and Linux.
-- Expand Windows and real-VyOS integration coverage to maintain 100% statements, branches, functions, and lines coverage.
+### Breaking changes
 
-Verification:
+- Replace legacy deploy and dry-run modes with `preflight`, `release`, and `backup` commands.
 
-- `npm test` (100% coverage across statements, branches, functions, and lines)
-- `npm run lint`
-- `npm audit --omit=dev --audit-level=moderate`
-- `npm run validate:package`
-- CLI smoke test on Ubuntu and Windows
+### Added
 
-## 1.0.11
+- Validate nested script bundles before release.
+- Derive the router target from VyOS system configuration.
+- Support global command switches before or after the command name.
 
-- Fix VyOS 1.5 `commit-confirm` handling by answering confirmation prompts
-  with the full `yes` response.
-- Add real disposable-VyOS integration coverage for deployment, backup,
-  script synchronization, and invalid configuration handling.
-- Allow WAN/VPN latency in opt-in real-router integration tests.
+### Changed
 
-Verification:
+- Normalize executable script permissions and clean staged scripts after errors.
 
-- `npm test` (100% coverage across statements, branches, functions, and lines)
-- Real VyOS integration suite (4 tests)
-- `npm run lint`
-- `npm run audit`
+## 2.0.0 — 2026-08-24
 
-## 1.0.10
+### Breaking changes
 
-- Make Git integration optional for deployments using standalone config files.
-- Continue downloading the live VyOS configuration after deployment while
-  skipping repository checks and pushback outside a Git repository.
-- Add regression coverage for non-Git and unexpected repository paths.
+- Replace direct SSH integration with the shared SSH client.
 
-Verification:
+### Added
 
-- `npm test` (100% coverage across statements, branches, functions, and lines)
-- `npm run lint`
-- `npm run audit`
+- Add host certificate checks, transactional hook backup, Git pushback isolation, and debug logging.
+- Add Windows and Ubuntu CI checks.
 
-## 1.0.9
+### Fixed
 
-- Fix `--password-stdin` to read piped passwords correctly on current Node.js
-  runtimes.
-- Restore password-authenticated backup workflows for VyOS hosts.
+- Close SFTP channels after file transfer.
+- Reconnect after interactive deployment before downloads and cleanup.
 
-Verification:
+## 1.0.11 — 2026-08-21
 
-- `npm test` (100% coverage across statements, branches, functions, and lines)
-- `npm run lint`
-- `npm run audit`
+### Fixed
 
-## 1.0.8
+- Confirm VyOS 1.5 commits with the full `yes` response.
 
-- Fail immediately with a redacted VyOS error when confirmed commits reject a
-  configuration after the confirmation prompt.
-- Prevent malformed PKI and other validation failures from appearing to hang
-  at the commit-confirm step.
-- Add regression coverage for post-prompt validation errors and structured
-  failures without detail text.
+### Added
 
-Verification:
+- Add opt-in integration tests for disposable VyOS routers.
 
-- `npm test` (100% coverage across statements, branches, functions, and lines)
-- `npm run lint`
-- `npm run audit`
+## 1.0.10 — 2026-08-21
 
-## 1.0.7
+### Fixed
 
-- Add password-based SSH bootstrap through the secure `--password-stdin` mode.
-- Preserve strict `known_hosts` verification when using password authentication.
-- Handle VyOS return-only pager prompts and disable paging before deployment compares.
-- Add packaged CLI, password-authentication, backup failure, and deployment regression tests.
-- Add opt-in real-VyOS integration test scaffolding for dry-run and backup workflows.
+- Allow deploy without Git and skip pushback outside a Git working tree.
 
-Verification:
+## 1.0.9 — 2026-08-21
 
-- `npm test` (100% coverage across statements, branches, functions, and lines)
-- `npm run lint`
-- `npm run audit`
-- `npm run validate:package`
+### Fixed
 
-## 1.0.6
+- Read piped passwords in current Node.js versions.
 
-- Add `--backup` to download the active `config.boot` and complete
-  `/config/scripts` tree into a local backup directory.
-- Fail promptly on VyOS load and commit errors instead of waiting indefinitely
-  for confirmation prompts.
-- Preserve synchronized scripts when post-commit local config download fails.
-- Include staged configuration changes in Git pushback detection.
-- Expand CLI, deployment, backup, Git, and SSH regression coverage.
+### Added
 
-Verification:
+- Restore password-based SSH bootstrap.
 
-- `npm test` (100% coverage across statements, branches, functions, and lines)
-- `npm run lint`
-- `npm run audit`
-- `npm run validate:package`
+## 1.0.8 — 2026-08-20
 
-## 1.0.5
+### Fixed
 
-- Create nested temporary directories before uploading synchronized scripts.
-- Fix deployment of nested files such as systemd units and boot scripts.
+- Report commit validation errors without waiting for a timeout.
 
-Verification:
+## 1.0.7 — 2026-08-20
 
-- `npm test`
-- `npm run lint`
-- `npm run audit`
-- `npm run validate:package`
+### Added
 
-## 1.0.4
+- Add password-based SSH bootstrap with strict host verification.
+- Add CLI, backup, and deployment regression tests.
 
-- Synchronize the complete repository `scripts/` tree to `/config/scripts`.
-- Preserve script file modes and transactionally back up and roll back all
-  synchronized paths.
-- Add recursive synchronization coverage for nested script directories.
+## 1.0.6 — 2026-08-20
 
-Verification:
+### Added
 
-- `npm test`
-- `npm run lint`
-- `npm run audit`
-- `npm run validate:package`
+- Add backup of the active config and complete scripts tree.
+- Add handling for load and commit errors.
 
-## 1.0.3 - 2026-08-10
+### Fixed
 
-- Expanded README documentation for installation, configuration, usage, security, operations, development, and support.
-- Documented Git pushback behavior and dry-run validation.
-- Added `@eliware/common` logging, filesystem, path, error-handler, and signal-handler integration.
+- Preserve synchronized scripts when config download fails.
+- Include staged changes in Git pushback checks.
 
-Verification:
+## 1.0.5 — 2026-08-13
 
-- `npm test`
-- `npm run lint`
+### Fixed
 
-## 1.0.2 - 2026-08-10
+- Create nested temporary directories before script upload.
 
-- Hardened SSH host verification with the user's `known_hosts` file.
-- Added validated targets, SSH/SFTP timeouts, randomized remote temporary paths, and awaited cleanup.
-- Added transactional post-commit hook backup and rollback.
-- Added Git pushback isolation, locking, stale-lock recovery, and `--force`.
-- Added `--debug` logging and improved interactive deployment validation.
-- Added npm packaging whitelist and package validation.
-- Added CI timeout, dependency audit, and package validation.
+## 1.0.4 — 2026-08-13
 
-Verification:
+### Added
 
-- `npm test` (100% coverage)
-- `npm run lint`
-- `npm run audit`
-- `npm run validate:package`
+- Synchronize nested script files and preserve file modes.
+- Back up and roll back synchronized paths as one transaction.
+
+## 1.0.3 — 2026-08-10
+
+### Added
+
+- Add installation, configuration, usage, security, and operations guidance.
+- Add shared logging, filesystem, path, error, and signal utilities.
+
+## 1.0.2 — 2026-08-10
+
+### Added
+
+- Add SSH host checks, timeouts, remote cleanup, transactional hooks, and Git pushback.
+- Add package allowlist and CI validation.

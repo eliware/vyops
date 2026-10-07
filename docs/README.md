@@ -1,9 +1,12 @@
 # Documentation
 
-This directory contains end-user documentation for VyOps. Start with the
-overview, then follow the usage guide for the supported workflow.
+## Purpose
 
-## Contents
+These documents explain how to use VyOps. They cover the supported CLI workflow.
 
-- [Overview](overview.md)
-- [Usage](usage.md)
+The documentation scope includes setup, usage, validation, and support.
+
+## Documents
+
+- [docs/overview.md](overview.md)
+- [docs/usage.md](usage.md)

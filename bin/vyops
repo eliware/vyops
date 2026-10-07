@@ -1,3 +1,4 @@
 #!/usr/bin/env node
 
-await import('../vyops.mjs');
+const { runCli } = await import("../src/main.mjs");
+await runCli();

@@ -1,169 +1,170 @@
-# VyOps
+# [![eliware.org](https://eliware.org/logos/brand.png)](https://discord.gg/M6aTR9eTwN)
 
-Documentation: [docs](docs/README.md) · [specifications](specs/README.md) · [examples](examples/README.md)
+@eliware/vyops [![npm](https://img.shields.io/npm/v/@eliware/vyops)](https://www.npmjs.com/package/@eliware/vyops) [![License](https://img.shields.io/github/license/eliware/vyops)](https://github.com/eliware/vyops/blob/main/LICENSE) [![CI](https://github.com/eliware/vyops/actions/workflows/ci.yaml/badge.svg)](https://github.com/eliware/vyops/actions/workflows/ci.yaml)
 
-> Deploy native VyOS configuration files over SSH and synchronize confirmed router state back to Git.
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Setup](#setup)
+- [Usage](#usage)
+- [Development](#development)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Security](#security)
+- [Configuration](#configuration)
+- [Operations](#operations)
+- [Commands](#commands)
+- [Exit codes](#exit-codes)
+- [Support](#support)
+- [License](#license)
+- [Links](#links)
 
 ## Features
 
-- SSH-key authentication via the shared `@eliware/ssh-client` library, with
-  optional password bootstrap via stdin.
-- Native VyOS curly-brace configuration validation.
-- Candidate load, `compare`, `commit-confirm`, confirmation, and save.
-- Complete `scripts/` tree synchronization, including post-commit hooks,
-  boot scripts, binaries, and nested support files.
-- Pushback of confirmed `/config/config.boot` changes to the current Git repository.
+VyOps preflights, releases, and backs up native VyOS configuration bundles over SSH. The package synchronizes script files and pushes confirmed router state to Git. This repository owns the VyOps CLI, its tests, and its docs.
+
+The CLI validates local configuration and scripts before it connects. Release uses candidate configuration, `compare`, and `commit-confirm` before it saves router state.
 
 ## Requirements
 
-- Node.js 26 or newer.
-- npm.
-- SSH access to the target VyOS router using an existing key.
-- A Git working tree when pushback behavior is enabled by the deployment workflow.
+- Node.js 26.
+- npm 12 or newer for repository validation.
+- SSH access to a VyOS router with a trusted host key.
+- A Git working tree when release pushback is enabled.
 
-## Installation
+The package description is: `Preflight, release, and back up native VyOS configuration bundles over SSH.` The package author is `Eliware <eliware@eliware.org>`. The license is MIT.
 
-```sh
-npm install
-```
+## Setup
 
-The package provides:
-
-```text
-vyops   Back up, preflight, or release a configuration bundle.
-```
-
-## Configuration
-
-| Variable | Required | Default | Purpose |
-|---|---|---|---|
-| `VYOPS_SSH_KEY` | No | `$HOME/.ssh/id_rsa` | Private SSH key path. |
-| `SSH_AUTH_SOCK` | No | unset | SSH agent socket passed to the shared SSH client. |
-| `SSH_KNOWN_HOSTS` | No | `~/.ssh/known_hosts` | Known-hosts file used for host verification. |
-| `SSH_HOST_CA` | No | unset | Trusted SSH host-CA public key for certificate verification. |
-| `VYOPS_CONNECT_TIMEOUT` | No | `30000` | SSH connection timeout in milliseconds. |
-| `VYOPS_OPERATION_TIMEOUT` | No | `60000` | SSH exec/SFTP operation timeout in milliseconds. |
-| `VYOPS_INTERACTIVE_TIMEOUT` | No | `60000` | Interactive VyOS sequence timeout in milliseconds. |
-| `LOG_LEVEL` | No | `info` | Winston log level (`error`, `warn`, `info`, `http`, `verbose`, `debug`, or `silly`). |
-
-The config must use native VyOS curly-brace syntax. The bundle's `system host-name`
-and single `system login user` entry provide the release target automatically.
-
-For a router that has not received its SSH key yet, provide the SSH password through stdin:
+Install the public package:
 
 ```sh
-printf '%s\n' "$VYOS_PASSWORD" | vyops release --password-stdin /path/to/config.boot
+npm install --global @eliware/vyops
 ```
 
-Password mode still requires the target host key to be present in `known_hosts`; it does not disable host verification. Passwords are not accepted as command-line arguments or written to logs.
+The `vyops` command runs `bin/vyops`. The repository version source is `package.json`. The npm badge shows the published version. A package version in the repository is not available from npm until an authorized release completes.
 
 ## Usage
 
-Preflight a bundle without connecting:
+Check a bundle without an SSH connection:
 
 ```sh
 vyops preflight /path/to/config.boot
 ```
 
-Release a bundle:
+Release a bundle after review:
 
 ```sh
 vyops release --yes /path/to/config.boot
 ```
 
-`--yes` is required to acknowledge the printed target summary. Add `--verify` to run
-post-release checks for VRRP, WireGuard, BGP, routes, and HAProxy. Use
-`--verify-binaries` to require staged `.exe` files to be recognized as
-architecture-matching ELF binaries and to match their local SHA-256 hashes. Use
-`--no-pushback` to leave Git unchanged, or `--no-hooks` only for emergency
-troubleshooting; the latter prints a prominent warning.
-
-Console switches:
+Back up the active config and scripts from a router:
 
 ```sh
-vyops --help
-vyops --version
-vyops --debug preflight /path/to/config.boot
-vyops release --yes --force --debug /path/to/config.boot
-vyops backup vyos@core1 /path/to/backup
+vyops backup vyos@router /path/to/backup
 ```
 
-`backup` downloads the active `/config/config.boot` and the complete
-`/config/scripts` tree into the destination directory. It does not enter
-configuration mode or modify the router.
+The config must use native VyOS syntax. It must define one host name and one login user. Release derives the SSH target from these values.
 
-`preflight` validates the config and recursively checks the `scripts/` tree before
-any SSH connection. Executable scripts must use LF line endings, a supported
-shell shebang, and valid executable intent. `release` runs the same checks before
-uploading or changing the router.
+## Development
 
-Before upload, `release` also checks `/config` availability and writability,
-free space, `sudo`, and `systemd`; HAProxy is required when the bundle contains
-HAProxy hooks. Uploaded scripts are rechecked remotely for executable mode and
-CR bytes. Releases retain `config.boot.manifest.tsv` beside the synchronized
-config; it records hashes, modes, and pre-existing state and drives rollback.
+Use Node.js 26 and npm 12 or newer. Install locked dependencies and run shared validation:
 
-With `--debug`, release logs include operation IDs and deployment phases so an
-individual SSH command, upload, download, timeout, or cleanup event can be
-correlated. Timeout failures discard the affected channel and SSH client and
-report the target operation without logging credentials.
+```sh
+npm ci
+npm test
+```
 
-The opt-in live backup integration test can be run with
-`VYOPS_LIVE_TARGET=vyos@router VYOPS_LIVE_BACKUP_DEST=/path/to/destination`.
-It is skipped unless both variables are explicitly set.
+Run `npm run lint`, `npm run format:check`, `npm run audit`, or `npm run pack` for one validation stage. `npm run format` changes supported files.
 
-The deployment workflow:
+Supported platforms are Linux and Windows. Ubuntu CI tests Node.js 26. Windows runs during development. macOS support is inferred from Node.js and POSIX behavior; CI does not test macOS. Validation evidence: run `npm test` and check the CI workflow.
 
-1. Connects using SSH keys.
-2. Uploads the config to `/home/vyos`.
-3. Loads it into the candidate configuration.
-4. Prints `compare` output.
-5. Runs `commit-confirm`.
-6. Confirms and saves only after confirmation.
-7. Downloads `/config/config.boot` back to the supplied config path (and the
-   deployment manifest when scripts are managed).
-8. Runs the deployed remote post-commit hooks, when present; `--verify` runs
-   the optional operational checks before the hooks.
-9. Removes temporary remote files and closes SSH sessions.
+## Testing
 
-Exit code `0` means success. Non-zero means validation or deployment failure.
+`npm test` runs Eliware validation, Jest tests, and coverage. Tests use local fixtures and mocked SSH operations. The opt-in live test requires explicit `VYOPS_LIVE_TARGET` and `VYOPS_LIVE_BACKUP_DEST` values.
 
-## Git pushback behavior
+Do not set live test variables for routine validation. Tests do not change a router unless the operator enables the live test.
 
-After a successful deployment, VyOps commits and pushes changes to the current Git repository with a `Pushback <timestamp>` commit. A later run skips deployment when the config is unchanged and the latest commit is a pushback commit.
+## Troubleshooting
 
-Review repository status and remotes before deployment. Do not run deployments concurrently against `core1` and `core2`.
+Run `vyops --help` for command syntax. Add `--debug` to preflight or release to view operation phases. Debug output must not contain passwords or private keys.
+
+Preflight reports local config, script, and manifest errors. Release reports router checks after it connects. Check the target host key and SSH access when connection setup fails.
 
 ## Security
 
-- Config files may contain secrets; do not print, publish, or commit deployment logs containing config contents.
-- Use least-privilege SSH accounts and keys dedicated to the target routers.
-- Keep private keys outside the repository and restrict their filesystem permissions.
-- `compare` output is logged during deployment; review logs and diffs through the normal change-control process.
-- Use `LOG_LEVEL=debug` only when troubleshooting; debug output includes connection, path, and command progress.
+Keep config files, router output, logs, and SSH keys private. VyOps does not accept passwords as command arguments. Use `--password-stdin` only for key bootstrap.
 
-## Development and validation
+Keep SSH host verification enabled. Use a least-privilege router account. Review config diffs before release.
 
-```sh
-npm install
-npm test
-npm run lint
-npm run audit
-npm run validate:package
-```
+## Configuration
 
-Coverage is generated by the test command. Focused tests should be added with behavior changes. Never deploy to a router during tests unless explicitly requested.
+Runtime settings and defaults are listed in `.env.example`. The app reads process environment variables and does not load `.env` files. Runtime settings are separate from `package.json` metadata and CLI arguments.
 
-## Operational notes
+| Variable                    | Default              | Purpose                                                                     |
+| --------------------------- | -------------------- | --------------------------------------------------------------------------- |
+| `VYOPS_SSH_KEY`             | `$HOME/.ssh/id_rsa`  | Private SSH key path.                                                       |
+| `SSH_AUTH_SOCK`             | Unset                | SSH agent socket.                                                           |
+| `SSH_KNOWN_HOSTS`           | `~/.ssh/known_hosts` | Trusted host keys.                                                          |
+| `SSH_HOST_CA`               | Unset                | Trusted SSH host certificate authority.                                     |
+| `VYOPS_CONNECT_TIMEOUT`     | `30000`              | SSH connect timeout in milliseconds.                                        |
+| `VYOPS_OPERATION_TIMEOUT`   | `60000`              | SSH operation timeout in milliseconds.                                      |
+| `VYOPS_INTERACTIVE_TIMEOUT` | `60000`              | Interactive command timeout in milliseconds.                                |
+| `LOG_LEVEL`                 | `info`               | Log level: `error`, `warn`, `info`, `http`, `verbose`, `debug`, or `silly`. |
 
-Deployments require existing SSH keys and a reachable VyOS target. The workflow uses confirmed commits and saves only after confirmation. Temporary remote files are cleaned up in the deployment cleanup path. SIGINT, SIGTERM, and SIGHUP trigger SSH cleanup through the shared signal handlers.
+Optional variables are commented out in `.env.example`. Set them in the process environment. The app does not load `.env` files.
+
+## Operations
+
+VyOps starts through `bin/vyops`. Preflight reads local files and makes no SSH connection. Release runs preflight before it checks Git state or connects. Shutdown closes active SSH sessions.
+
+Startup begins in `bin/vyops`. The externally observable workflows are preflight, release, and backup. Release uploads a candidate config, shows the router diff, and uses `commit-confirm`. It confirms and saves after the router accepts the candidate. It downloads the confirmed config and pushes the resulting change to the current Git repository unless `--no-pushback` is set. Shutdown closes active SSH sessions.
+
+Operations boundaries: preflight makes no connection. Backup reads router state. Release changes router state after `--yes` confirms the target summary.
+
+Use `--no-hooks` only with `--force`. This option skips all synchronized scripts. Do not run releases against `core1` and `core2` at the same time.
+
+For an authorized npm release, follow the Operations release handoff. Eli and the project developer run TagIt preflight together. Eli approves the release and instructs DevOps. DevOps runs the authorized release. An agent must not publish without explicit authorization.
+
+## Commands
+
+| Command                             | Action                                           |
+| ----------------------------------- | ------------------------------------------------ |
+| `vyops preflight <config.boot>`     | Validate local config, scripts, and manifest.    |
+| `vyops release --yes <config.boot>` | Release the config to its derived router target. |
+| `vyops backup <target> <directory>` | Back up the active config and scripts.           |
+| `vyops --help`                      | Print command usage.                             |
+| `vyops --version`                   | Print the package version.                       |
+
+Release options include `--force`, `--debug`, `--verify`, `--verify-binaries`, `--no-pushback`, `--no-hooks`, and `--password-stdin`. `--no-hooks` requires `--force`. Release requires `--yes`.
+
+## Exit codes
+
+Exit code `0` means success. A non-zero code means argument, validation, connection, or operation failure. Error output omits passwords and private key data.
 
 ## Support
 
-Repository: `git@github.com:eliware/vyops.git`
+Open a focused issue at the GitHub repository. Include the command, a redacted error, and the VyOps version. Do not attach secrets or full router configs.
 
-Open an issue or provide a focused patch with tests and validation results.
+[![Discord](https://eliware.org/logos/discord_96.png)](https://discord.gg/M6aTR9eTwN)
+
+**[eliware.org on Discord](https://discord.gg/M6aTR9eTwN)**
 
 ## License
 
-MIT License; see `LICENSE`.
+MIT License. See [LICENSE](LICENSE).
+
+## Links
+
+Documentation: [docs](docs/README.md) and [specifications](specs/README.md).
+
+- [Home Page](https://github.com/eliware/vyops#readme)
+- [GitHub repository](https://github.com/eliware/vyops.git)
+- [Eliware](https://eliware.org)
+- [GitHub organization](https://github.com/eliware)
+- [Discord](https://discord.gg/M6aTR9eTwN)
+- [docs](docs/README.md)
+- [specifications](specs/README.md)
+- [Release Notes](RELEASE_NOTES.md)
+- [npm Package](https://www.npmjs.com/package/@eliware/vyops)

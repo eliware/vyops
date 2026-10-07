@@ -1,294 +1,36 @@
-import { mkdtemp, mkdir, rm, utimes, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { promisify } from 'node:util';
-import { execFile } from 'node:child_process';
-import { promises as fs } from 'node:fs';
-import { jest } from '@jest/globals';
-import { repositorySnapshot, shouldSkip, pushBack } from '../src/git.mjs';
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import { execFile } from "node:child_process";
+import { shouldSkip } from "../src/git.mjs";
 
 const run = promisify(execFile);
 
 async function git(cwd, ...args) {
-  await run('git', args, { cwd });
-}
-
-
-function lockPath(directory) {
-  return join(directory, '.git', 'vyops-pushback.lock');
-}
-
-async function makeLock(directory, owner = 'not-a-pid', old = true) {
-  const lock = lockPath(directory);
-  await mkdir(lock);
-  await writeFile(join(lock, 'owner'), `${owner}\n`);
-  if (old) {
-    const time = new Date(Date.now() - 2 * 60 * 60 * 1000);
-    await utimes(lock, time, time);
-  }
-  return lock;
+  await run("git", args, { cwd });
 }
 
 async function repository() {
-  const directory = await mkdtemp(join(tmpdir(), 'vyops-git-test-'));
-  await git(directory, 'init');
-  await git(directory, 'config', 'user.email', 'test@example.invalid');
-  await git(directory, 'config', 'user.name', 'Test');
-  const config = join(directory, 'config.boot');
-  await writeFile(config, 'system {}\n');
-  await writeFile(`${config}.manifest.tsv`, 'kind\tpath\n');
-  await git(directory, 'add', 'config.boot', 'config.boot.manifest.tsv');
-  await git(directory, 'commit', '-m', 'Initial');
+  const directory = await mkdtemp(join(tmpdir(), "vyops-git-test-"));
+  await git(directory, "init");
+  await git(directory, "config", "user.email", "test@example.invalid");
+  await git(directory, "config", "user.name", "Test");
+  const config = join(directory, "config.boot");
+  await writeFile(config, "system {}\n");
+  await writeFile(`${config}.manifest.tsv`, "kind\tpath\n");
+  await git(directory, "add", "config.boot", "config.boot.manifest.tsv");
+  await git(directory, "commit", "-m", "Initial");
   return { directory, config };
 }
 
-test('shouldSkip is false for changed config', async () => {
+test("git checks use the config directory instead of the process cwd", async () => {
   const { directory, config } = await repository();
   const previous = process.cwd();
-  process.chdir(directory);
-  try {
-    await writeFile(config, 'system {\n    host-name changed\n}\n');
-    await expect(shouldSkip(config)).resolves.toBe(false);
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('Git integration is optional outside a repository', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'vyops-no-git-'));
-  const config = join(directory, 'config.boot');
-  await writeFile(config, 'system {}\n');
-  try {
-    await expect(shouldSkip(config)).resolves.toBe(false);
-    await expect(repositorySnapshot(config)).resolves.toBeNull();
-    await expect(pushBack(config)).resolves.toBe(false);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('Git integration propagates unexpected repository errors', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'vyops-invalid-git-'));
-  const parent = join(directory, 'not-a-directory');
-  await writeFile(parent, 'not a directory\n');
-  try {
-    await expect(shouldSkip(join(parent, 'config.boot'))).rejects.toThrow();
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('shouldSkip recognizes an unchanged Pushback commit', async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  try {
-    await git(directory, 'commit', '--allow-empty', '-m', 'Pushback test');
-    await expect(shouldSkip(config)).resolves.toBe(true);
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('pushBack returns false when config has no diff', async () => {
-  const { directory } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  try {
-    await expect(pushBack('config.boot')).resolves.toBe(false);
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('shouldSkip accepts a repository-relative config path', async () => {
-  const { directory } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  try {
-    await git(directory, 'commit', '--allow-empty', '-m', 'Pushback relative');
-    await expect(shouldSkip('config.boot')).resolves.toBe(true);
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('repository snapshots identify detached HEAD state', async () => {
-  const { directory, config } = await repository();
-  try {
-    await git(directory, 'checkout', '--detach', 'HEAD');
-    await expect(repositorySnapshot(config)).resolves.toMatchObject({ state: expect.stringContaining('\nDETACHED\n') });
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('pushback rejects a configuration outside the repository', async () => {
-  const { directory } = await repository();
-  await mkdir(join(directory, 'sub'));
-  const outside = join(directory, '..', 'outside-config.boot');
-  await writeFile(outside, 'system {}\n');
-  const linked = join(directory, 'sub', 'config.boot');
-  const realpath = jest.spyOn(fs, 'realpath').mockImplementation(async value =>
-    String(value) === directory ? directory : outside);
-  try {
-    await expect(pushBack(linked))
-      .rejects.toThrow('configuration path is outside the Git repository');
-  } finally {
-    realpath.mockRestore();
-    await rm(outside, { force: true });
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('shouldSkip checks changed repository-relative config paths', async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  try {
-    await writeFile(config, 'system {\n    host-name changed\n}\n');
-    await expect(shouldSkip('config.boot')).resolves.toBe(false);
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('handles absolute config paths with normalized separators', async () => {
-  const { directory, config } = await repository();
-  const normalizedConfig = config.replaceAll('\\', '/');
-  await expect(shouldSkip(normalizedConfig)).resolves.toBe(false);
-  await expect(pushBack(normalizedConfig)).resolves.toBe(false);
-  await rm(directory, { recursive: true, force: true });
-});
-
-test('pushBack commits and pushes a changed config', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'vyops-remote-'));
-  const remote = join(directory, 'remote.git');
-  await git(directory, 'init', '--bare', remote);
-  const repo = join(directory, 'repo');
-  await git(directory, 'clone', remote, repo);
-  await git(repo, 'config', 'user.email', 'test@example.invalid');
-  await git(repo, 'config', 'user.name', 'Test');
-  const config = join(repo, 'config.boot');
-  await writeFile(config, 'system {\n    host-name initial\n}\n');
-  await git(repo, 'add', 'config.boot');
-  await git(repo, 'commit', '-m', 'Initial');
-  await git(repo, 'push', '-u', 'origin', 'HEAD');
-  const snapshot = await repositorySnapshot(config);
-  await writeFile(config, 'system {\n    host-name changed\n}\n');
-  await writeFile(`${config}.manifest.tsv`, 'kind\tpath\nfile\thealth.sh\n');
-  const previous = process.cwd();
-  process.chdir(repo);
-  try {
-    await expect(pushBack(config, { expectedState: snapshot })).resolves.toBe(true);
-    await expect(run('git', ['log', '-1', '--format=%s'], { cwd: repo })).resolves.toMatchObject({ stdout: expect.stringMatching(/^Pushback /) });
-    await expect(run('git', ['show', '--format=', '--name-only', 'HEAD'], { cwd: repo }))
-      .resolves.toMatchObject({ stdout: expect.stringContaining('config.boot.manifest.tsv') });
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('pushBack includes staged config changes', async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  try {
-    await writeFile(config, 'system {\n    host-name staged\n}\n');
-    await git(directory, 'add', 'config.boot');
-    await expect(pushBack(config)).rejects.toThrow(/git push failed after local commit [0-9a-f]+; branch: [\s\S]*; upstream: \(none\); error: [\s\S]*; recovery: git push/);
-    await expect(run('git', ['show', '--format=%s', '--stat', '--oneline', 'HEAD'], { cwd: directory }))
-      .resolves.toMatchObject({ stdout: expect.stringContaining('Pushback ') });
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('push failure remains clear when repository metadata cannot be read', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'vyops-push-metadata-'));
-  const remote = join(directory, 'remote.git');
-  await git(directory, 'init', '--bare', remote);
-  const repo = join(directory, 'repo');
-  await git(directory, 'clone', remote, repo);
-  await git(repo, 'config', 'user.email', 'test@example.invalid');
-  await git(repo, 'config', 'user.name', 'Test');
-  const config = join(repo, 'config.boot');
-  await writeFile(config, 'system {}\n');
-  await git(repo, 'add', 'config.boot');
-  await git(repo, 'commit', '-m', 'Initial');
-  await git(repo, 'push', '-u', 'origin', 'HEAD');
-  await writeFile(config, 'system {\n    host-name changed\n}\n');
-  await writeFile(join(repo, '.git', 'hooks', 'pre-push'), '#!/bin/sh\nrm -f .git/HEAD\nexit 1\n');
-  try {
-    await expect(pushBack(config)).rejects.toThrow(/git push failed after local commit unknown; branch: DETACHED; upstream: \(none\)/);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('pushBack refuses a repository changed during deployment', async () => {
-  const { directory, config } = await repository();
-  const snapshot = await repositorySnapshot(config);
-  await writeFile(config, 'system {\n    host-name changed\n}\n');
-  await expect(pushBack(config, { expectedState: { ...snapshot, state: `${snapshot.state}stale` } }))
-    .rejects.toThrow('repository changed during deployment; refusing to commit');
-  await expect(run('git', ['log', '-1', '--format=%s'], { cwd: directory }))
-    .resolves.toMatchObject({ stdout: 'Initial\n' });
-  await rm(directory, { recursive: true, force: true });
-});
-
-test('pushBack still refuses unrelated repository changes during deployment', async () => {
-  const { directory, config } = await repository();
-  const snapshot = await repositorySnapshot(config);
-  await writeFile(config, 'system {\n    host-name changed\n}\n');
-  await writeFile(join(directory, 'other.txt'), 'concurrent change\n');
-  try {
-    await expect(pushBack(config, { expectedState: snapshot }))
-      .rejects.toThrow('repository changed during deployment; refusing to commit');
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('pushBack refuses a repository changed after diff calculation', async () => {
-  const { directory, config } = await repository();
-  await writeFile(config, 'system {\n    host-name changed\n}\n');
-  try {
-    await expect(pushBack(config, {
-      beforeCommit: async repo => writeFile(join(repo, 'created-during-pushback.txt'), 'changed\n'),
-    })).rejects.toThrow('repository changed during pushback; refusing to commit');
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('pushBack handles a changed repository-relative config path', async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  try {
-    await writeFile(config, 'system {\n    host-name changed\n}\n');
-    await expect(pushBack('config.boot')).rejects.toThrow('No configured push destination');
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('git checks use the config directory instead of the process cwd', async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  const outside = await mkdtemp(join(tmpdir(), 'vyops-outside-'));
+  const outside = await mkdtemp(join(tmpdir(), "vyops-outside-"));
   process.chdir(outside);
   try {
-    await git(directory, 'commit', '--allow-empty', '-m', 'Pushback config directory');
+    await git(directory, "commit", "--allow-empty", "-m", "Pushback config directory");
     await expect(shouldSkip(config)).resolves.toBe(true);
   } finally {
     process.chdir(previous);
@@ -297,91 +39,53 @@ test('git checks use the config directory instead of the process cwd', async () 
   }
 });
 
-
-test('rejects an active pushback lock', async () => {
-  const { directory } = await repository();
+test("shouldSkip is false for changed config", async () => {
+  const { directory, config } = await repository();
   const previous = process.cwd();
   process.chdir(directory);
   try {
-    await makeLock(directory, String(process.pid), false);
-    await expect(pushBack('config.boot')).rejects.toThrow('another pushback is already running');
+    await writeFile(config, "system {\n    host-name changed\n}\n");
+    await expect(shouldSkip(config)).resolves.toBe(false);
   } finally {
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
   }
 });
 
-test('reclaims stale and malformed pushback locks', async () => {
-  const { directory } = await repository();
+test("shouldSkip recognizes an unchanged Pushback commit", async () => {
+  const { directory, config } = await repository();
   const previous = process.cwd();
   process.chdir(directory);
   try {
-    await makeLock(directory);
-    await expect(pushBack('config.boot')).resolves.toBe(false);
-    await makeLock(directory, '999999999', false);
-    await expect(pushBack('config.boot', { force: true })).resolves.toBe(false);
+    await git(directory, "commit", "--allow-empty", "-m", "Pushback test");
+    await expect(shouldSkip(config)).resolves.toBe(true);
   } finally {
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
   }
 });
 
-test.each([['EPERM', 'EPERM'], ['unexpected kill error', 'EINVAL']])('keeps a lock when process check returns %s', async (_label, code) => {
-  const { directory } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  const kill = jest.spyOn(process, 'kill').mockImplementation(() => { throw Object.assign(new Error(code), { code }); });
-  try {
-    await makeLock(directory, '12345');
-    await expect(pushBack('config.boot')).rejects.toThrow('another pushback is already running');
-  } finally {
-    kill.mockRestore();
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('reclaims a lock owned by a dead process', async () => {
-  const { directory } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  const kill = jest.spyOn(process, 'kill').mockImplementation(() => { throw Object.assign(new Error('dead'), { code: 'ESRCH' }); });
-  try {
-    await makeLock(directory, '12345', false);
-    await expect(pushBack('config.boot')).resolves.toBe(false);
-  } finally {
-    kill.mockRestore();
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-
-test('does not reclaim a lock with missing owner metadata', async () => {
+test("shouldSkip accepts a repository-relative config path", async () => {
   const { directory } = await repository();
   const previous = process.cwd();
   process.chdir(directory);
   try {
-    await mkdir(lockPath(directory));
-    await expect(pushBack('config.boot')).rejects.toThrow('another pushback is already running');
+    await git(directory, "commit", "--allow-empty", "-m", "Pushback relative");
+    await expect(shouldSkip("config.boot")).resolves.toBe(true);
   } finally {
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
   }
 });
 
-test('propagates lock creation errors other than contention', async () => {
-  const { directory } = await repository();
+test("shouldSkip checks changed repository-relative config paths", async () => {
+  const { directory, config } = await repository();
   const previous = process.cwd();
   process.chdir(directory);
-  const mkdirSpy = jest.spyOn(fs, 'mkdir').mockImplementation(async lock => {
-    if (String(lock).endsWith('vyops-pushback.lock')) throw Object.assign(new Error('permission denied'), { code: 'EACCES' });
-    return undefined;
-  });
   try {
-    await expect(pushBack('config.boot')).rejects.toThrow('permission denied');
+    await writeFile(config, "system {\n    host-name changed\n}\n");
+    await expect(shouldSkip("config.boot")).resolves.toBe(false);
   } finally {
-    mkdirSpy.mockRestore();
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
   }

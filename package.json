@@ -1,68 +1,112 @@
 {
-    "name": "@eliware/vyops",
-    "version": "2.1.1",
-    "description": "Preflight, release, and back up native VyOS configuration bundles over SSH.",
-    "main": "vyops.mjs",
-    "scripts": {
-        "lint": "eliware-test --lint",
-        "test": "eliware-test",
-        "deploy": "node vyops.mjs",
-        "pack": "npm pack --dry-run",
-        "validate:package": "npm pack --dry-run --json | node scripts/validate-package.mjs",
-        "audit": "node scripts/audit.mjs"
-    },
-    "keywords": [
-        "vyos",
-        "networking",
-        "gitops",
-        "ssh",
-        "cli"
+  "name": "@eliware/vyops",
+  "version": "11.0.0",
+  "description": "Preflight, release, and back up native VyOS configuration bundles over SSH.",
+  "main": "bin/vyops",
+  "author": "Eliware <eliware@eliware.org>",
+  "scripts": {
+    "test": "eliware-test",
+    "lint": "eliware-test --lint",
+    "audit": "eliware-test --audit",
+    "format": "eliware-test --format",
+    "format:check": "eliware-test --format-check",
+    "deploy": "node bin/vyops",
+    "pack": "eliware-test --pack"
+  },
+  "keywords": [
+    "vyos",
+    "networking",
+    "gitops",
+    "ssh",
+    "cli"
+  ],
+  "type": "module",
+  "engines": {
+    "node": "26"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "dependencies": {
+    "@eliware/common": "^2.0.0",
+    "@eliware/ssh-client": "^2.1.0"
+  },
+  "devDependencies": {
+    "@eliware/test": "^11.0.0"
+  },
+  "bin": {
+    "vyops": "./bin/vyops"
+  },
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliware/vyops.git"
+  },
+  "homepage": "https://github.com/eliware/vyops#readme",
+  "bugs": {
+    "url": "https://github.com/eliware/vyops/issues"
+  },
+  "files": [
+    "src/",
+    "docs/",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE",
+    "RELEASE_NOTES.md",
+    "bin/"
+  ],
+  "engines": {
+    "node": "26"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.mjs"
     ],
-    "type": "module",
-    "dependencies": {
-        "@eliware/common": "^2.0.0",
-        "@eliware/ssh-client": "^2.1.0"
-    },
-    "devDependencies": {
-        "@eliware/test": "^4.0.0"
-    },
-    "bin": {
-        "vyops": "./bin/vyops"
-    },
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/eliware/vyops.git"
-    },
-    "homepage": "https://github.com/eliware/vyops#readme",
-    "bugs": {
-        "url": "https://github.com/eliware/vyops/issues"
-    },
-    "files": [
-        "vyops.mjs",
-        "bin/",
-        "src/",
-        "README.md",
-        "LICENSE",
-        "RELEASE_NOTES.md"
+    "collectCoverageFrom": [
+      "src/**/*.mjs"
     ],
-    "prettier": {
-      "printWidth": 100,
-      "tabWidth": 2,
-      "useTabs": false,
-      "semi": true,
-      "singleQuote": false,
-      "quoteProps": "as-needed",
-      "jsxSingleQuote": false,
-      "trailingComma": "all",
-      "bracketSpacing": true,
-      "bracketSameLine": false,
-      "arrowParens": "always",
-      "proseWrap": "preserve",
-      "endOfLine": "lf"
-    },
-    "eliware": {
-      "id": "E-1110",
-      "apply": ["general", "application", "cli", "npm-published"]
+    "coverageReporters": [
+      "text",
+      "json-summary"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "statements": 100
+      }
     }
+  },
+  "prettier": {
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false,
+    "semi": true,
+    "singleQuote": false,
+    "quoteProps": "as-needed",
+    "jsxSingleQuote": false,
+    "trailingComma": "all",
+    "bracketSpacing": true,
+    "bracketSameLine": false,
+    "arrowParens": "always",
+    "proseWrap": "preserve",
+    "endOfLine": "lf"
+  },
+  "eliware": {
+    "id": "E-1110",
+    "apply": [
+      "general",
+      "application",
+      "cli",
+      "npm-published"
+    ]
+  }
 }

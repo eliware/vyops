@@ -6,5 +6,5 @@ export function registerDeploymentCleanup(cleanup) {
 }
 
 export async function cleanupActiveDeployments() {
-  await Promise.all([...activeDeploymentCleanups].map(cleanup => cleanup()));
+  await Promise.all([...activeDeploymentCleanups].map((cleanup) => cleanup()));
 }

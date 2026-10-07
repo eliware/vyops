@@ -5,10 +5,6 @@ on:
       - target: dev
         cwd: /opt/vyops
         commands:
-          - git pull --ff-only
+          - git pull --ff-only origin main
           - npm ci
           - npm test
-          - npm run lint
-          - npm audit --omit=dev --audit-level=moderate
-          - npm pack --dry-run
-          - node vyops.mjs --help
