@@ -51,6 +51,19 @@ export async function pushBack(
       if (expectedState && (expectedState.repo !== repo || initialState !== expectedState.state)) {
         throw new Error("repository changed during deployment; refusing to commit");
       }
+      const { stdout: status } = await git(
+        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ...paths],
+        repo,
+      );
+      const hasStagedAndUnstagedChanges = status
+        .split("\0")
+        .some(
+          (entry) => entry.length > 2 && entry[0] !== " " && entry[0] !== "?" && entry[1] !== " ",
+        );
+      if (hasStagedAndUnstagedChanges)
+        throw new Error(
+          "configuration or manifest has staged and unstaged changes; refusing to overwrite staged content",
+        );
       const { stdout: diff } = await git(["diff", "HEAD", "--", ...paths], repo);
       if (!diff) return false;
       await beforeCommit(repo);

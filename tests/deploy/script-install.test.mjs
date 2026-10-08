@@ -56,6 +56,15 @@ test("installs shell scripts as executable regardless of local mode", async () =
         ([, command]) => command.includes("sha256sum") && command.includes("helper.exe"),
       ),
     ).toBe(true);
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) =>
+          command.includes("file_mode=$(sudo stat") &&
+          command.includes("file_hash_output=$(sudo sha256sum") &&
+          command.includes("&& printf 'file\\t%s") &&
+          command.includes(">> "),
+      ),
+    ).toBe(true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

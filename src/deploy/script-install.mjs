@@ -24,7 +24,7 @@ export async function installStagedScripts(options) {
       );
     const manifestResult = await exec(
       client,
-      `printf 'file\\t%s\\t-\\t-\\t-\\t-\\t%s\\t%s\\t%s\\n' ${JSON.stringify(name)} "$(sudo stat -c %a ${JSON.stringify(installed)})" "$(sudo sha256sum ${JSON.stringify(installed)} | awk '{print $1}')" "$(sudo stat -c %F ${JSON.stringify(installed)})" >> ${JSON.stringify(manifest)}`,
+      `file_mode=$(sudo stat -c %a ${JSON.stringify(installed)}) && file_hash_output=$(sudo sha256sum ${JSON.stringify(installed)}) && file_hash=\${file_hash_output%% *} && file_type=$(sudo stat -c %F ${JSON.stringify(installed)}) && test -n "$file_mode" && test -n "$file_hash" && test -n "$file_type" && printf 'file\\t%s\\t-\\t-\\t-\\t-\\t%s\\t%s\\t%s\\n' ${JSON.stringify(name)} "$file_mode" "$file_hash" "$file_type" >> ${JSON.stringify(manifest)}`,
     );
     if (manifestResult.code !== 0)
       throw new Error(

@@ -112,6 +112,37 @@ test("pushBack includes staged config changes", async () => {
     await expect(
       run("git", ["show", "--format=%s", "--stat", "--oneline", "HEAD"], { cwd: directory }),
     ).resolves.toMatchObject({ stdout: expect.stringContaining("Pushback ") });
+    await expect(
+      run("git", ["show", "HEAD:config.boot"], { cwd: directory }),
+    ).resolves.toMatchObject({
+      stdout: expect.stringContaining("host-name staged"),
+    });
+  } finally {
+    process.chdir(previous);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("pushBack preserves staged content when the worktree has a different config", async () => {
+  const { directory, config } = await repository();
+  const previous = process.cwd();
+  process.chdir(directory);
+  try {
+    await writeFile(config, "system {\n    host-name staged\n}\n");
+    await git(directory, "add", "config.boot");
+    await writeFile(config, "system {\n    host-name worktree\n}\n");
+
+    await expect(pushBack(config)).rejects.toThrow(
+      "configuration or manifest has staged and unstaged changes; refusing to overwrite staged content",
+    );
+    await expect(run("git", ["show", ":config.boot"], { cwd: directory })).resolves.toMatchObject({
+      stdout: expect.stringContaining("host-name staged"),
+    });
+    await expect(
+      run("git", ["show", "HEAD:config.boot"], { cwd: directory }),
+    ).resolves.toMatchObject({
+      stdout: expect.stringContaining("system {}"),
+    });
   } finally {
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
