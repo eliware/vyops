@@ -94,7 +94,7 @@ Preflight reports local config, script, and manifest errors. Release reports rou
 
 ## Security
 
-Keep config files, router output, logs, and SSH keys private. VyOps does not accept passwords as command arguments. Use `--password-stdin` only for key bootstrap.
+Keep config files, router output, logs, and SSH keys private. Do not pass passwords as command arguments. Use `--password-stdin` to provide an SSH password through standard input.
 
 Keep SSH host verification enabled. Use a least-privilege router account. Review config diffs before release.
 
