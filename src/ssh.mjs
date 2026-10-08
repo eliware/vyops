@@ -27,9 +27,13 @@ export function close(client) {
       resolve();
     };
     timer = setTimeout(done, CLOSE_TIMEOUT);
-    client.once("close", done);
-    client.once("error", done);
-    client.end();
+    try {
+      client.once("close", done);
+      client.once("error", done);
+      client.end();
+    } catch {
+      done();
+    }
   });
 }
 

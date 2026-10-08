@@ -24,6 +24,8 @@ test.each([
   "vy os@router",
   "vyos@bad/host",
   "vyos@[bad]",
+  "vyos@[:::]",
+  "vyos@[gggg::1]",
 ])("rejects invalid target %p", (target) => {
   expect(() => parseTarget(target)).toThrow("invalid target; expected user@host");
 });

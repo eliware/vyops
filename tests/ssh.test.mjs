@@ -127,3 +127,13 @@ test("close handles null and error", async () => {
   await expect(promise).resolves.toBeUndefined();
   expect(jest.getTimerCount()).toBe(0);
 });
+
+test("close clears state when the client end method throws", async () => {
+  jest.useFakeTimers();
+  const client = new MockClient();
+  client.end = () => {
+    throw new Error("close failed");
+  };
+  await expect(close(client)).resolves.toBeUndefined();
+  expect(jest.getTimerCount()).toBe(0);
+});

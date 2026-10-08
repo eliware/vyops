@@ -22,17 +22,17 @@ export async function validateScriptManifest(config, readFile = defaultReadFile)
   const header = lines.shift();
   if (header !== "kind\tpath" && header !== "kind\tpath\tpreexisting")
     throw new Error("preflight failed: deployment manifest has an invalid header");
-  const names = [];
+  const names = new Set();
   for (const line of lines) {
     if (!line) continue;
     const [kind, name, ...fields] = line.split("\t");
     if (kind !== "file" || !name || fields.length > 1)
       throw new Error("preflight failed: deployment manifest contains a malformed record");
-    if (names.includes(name))
+    if (names.has(name))
       throw new Error("preflight failed: deployment manifest contains a duplicate script path");
-    names.push(name);
+    names.add(name);
   }
-  if (names.some((name) => !isSafeScriptPath(name))) {
+  if ([...names].some((name) => !isSafeScriptPath(name))) {
     throw new Error("preflight failed: deployment manifest contains an unsafe script path");
   }
   return new Set(names);

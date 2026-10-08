@@ -1,9 +1,15 @@
 import { jest } from "@jest/globals";
-import { join } from "node:path";
+import { join, parse, resolve } from "node:path";
 
-const fsMocks = { mkdir: jest.fn(), writeFile: jest.fn() };
+const fsMocks = {
+  mkdir: jest.fn(),
+  rename: jest.fn(),
+  rm: jest.fn(),
+  writeFile: jest.fn(),
+};
 const mocks = {
   connect: jest.fn(),
+  parseTarget: jest.fn(),
   close: jest.fn().mockResolvedValue(undefined),
   download: jest.fn().mockResolvedValue(undefined),
   exec: jest.fn(),
@@ -20,6 +26,7 @@ const { backup } = await import("../src/backup.mjs");
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mocks.parseTarget.mockReset().mockImplementation(() => {});
   mocks.connect.mockResolvedValue({});
   mocks.exec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }).mockResolvedValue({
     code: 0,
@@ -34,19 +41,19 @@ test("backs up config and nested scripts", async () => {
     1,
     expect.anything(),
     "/config/config.boot",
-    join("/tmp/backup", "config.boot"),
+    expect.stringMatching(/\.vyops-backup-[0-9a-f-]{36}[\\/]config\.boot$/),
   );
   expect(mocks.download).toHaveBeenNthCalledWith(
     2,
     expect.anything(),
     expect.stringMatching(/^\/tmp\/\.vyops-backup\.[0-9a-f-]{36}\/script$/),
-    join("/tmp/backup", "scripts", "foo.sh"),
+    expect.stringMatching(/\.vyops-backup-[0-9a-f-]{36}[\\/]scripts[\\/]foo\.sh$/),
   );
   expect(mocks.download).toHaveBeenNthCalledWith(
     3,
     expect.anything(),
     expect.stringMatching(/^\/tmp\/\.vyops-backup\.[0-9a-f-]{36}\/script$/),
-    join("/tmp/backup", "scripts", "nested", "bar"),
+    expect.stringMatching(/\.vyops-backup-[0-9a-f-]{36}[\\/]scripts[\\/]nested[\\/]bar$/),
   );
   expect(
     mocks.exec.mock.calls.some(
@@ -60,11 +67,30 @@ test("backs up config and nested scripts", async () => {
     mocks.exec.mock.calls.some(([, command]) => command.includes("rm -rf -- '/tmp/.vyops-backup.")),
   ).toBe(true);
   expect(fsMocks.writeFile).toHaveBeenCalledWith(
-    join("/tmp/backup", "config.boot.manifest.tsv"),
+    expect.stringMatching(/\.vyops-backup-[0-9a-f-]{36}[\\/]config\.boot\.manifest\.tsv$/),
     "kind\tpath\nfile\tfoo.sh\nfile\tnested/bar\n",
     "utf8",
   );
   expect(mocks.close).toHaveBeenCalled();
+});
+
+test("rejects an invalid target before it connects", async () => {
+  mocks.parseTarget.mockImplementation(() => {
+    throw new Error("invalid target");
+  });
+  await expect(backup({ target: "invalid", config: "/tmp/backup" })).rejects.toThrow(
+    "invalid target",
+  );
+  expect(mocks.connect).not.toHaveBeenCalled();
+  expect(mocks.close).not.toHaveBeenCalled();
+});
+
+test("rejects a filesystem root before it connects", async () => {
+  const root = parse(resolve(".")).root;
+  await expect(backup({ target: "vyos@router", config: root })).rejects.toThrow(
+    "backup destination must not be a filesystem root",
+  );
+  expect(mocks.connect).not.toHaveBeenCalled();
 });
 
 test("passes a bootstrap password through to SSH", async () => {
@@ -75,6 +101,7 @@ test("passes a bootstrap password through to SSH", async () => {
 });
 
 test("rejects unsafe remote script paths and closes SSH", async () => {
+  mocks.exec.mockReset();
   mocks.exec.mockImplementation((_client, command) =>
     Promise.resolve(
       command.includes("type l")
@@ -94,6 +121,7 @@ test.each([
   ["stderr", "find failed", ""],
   ["stdout", "", "find output"],
 ])("reports remote script listing failures from %s", async (_label, stderr, stdout) => {
+  mocks.exec.mockReset();
   mocks.exec.mockImplementation((_client, command) =>
     Promise.resolve(
       command.includes("type l")

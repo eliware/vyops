@@ -1,6 +1,7 @@
 import { fs, path, log } from "@eliware/common";
 import { randomUUID } from "node:crypto";
-import { close, connect } from "./ssh.mjs";
+import { parse, resolve } from "node:path";
+import { close, connect, parseTarget } from "./ssh.mjs";
 import { exec } from "./ssh/exec.mjs";
 import { download } from "./ssh/download.mjs";
 import {
@@ -9,8 +10,13 @@ import {
   snapshotRemoteScript,
   validateRemoteScript,
 } from "./backup/remote-script.mjs";
+import { publishBackup } from "./backup/publish-backup.mjs";
 
 export async function backup({ target, config, password }) {
+  parseTarget(target);
+  const destination = resolve(config);
+  if (destination === parse(destination).root)
+    throw new Error("backup destination must not be a filesystem root");
   const client =
     password === undefined ? await connect(target) : await connect(target, { password });
   try {
@@ -30,25 +36,33 @@ export async function backup({ target, config, password }) {
     // NUL records preserve valid embedded whitespace in remote filenames.
     const files = result.stdout.split("\0").filter(Boolean).map(remoteScriptPath);
     for (const name of files) await validateRemoteScript(exec, client, `/config/scripts/${name}`);
-    await fs.promises.mkdir(config, { recursive: true });
-    await fs.promises.mkdir(path(config, "scripts"), { recursive: true });
-    await download(client, "/config/config.boot", path(config, "config.boot"));
-    for (const name of files) {
-      const remote = `/config/scripts/${name}`;
-      const snapshotDirectory = `/tmp/.vyops-backup.${randomUUID()}`;
-      const snapshot = `${snapshotDirectory}/script`;
-      const local = path(config, "scripts", name);
-      await snapshotRemoteScript(exec, client, remote, snapshotDirectory);
-      try {
-        await fs.promises.mkdir(path(local, ".."), { recursive: true });
-        await download(client, snapshot, local);
-      } finally {
-        await exec(client, `rm -rf -- ${shellQuote(snapshotDirectory)}`);
+    const stagedBackup = path(config, "..", `.vyops-backup-${randomUUID()}`);
+    const previousBackup = path(config, "..", `.vyops-backup-old-${randomUUID()}`);
+    const stagedScripts = path(stagedBackup, "scripts");
+    await fs.promises.mkdir(path(config, ".."), { recursive: true });
+    await fs.promises.mkdir(stagedScripts, { recursive: true });
+    try {
+      await download(client, "/config/config.boot", path(stagedBackup, "config.boot"));
+      for (const name of files) {
+        const remote = `/config/scripts/${name}`;
+        const snapshotDirectory = `/tmp/.vyops-backup.${randomUUID()}`;
+        const snapshot = `${snapshotDirectory}/script`;
+        const local = path(stagedScripts, name);
+        await snapshotRemoteScript(exec, client, remote, snapshotDirectory);
+        try {
+          await fs.promises.mkdir(path(local, ".."), { recursive: true });
+          await download(client, snapshot, local);
+        } finally {
+          await exec(client, `rm -rf -- ${shellQuote(snapshotDirectory)}`);
+        }
+        log.debug(`[vyops] backed up script: ${name}`);
       }
-      log.debug(`[vyops] backed up script: ${name}`);
+      const manifest = ["kind\tpath", ...files.map((name) => `file\t${name}`)].join("\n") + "\n";
+      await fs.promises.writeFile(path(stagedBackup, "config.boot.manifest.tsv"), manifest, "utf8");
+      await publishBackup(fs.promises, stagedBackup, config, previousBackup);
+    } finally {
+      await fs.promises.rm(stagedBackup, { recursive: true, force: true });
     }
-    const manifest = ["kind\tpath", ...files.map((name) => `file\t${name}`)].join("\n") + "\n";
-    await fs.promises.writeFile(path(config, "config.boot.manifest.tsv"), manifest, "utf8");
     return 0;
   } finally {
     await close(client);

@@ -1,3 +1,6 @@
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
 import { jest } from "@jest/globals";
 import {
@@ -38,7 +41,8 @@ test("cleans remote staging and closes the SSH client", async () => {
   expect(close).toHaveBeenCalledWith(client);
 });
 
-const { logMock, mocks, client, deploy, cleanupActiveDeployments } = await setupDeployHarness(jest);
+const { fsMocks, logMock, mocks, client, deploy, cleanupActiveDeployments } =
+  await setupDeployHarness(jest);
 
 test("cleans active deployment staging on interruption", async () => {
   let releaseInteractive;
@@ -99,6 +103,30 @@ test("reports failed recovery reconnects through debug output", async () => {
     deploy({ target: "testuser@test-router.example.test", config: "/tmp/config.boot" }),
   ).rejects.toBe(failure);
   expect(logMock.debug).toHaveBeenCalledWith(expect.stringMatching(/recovery reconnect failed/));
+});
+
+test("keeps the deployment error when hook recovery also fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-recovery-"));
+  const scripts = join(root, "scripts");
+  const failure = new Error("deployment command failed");
+  await mkdir(scripts, { recursive: true });
+  await writeFile(join(scripts, "hook.sh"), "#!/bin/sh\n");
+  fsMocks.readdir.mockResolvedValue([{ name: "hook.sh", isFile: () => true }]);
+  mocks.interactive.mockRejectedValue(failure);
+  mocks.connect.mockImplementation(async () => {
+    if (mocks.connect.mock.calls.length >= 3) throw new Error("recovery unavailable");
+    return client();
+  });
+  try {
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toBe(failure);
+    expect(logMock.debug).toHaveBeenCalledWith(
+      expect.stringMatching(/recovery failed.*unavailable/),
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("discards and reconnects the SSH client after a timeout", async () => {

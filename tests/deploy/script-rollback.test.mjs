@@ -18,6 +18,23 @@ test("rolls back managed script paths and warns on failure", async () => {
   expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("script rollback failed"));
 });
 
+test("validates manifest paths before rollback removes them", async () => {
+  const exec = jest.fn().mockResolvedValue({ code: 0 });
+  await rollbackScripts(
+    exec,
+    { warn: jest.fn() },
+    {
+      client: {},
+      manifest: "/tmp/m.tsv",
+      installDir: "/config/scripts",
+      backupDir: "/tmp/b",
+      remoteDir: "/tmp/r",
+    },
+  );
+  expect(exec.mock.calls[0][1]).toContain('safe_name "$name" || exit 1');
+  expect(exec.mock.calls[0][1]).toContain('case "/$1/" in');
+});
+
 test("removes staging only after committed deployment", async () => {
   const exec = jest.fn().mockResolvedValue({ code: 0 });
   await finalizeScripts(

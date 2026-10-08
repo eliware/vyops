@@ -57,13 +57,6 @@
     "RELEASE_NOTES.md",
     "bin/"
   ],
-  "engines": {
-    "node": "26"
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "jest": {
     "testEnvironment": "node",
     "testMatch": [
