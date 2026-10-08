@@ -40,9 +40,12 @@ export async function backup({ target, config, password }) {
     const previousBackup = path(config, "..", `.vyops-backup-old-${randomUUID()}`);
     const stagedScripts = path(stagedBackup, "scripts");
     await fs.promises.mkdir(path(config, ".."), { recursive: true });
-    await fs.promises.mkdir(stagedScripts, { recursive: true });
+    await fs.promises.mkdir(stagedBackup, { mode: 0o700 });
+    await fs.promises.mkdir(stagedScripts, { mode: 0o700 });
     try {
-      await download(client, "/config/config.boot", path(stagedBackup, "config.boot"));
+      const stagedConfig = path(stagedBackup, "config.boot");
+      await download(client, "/config/config.boot", stagedConfig);
+      await fs.promises.chmod(stagedConfig, 0o600);
       for (const name of files) {
         const remote = `/config/scripts/${name}`;
         const snapshotDirectory = `/tmp/.vyops-backup.${randomUUID()}`;
@@ -50,15 +53,19 @@ export async function backup({ target, config, password }) {
         const local = path(stagedScripts, name);
         await snapshotRemoteScript(exec, client, remote, snapshotDirectory);
         try {
-          await fs.promises.mkdir(path(local, ".."), { recursive: true });
+          await fs.promises.mkdir(path(local, ".."), { recursive: true, mode: 0o700 });
           await download(client, snapshot, local);
+          await fs.promises.chmod(local, 0o600);
         } finally {
           await exec(client, `rm -rf -- ${shellQuote(snapshotDirectory)}`);
         }
         log.debug(`[vyops] backed up script: ${name}`);
       }
       const manifest = ["kind\tpath", ...files.map((name) => `file\t${name}`)].join("\n") + "\n";
-      await fs.promises.writeFile(path(stagedBackup, "config.boot.manifest.tsv"), manifest, "utf8");
+      await fs.promises.writeFile(path(stagedBackup, "config.boot.manifest.tsv"), manifest, {
+        encoding: "utf8",
+        mode: 0o600,
+      });
       await publishBackup(fs.promises, stagedBackup, config, previousBackup);
     } finally {
       await fs.promises.rm(stagedBackup, { recursive: true, force: true });

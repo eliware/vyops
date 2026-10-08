@@ -1,5 +1,11 @@
 export async function listScripts(fs, path, directory, relative = "") {
-  const entries = await fs.promises.readdir(directory, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await fs.promises.readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (!relative && error.code === "ENOENT") return null;
+    throw error;
+  }
   const files = [];
   for (const entry of entries) {
     const name = (relative ? path(relative, entry.name) : entry.name).replaceAll(

@@ -98,22 +98,31 @@ Preflight reports local config, script, and manifest errors. Release reports rou
 
 Keep config files, router output, logs, and SSH keys private. Do not pass passwords as command arguments. Use `--password-stdin` to provide an SSH password through standard input.
 
+For backup, run `vyops backup --password-stdin vyos@router /path/to/backup`. For release, add `--password-stdin` before the config path.
+
 Keep SSH host verification enabled. Use a least-privilege router account. Review config diffs before release.
 
 ## Configuration
 
 Runtime settings and defaults are listed in `.env.example`. The app reads process environment variables and does not load `.env` files. Runtime settings are separate from `package.json` metadata and CLI arguments.
 
-| Variable                    | Default              | Purpose                                                                     |
-| --------------------------- | -------------------- | --------------------------------------------------------------------------- |
-| `VYOPS_SSH_KEY`             | `$HOME/.ssh/id_rsa`  | Private SSH key path.                                                       |
-| `SSH_AUTH_SOCK`             | Unset                | SSH agent socket.                                                           |
-| `SSH_KNOWN_HOSTS`           | `~/.ssh/known_hosts` | Trusted host keys.                                                          |
-| `SSH_HOST_CA`               | Unset                | Trusted SSH host certificate authority.                                     |
-| `VYOPS_CONNECT_TIMEOUT`     | `30000`              | SSH connect timeout in milliseconds.                                        |
-| `VYOPS_OPERATION_TIMEOUT`   | `60000`              | SSH operation timeout in milliseconds.                                      |
-| `VYOPS_INTERACTIVE_TIMEOUT` | `60000`              | Interactive command timeout in milliseconds.                                |
-| `LOG_LEVEL`                 | `info`               | Log level: `error`, `warn`, `info`, `http`, `verbose`, `debug`, or `silly`. |
+| Variable                      | Default              | Purpose                                                                     |
+| ----------------------------- | -------------------- | --------------------------------------------------------------------------- |
+| `VYOPS_SSH_KEY`               | `$HOME/.ssh/id_rsa`  | Private SSH key path.                                                       |
+| `SSH_AUTH_SOCK`               | Unset                | SSH agent socket.                                                           |
+| `SSH_KNOWN_HOSTS`             | `~/.ssh/known_hosts` | Trusted host keys.                                                          |
+| `SSH_HOST_CA`                 | Unset                | Trusted SSH host certificate authority.                                     |
+| `VYOPS_CONNECT_TIMEOUT`       | `30000`              | SSH connect timeout in milliseconds.                                        |
+| `VYOPS_OPERATION_TIMEOUT`     | `60000`              | SSH operation timeout in milliseconds.                                      |
+| `VYOPS_INTERACTIVE_TIMEOUT`   | `60000`              | Interactive command timeout in milliseconds.                                |
+| `LOG_LEVEL`                   | `info`               | Log level: `error`, `warn`, `info`, `http`, `verbose`, `debug`, or `silly`. |
+| `VYOPS_LIVE_TARGET`           | Unset                | Live backup test target.                                                    |
+| `VYOPS_LIVE_BACKUP_DEST`      | Unset                | Live backup test destination.                                               |
+| `VYOPS_LIVE_PASSWORD`         | Unset                | Optional live backup password.                                              |
+| `VYOPS_LIVE_RELEASE_TARGET`   | Unset                | Live release test target.                                                   |
+| `VYOPS_LIVE_RELEASE_CONFIG`   | Unset                | Live release test config path.                                              |
+| `VYOPS_LIVE_RELEASE_CONFIRM`  | Unset                | Release test opt-in value.                                                  |
+| `VYOPS_LIVE_RELEASE_PASSWORD` | Unset                | Optional live release password.                                             |
 
 Optional variables are commented out in `.env.example`. Set them in the process environment. The app does not load `.env` files.
 

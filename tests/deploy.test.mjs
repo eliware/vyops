@@ -23,7 +23,11 @@ test("deploys config, downloads live state, and logs when debug is enabled", asy
     config,
     expect.stringMatching(/^\/home\/vyos\/\.config\.deploy\.[0-9a-f-]{36}$/),
   );
-  expect(mocks.download).toHaveBeenCalledWith(expect.anything(), "/config/config.boot", config);
+  expect(mocks.download).toHaveBeenCalledWith(
+    expect.anything(),
+    "/config/config.boot",
+    expect.stringMatching(/\.config\.boot\.vyops-[0-9a-f-]{36}$/),
+  );
 });
 
 test("deploys without compare output when debug is disabled", async () => {

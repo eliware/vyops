@@ -3,6 +3,7 @@ import { join, parse, resolve } from "node:path";
 
 const fsMocks = {
   mkdir: jest.fn(),
+  chmod: jest.fn(),
   rename: jest.fn(),
   rm: jest.fn(),
   writeFile: jest.fn(),
@@ -69,9 +70,12 @@ test("backs up config and nested scripts", async () => {
   expect(fsMocks.writeFile).toHaveBeenCalledWith(
     expect.stringMatching(/\.vyops-backup-[0-9a-f-]{36}[\\/]config\.boot\.manifest\.tsv$/),
     "kind\tpath\nfile\tfoo.sh\nfile\tnested/bar\n",
-    "utf8",
+    { encoding: "utf8", mode: 0o600 },
   );
   expect(mocks.close).toHaveBeenCalled();
+  expect(fsMocks.mkdir).toHaveBeenCalledWith(expect.stringContaining(".vyops-backup-"), {
+    mode: 0o700,
+  });
 });
 
 test("rejects an invalid target before it connects", async () => {

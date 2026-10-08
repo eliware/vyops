@@ -32,6 +32,25 @@ test("ignores non-file and non-directory entries", async () => {
   await expect(listScripts(fs, () => "", "root")).resolves.toEqual([]);
 });
 
+test("returns null when the scripts root is missing", async () => {
+  const missing = Object.assign(new Error("missing"), { code: "ENOENT" });
+  const fs = { promises: { readdir: jest.fn().mockRejectedValue(missing) } };
+  await expect(listScripts(fs, () => "", "root")).resolves.toBeNull();
+});
+
+test("propagates missing nested directories", async () => {
+  const missing = Object.assign(new Error("nested directory disappeared"), { code: "ENOENT" });
+  const fs = {
+    promises: {
+      readdir: jest
+        .fn()
+        .mockResolvedValueOnce([{ name: "nested", isDirectory: () => true, isFile: () => false }])
+        .mockRejectedValueOnce(missing),
+    },
+  };
+  await expect(listScripts(fs, (left, right) => `${left}/${right}`, "root")).rejects.toBe(missing);
+});
+
 const { fsMocks, mocks, deploy } = await setupDeployHarness(jest);
 
 test("recursively installs the complete scripts tree", async () => {

@@ -18,13 +18,8 @@ export async function installScripts(
   redact = (value) => value,
 ) {
   const scriptsDir = eliwarePath(config, "..", "scripts");
-  let names;
-  try {
-    names = await listScripts(fs, eliwarePath, scriptsDir);
-  } catch (error) {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  }
+  const names = await listScripts(fs, eliwarePath, scriptsDir);
+  if (names === null) return null;
   if (names.some((name) => !isSafeScriptPath(name))) {
     throw new Error("script path is invalid");
   }
