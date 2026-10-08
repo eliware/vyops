@@ -39,19 +39,25 @@ test("backs up config and nested scripts", async () => {
   expect(mocks.download).toHaveBeenNthCalledWith(
     2,
     expect.anything(),
-    expect.stringMatching(/^\/tmp\/\.vyops-backup\.[0-9a-f-]{36}$/),
+    expect.stringMatching(/^\/tmp\/\.vyops-backup\.[0-9a-f-]{36}\/script$/),
     join("/tmp/backup", "scripts", "foo.sh"),
   );
   expect(mocks.download).toHaveBeenNthCalledWith(
     3,
     expect.anything(),
-    expect.stringMatching(/^\/tmp\/\.vyops-backup\.[0-9a-f-]{36}$/),
+    expect.stringMatching(/^\/tmp\/\.vyops-backup\.[0-9a-f-]{36}\/script$/),
     join("/tmp/backup", "scripts", "nested", "bar"),
   );
   expect(
     mocks.exec.mock.calls.some(
       ([, command]) => command.includes("exec 3<") && command.includes("/proc/self/fd/3"),
     ),
+  ).toBe(true);
+  expect(mocks.exec.mock.calls.some(([, command]) => command.includes("mkdir -m 700 -- '"))).toBe(
+    true,
+  );
+  expect(
+    mocks.exec.mock.calls.some(([, command]) => command.includes("rm -rf -- '/tmp/.vyops-backup.")),
   ).toBe(true);
   expect(fsMocks.writeFile).toHaveBeenCalledWith(
     join("/tmp/backup", "config.boot.manifest.tsv"),
@@ -79,6 +85,8 @@ test("rejects unsafe remote script paths and closes SSH", async () => {
   await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
     "unsafe remote script path",
   );
+  expect(mocks.download).not.toHaveBeenCalled();
+  expect(fsMocks.mkdir).not.toHaveBeenCalled();
   expect(mocks.close).toHaveBeenCalled();
 });
 
@@ -107,10 +115,10 @@ test("closes SSH when downloading the backup fails", async () => {
   expect(mocks.close).toHaveBeenCalled();
 });
 
-test("does not enumerate scripts when config download fails", async () => {
+test("validates scripts before it downloads the config", async () => {
   mocks.download.mockRejectedValueOnce(new Error("config download failed"));
   await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow();
-  expect(mocks.exec).not.toHaveBeenCalled();
+  expect(mocks.exec).toHaveBeenCalledTimes(4);
 });
 
 test("rejects failure while inspecting remote symlinks", async () => {
@@ -136,6 +144,8 @@ test("rejects a discovered remote script symlink", async () => {
   await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
     "remote script symlink rejected: /config/scripts/link.sh",
   );
+  expect(mocks.download).not.toHaveBeenCalled();
+  expect(fsMocks.mkdir).not.toHaveBeenCalled();
   expect(mocks.close).toHaveBeenCalled();
 });
 test("rejects a script replaced before metadata validation", async () => {
@@ -147,6 +157,7 @@ test("rejects a script replaced before metadata validation", async () => {
   await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
     "remote script changed or is not a regular file: /config/scripts/hook.sh",
   );
-  expect(mocks.download).toHaveBeenCalledTimes(1);
+  expect(mocks.download).not.toHaveBeenCalled();
+  expect(fsMocks.mkdir).not.toHaveBeenCalled();
   expect(mocks.close).toHaveBeenCalled();
 });

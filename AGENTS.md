@@ -22,7 +22,6 @@ Repository structure: source files live in `src/`, commands live in `bin/`, docs
 - `tests/` contains unit and integration tests.
 - `docs/` contains user and developer documentation.
 - `specs/` contains repository specifications.
-- `scripts/` contains package and repository tools.
 - `bin/` contains the installed CLI entry point.
 
 ## Development

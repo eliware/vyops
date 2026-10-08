@@ -82,7 +82,9 @@ Supported platforms are Linux and Windows. Ubuntu CI tests Node.js 26. Windows r
 
 ## Testing
 
-`npm test` runs Eliware validation, Jest tests, and coverage. Tests use local fixtures and mocked SSH operations. The opt-in live test requires explicit `VYOPS_LIVE_TARGET` and `VYOPS_LIVE_BACKUP_DEST` values.
+`npm test` runs Eliware validation, Jest tests, and coverage. Tests use local fixtures and mocked SSH operations. The live backup test runs when `VYOPS_LIVE_TARGET` and `VYOPS_LIVE_BACKUP_DEST` are set. `VYOPS_LIVE_PASSWORD` is optional.
+
+The live release test changes router state. It runs only when `VYOPS_LIVE_RELEASE_TARGET`, `VYOPS_LIVE_RELEASE_CONFIG`, and `VYOPS_LIVE_RELEASE_CONFIRM=I_UNDERSTAND` are set. `VYOPS_LIVE_RELEASE_PASSWORD` is optional. Do not set these variables unless you intend to run a live release.
 
 Do not set live test variables for routine validation. Tests do not change a router unless the operator enables the live test.
 

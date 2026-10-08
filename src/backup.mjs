@@ -3,15 +3,17 @@ import { randomUUID } from "node:crypto";
 import { close, connect } from "./ssh.mjs";
 import { exec } from "./ssh/exec.mjs";
 import { download } from "./ssh/download.mjs";
-import { remoteScriptPath, shellQuote, snapshotRemoteScript } from "./backup/remote-script.mjs";
+import {
+  remoteScriptPath,
+  shellQuote,
+  snapshotRemoteScript,
+  validateRemoteScript,
+} from "./backup/remote-script.mjs";
 
 export async function backup({ target, config, password }) {
   const client =
     password === undefined ? await connect(target) : await connect(target, { password });
   try {
-    await fs.promises.mkdir(config, { recursive: true });
-    await fs.promises.mkdir(path(config, "scripts"), { recursive: true });
-    await download(client, "/config/config.boot", path(config, "config.boot"));
     const links = await exec(client, "find -P /config/scripts -type l -print0 2>/dev/null");
     // codescope ignore: next remote inspection failure requires a live router.
     if (links.code !== 0)
@@ -27,16 +29,21 @@ export async function backup({ target, config, password }) {
       throw new Error(`could not list remote scripts: ${result.stderr || result.stdout}`.trim());
     // NUL records preserve valid embedded whitespace in remote filenames.
     const files = result.stdout.split("\0").filter(Boolean).map(remoteScriptPath);
+    for (const name of files) await validateRemoteScript(exec, client, `/config/scripts/${name}`);
+    await fs.promises.mkdir(config, { recursive: true });
+    await fs.promises.mkdir(path(config, "scripts"), { recursive: true });
+    await download(client, "/config/config.boot", path(config, "config.boot"));
     for (const name of files) {
       const remote = `/config/scripts/${name}`;
-      const snapshot = `/tmp/.vyops-backup.${randomUUID()}`;
-      await snapshotRemoteScript(exec, client, remote, snapshot);
+      const snapshotDirectory = `/tmp/.vyops-backup.${randomUUID()}`;
+      const snapshot = `${snapshotDirectory}/script`;
       const local = path(config, "scripts", name);
-      await fs.promises.mkdir(path(local, ".."), { recursive: true });
+      await snapshotRemoteScript(exec, client, remote, snapshotDirectory);
       try {
+        await fs.promises.mkdir(path(local, ".."), { recursive: true });
         await download(client, snapshot, local);
       } finally {
-        await exec(client, `rm -f -- ${shellQuote(snapshot)}`);
+        await exec(client, `rm -rf -- ${shellQuote(snapshotDirectory)}`);
       }
       log.debug(`[vyops] backed up script: ${name}`);
     }
