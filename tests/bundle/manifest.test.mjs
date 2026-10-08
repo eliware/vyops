@@ -15,7 +15,9 @@ test.each(["/etc/passwd", "../escape", "a//b", "a/./b", "a/../b", "bad name"])(
 );
 
 test("reads file paths from the manifest", async () => {
-  const readFile = jest.fn().mockResolvedValue("file\t@group/hook.sh\nfile\tbin/tool\n");
+  const readFile = jest
+    .fn()
+    .mockResolvedValue("kind\tpath\nfile\t@group/hook.sh\nfile\tbin/tool\n");
   await expect(validateScriptManifest("config.boot", readFile)).resolves.toEqual(
     new Set(["@group/hook.sh", "bin/tool"]),
   );
@@ -46,8 +48,18 @@ test("propagates manifest read errors", async () => {
 });
 
 test("rejects unsafe manifest paths", async () => {
-  const readFile = async () => "file\t../escape\n";
+  const readFile = async () => "kind\tpath\nfile\t../escape\n";
   await expect(validateScriptManifest("config.boot", readFile)).rejects.toThrow(
     "unsafe script path",
+  );
+});
+
+test.each([
+  ["missing header", "file\thook.sh\n"],
+  ["malformed record", "kind\tpath\nfile\n"],
+  ["duplicate path", "kind\tpath\nfile\thook.sh\nfile\thook.sh\n"],
+])("rejects a manifest with %s", async (_label, content) => {
+  await expect(validateScriptManifest("config.boot", async () => content)).rejects.toThrow(
+    "deployment manifest",
   );
 });
