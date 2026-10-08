@@ -1,0 +1,17 @@
+version: "11.0"
+description: "Local checks that run before a release."
+directives:
+  - id: E-1110.40
+    dos:
+      - Read and validate the local config first.
+      - Find and validate the local script tree.
+      - Derive the release target from the config.
+      - Read and validate the saved script manifest.
+      - Report the target and script count after all checks pass.
+      - Return the target and script list to the release command.
+      - Return a non-zero process result when any check fails.
+    donts:
+      - Do not make an SSH connection during preflight.
+      - Do not read router state during preflight.
+      - Do not change local files during preflight.
+      - Do not start release or backup work during preflight.

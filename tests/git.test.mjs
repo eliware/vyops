@@ -1,92 +1,74 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { promisify } from "node:util";
-import { execFile } from "node:child_process";
-import { shouldSkip } from "../src/git.mjs";
+import { jest } from "@jest/globals";
+import { chdir } from "node:process";
+const defaultGit = jest.fn();
+await jest.unstable_mockModule("../src/git/command.mjs", () => ({ runGit: defaultGit }));
+const { repositorySnapshot, shouldSkip, pushBack } = await import("../src/git.mjs");
+const { repositoryRoot } = await import("../src/git/pushback.mjs");
+import {
+  createGitMock,
+  createGitWorkspace,
+  removeGitWorkspace,
+} from "../test-fixtures/git-harness.mjs";
 
-const run = promisify(execFile);
-
-async function git(cwd, ...args) {
-  await run("git", args, { cwd });
-}
-
-async function repository() {
-  const directory = await mkdtemp(join(tmpdir(), "vyops-git-test-"));
-  await git(directory, "init");
-  await git(directory, "config", "user.email", "test@example.invalid");
-  await git(directory, "config", "user.name", "Test");
-  const config = join(directory, "config.boot");
-  await writeFile(config, "system {}\n");
-  await writeFile(`${config}.manifest.tsv`, "kind\tpath\n");
-  await git(directory, "add", "config.boot", "config.boot.manifest.tsv");
-  await git(directory, "commit", "-m", "Initial");
-  return { directory, config };
-}
-
-test("git checks use the config directory instead of the process cwd", async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  const outside = await mkdtemp(join(tmpdir(), "vyops-outside-"));
-  process.chdir(outside);
+test("git checks use the config directory and skip unchanged pushback commits", async () => {
+  const { directory, config } = await createGitWorkspace();
+  const outside = process.cwd();
+  const git = createGitMock(jest, directory, async (args) => {
+    if (args[0] === "log") return { stdout: "Pushback test\n" };
+  });
+  chdir(outside);
   try {
-    await git(directory, "commit", "--allow-empty", "-m", "Pushback config directory");
-    await expect(shouldSkip(config)).resolves.toBe(true);
+    await expect(shouldSkip(config, git)).resolves.toBe(true);
+    expect(git).toHaveBeenCalledWith(["rev-parse", "--show-toplevel"], directory);
+    expect(git).toHaveBeenCalledWith(["status", "--porcelain", "--", "config.boot"], directory);
   } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-    await rm(outside, { recursive: true, force: true });
+    chdir(outside);
+    await removeGitWorkspace(directory);
   }
 });
 
-test("shouldSkip is false for changed config", async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
+test("shouldSkip is false for a changed config", async () => {
+  const { directory, config } = await createGitWorkspace();
+  const git = createGitMock(jest, directory, async (args) => {
+    if (args[0] === "status") return { stdout: " M config.boot\n" };
+  });
   try {
-    await writeFile(config, "system {\n    host-name changed\n}\n");
-    await expect(shouldSkip(config)).resolves.toBe(false);
+    await expect(shouldSkip(config, git)).resolves.toBe(false);
+    expect(git).not.toHaveBeenCalledWith(["log", "-1", "--format=%s"], directory);
   } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test("shouldSkip recognizes an unchanged Pushback commit", async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
-  try {
-    await git(directory, "commit", "--allow-empty", "-m", "Pushback test");
-    await expect(shouldSkip(config)).resolves.toBe(true);
-  } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
+    await removeGitWorkspace(directory);
   }
 });
 
 test("shouldSkip accepts a repository-relative config path", async () => {
-  const { directory } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
+  const { directory } = await createGitWorkspace();
+  const outside = process.cwd();
+  const git = createGitMock(jest, directory, async (args) => {
+    if (args[0] === "log") return { stdout: "Pushback relative\n" };
+  });
+  chdir(directory);
   try {
-    await git(directory, "commit", "--allow-empty", "-m", "Pushback relative");
-    await expect(shouldSkip("config.boot")).resolves.toBe(true);
+    await expect(shouldSkip("config.boot", git)).resolves.toBe(true);
   } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
+    chdir(outside);
+    await removeGitWorkspace(directory);
   }
 });
 
-test("shouldSkip checks changed repository-relative config paths", async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
+test("Git functions use the shared runner by default", async () => {
+  const { directory, config } = await createGitWorkspace();
+  const git = createGitMock(jest, directory, async (args) => {
+    if (args[0] === "log") return { stdout: "Pushback default\n" };
+  });
+  defaultGit.mockImplementation((args, cwd) => git(args, cwd));
   try {
-    await writeFile(config, "system {\n    host-name changed\n}\n");
-    await expect(shouldSkip("config.boot")).resolves.toBe(false);
+    await expect(shouldSkip(config)).resolves.toBe(true);
+    await expect(repositoryRoot(config)).resolves.toBe(directory);
+    await expect(repositorySnapshot(config)).resolves.toMatchObject({ repo: directory });
+    await expect(pushBack(config)).resolves.toBe(false);
+    expect(defaultGit).toHaveBeenCalled();
   } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
+    defaultGit.mockReset();
+    await removeGitWorkspace(directory);
   }
 });

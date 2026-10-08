@@ -1,13 +1,6 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import packageJson from "../package.json" with { type: "json" };
-import { promisify } from "node:util";
-import { execFile } from "node:child_process";
 import { Readable } from "node:stream";
 import "../src/main.mjs";
-import { backup } from "../src/backup.mjs";
-import { deploy } from "../src/deploy.mjs";
 import { jest } from "@jest/globals";
 import { setupMainHarness } from "../test-fixtures/main-harness.mjs";
 
@@ -28,73 +21,13 @@ beforeEach(() => {
   cli.pushBack.mockResolvedValue(false);
 });
 
-const run = promisify(execFile);
-const entrypoint = join(process.cwd(), "bin", "vyops");
-const binEntrypoint = entrypoint;
-
-test("prints help and version without external effects", async () => {
-  const help = await run(process.execPath, [entrypoint, "--help"]);
-  expect(help.stdout).toMatch(/Usage:/);
-
-  const version = await run(process.execPath, [entrypoint, "--version"]);
-  expect(version.stdout.trim()).toBe(packageJson.version);
-});
-
-test("packaged bin entrypoint invokes the CLI", async () => {
-  const result =
-    process.platform === "win32"
-      ? await run(process.execPath, [binEntrypoint, "--help"])
-      : await run(binEntrypoint, ["--help"]);
-  expect(result.stdout).toMatch(/Usage:/);
-});
-
-test("preflight validates config without connecting or pushing", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "vyops-test-"));
-  const config = join(directory, "config.boot");
-  await writeFile(
-    config,
-    "system {\n    host-name test\n    login {\n        user vyos {\n        }\n    }\n}\n",
-  );
-  try {
-    const result = await run(process.execPath, [entrypoint, "preflight", config]);
-    expect(result.stdout).toContain("Preflight successful");
-    expect(result.stderr).toBe("");
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test("invalid config exits nonzero without attempting deployment", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "vyops-test-"));
-  const config = join(directory, "config.boot");
-  await writeFile(config, "system {\n    host-name broken\n");
-  try {
-    await expect(run(process.execPath, [entrypoint, "preflight", config])).rejects.toMatchObject({
-      code: 1,
-      stdout: expect.stringContaining("unbalanced braces"),
-    });
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test("invalid invocation exits nonzero", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "vyops-test-"));
-  const config = join(directory, "config.boot");
-  await writeFile(config, "system {\n    host-name test\n}\n");
-  try {
-    await expect(
-      run(process.execPath, [entrypoint, "preflight", config, "extra"]),
-    ).rejects.toMatchObject({ code: 1, stdout: expect.stringContaining("Usage:") });
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
 test("covers help, version, backup, and preflight branches", async () => {
   args.help = true;
   await cli.runCli();
   expect(cli.log.info).toHaveBeenCalledWith(cli.usage);
+  expect(cli.runBackup).not.toHaveBeenCalled();
+  expect(cli.runPreflight).not.toHaveBeenCalled();
+  expect(cli.deploy).not.toHaveBeenCalled();
   args = { version: true };
   const write = jest.spyOn(process.stdout, "write").mockImplementation(() => true);
   await cli.runCli();
@@ -106,6 +39,15 @@ test("covers help, version, backup, and preflight branches", async () => {
   args = { command: "preflight" };
   await cli.runCli();
   expect(cli.runPreflight).toHaveBeenCalled();
+});
+
+test("preflight failures use the mocked command and do not deploy", async () => {
+  cli.runPreflight.mockRejectedValue(new Error("invalid config"));
+  await cli.runCli();
+  expect(cli.log.error).toHaveBeenCalledWith("invalid config");
+  expect(cli.deploy).not.toHaveBeenCalled();
+  expect(cli.closeAll).not.toHaveBeenCalled();
+  expect(process.exitCode).toBe(1);
 });
 
 test("reads passwords from stdin and handles empty input", async () => {
@@ -168,31 +110,4 @@ test("runs both registered shutdown actions", async () => {
   await cli.signals.shutdownHook();
   expect(cli.closeAll).toHaveBeenCalled();
   expect(cli.cleanupActiveDeployments).toHaveBeenCalled();
-});
-
-const target = process.env.VYOPS_LIVE_TARGET;
-const destination = process.env.VYOPS_LIVE_BACKUP_DEST;
-const password = process.env.VYOPS_LIVE_PASSWORD;
-const liveTest = target && destination ? test : test.skip;
-
-liveTest("backs up the configured live router without mutation", async () => {
-  await expect(backup({ target, config: destination, password })).resolves.toBe(0);
-});
-
-const releaseTarget = process.env.VYOPS_LIVE_RELEASE_TARGET;
-const releaseConfig = process.env.VYOPS_LIVE_RELEASE_CONFIG;
-const releasePassword = process.env.VYOPS_LIVE_RELEASE_PASSWORD;
-const releaseConfirmed = process.env.VYOPS_LIVE_RELEASE_CONFIRM === "I_UNDERSTAND";
-const releaseTest = releaseTarget && releaseConfig && releaseConfirmed ? test : test.skip;
-
-releaseTest("deploys and verifies the explicitly authorized live router", async () => {
-  await expect(
-    deploy({
-      target: releaseTarget,
-      config: releaseConfig,
-      password: releasePassword,
-      verify: true,
-      noHooks: false,
-    }),
-  ).resolves.toBe(0);
 });

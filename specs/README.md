@@ -1,3 +1,15 @@
 # Specifications
 
-- [Directives](directives.yaml)
+- [Shared directives](directives.yaml)
+- [System](system.yaml)
+- [CLI](cli.yaml)
+- [Configuration](configuration.yaml)
+- [Bundle](bundle.yaml)
+- [Preflight](preflight.yaml)
+- [Release](release.yaml)
+- [Script sync](script-sync.yaml)
+- [Backup](backup.yaml)
+- [SSH](ssh.yaml)
+- [Git](git.yaml)
+- [Security](security.yaml)
+- [Development](development.yaml)

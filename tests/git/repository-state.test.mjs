@@ -1,83 +1,79 @@
 import { jest } from "@jest/globals";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { promisify } from "node:util";
-import { execFile } from "node:child_process";
+import { chdir } from "node:process";
 import { repositorySnapshot, shouldSkip, pushBack } from "../../src/git.mjs";
 import { repositoryState } from "../../src/git/repository-state.mjs";
-const run = promisify(execFile);
-async function git(cwd, ...args) {
-  await run("git", args, { cwd });
-}
-
-async function repository() {
-  const directory = await mkdtemp(join(tmpdir(), "vyops-git-test-"));
-  await git(directory, "init");
-  await git(directory, "config", "user.email", "test@example.invalid");
-  await git(directory, "config", "user.name", "Test");
-  const config = join(directory, "config.boot");
-  await writeFile(config, "system {}\n");
-  await writeFile(`${config}.manifest.tsv`, "kind\tpath\n");
-  await git(directory, "add", "config.boot", "config.boot.manifest.tsv");
-  await git(directory, "commit", "-m", "Initial");
-  return { directory, config };
-}
+import {
+  createGitMock,
+  createGitWorkspace,
+  removeGitWorkspace,
+} from "../../test-fixtures/git-harness.mjs";
 
 test("repository snapshots identify detached HEAD state", async () => {
-  const { directory, config } = await repository();
+  const { directory, config } = await createGitWorkspace();
+  const git = createGitMock(jest, directory, async (args) => {
+    if (args[0] === "symbolic-ref") throw new Error("detached");
+    if (args[0] === "rev-parse" && args[1] === "--abbrev-ref") throw new Error("no upstream");
+  });
   try {
-    await git(directory, "checkout", "--detach", "HEAD");
-    await expect(repositorySnapshot(config)).resolves.toMatchObject({
-      state: expect.stringContaining("\nDETACHED\n"),
+    await expect(repositorySnapshot(config, git)).resolves.toMatchObject({
+      state: expect.stringContaining("\nDETACHED\n(none)\n"),
     });
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await removeGitWorkspace(directory);
   }
 });
 
 test("handles absolute config paths with normalized separators", async () => {
-  const { directory, config } = await repository();
-  const normalizedConfig = config.replaceAll("\\", "/");
-  await expect(shouldSkip(normalizedConfig)).resolves.toBe(false);
-  await expect(pushBack(normalizedConfig)).resolves.toBe(false);
-  await rm(directory, { recursive: true, force: true });
+  const { directory, config } = await createGitWorkspace();
+  const git = createGitMock(jest, directory);
+  try {
+    await expect(shouldSkip(config.replaceAll("\\", "/"), git)).resolves.toBe(false);
+    await expect(pushBack(config.replaceAll("\\", "/"), { runGit: git })).resolves.toBe(false);
+  } finally {
+    await removeGitWorkspace(directory);
+  }
 });
 
 test("pushBack handles a changed repository-relative config path", async () => {
-  const { directory, config } = await repository();
-  const previous = process.cwd();
-  process.chdir(directory);
+  const { directory } = await createGitWorkspace();
+  const outside = process.cwd();
+  const git = createGitMock(jest, directory, async (args) => {
+    if (args[0] === "diff" && args[1] === "HEAD") return { stdout: "changed config" };
+  });
+  chdir(directory);
   try {
-    await writeFile(config, "system {\n    host-name changed\n}\n");
-    await expect(pushBack("config.boot")).rejects.toThrow("No configured push destination");
+    await expect(pushBack("config.boot", { runGit: git })).resolves.toBe(true);
   } finally {
-    process.chdir(previous);
-    await rm(directory, { recursive: true, force: true });
+    chdir(outside);
+    await removeGitWorkspace(directory);
   }
 });
 
 test("Git integration is optional outside a repository", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "vyops-no-git-"));
-  const config = join(directory, "config.boot");
-  await writeFile(config, "system {}\n");
+  const { directory, config } = await createGitWorkspace("vyops-no-git-");
+  const git = createGitMock(jest, directory, async () => {
+    throw Object.assign(new Error("not a git repository"), {
+      stderr: "fatal: not a git repository",
+    });
+  });
   try {
-    await expect(shouldSkip(config)).resolves.toBe(false);
-    await expect(repositorySnapshot(config)).resolves.toBeNull();
-    await expect(pushBack(config)).resolves.toBe(false);
+    await expect(shouldSkip(config, git)).resolves.toBe(false);
+    await expect(repositorySnapshot(config, git)).resolves.toBeNull();
+    await expect(pushBack(config, { runGit: git })).resolves.toBe(false);
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await removeGitWorkspace(directory);
   }
 });
 
 test("Git integration propagates unexpected repository errors", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "vyops-invalid-git-"));
-  const parent = join(directory, "not-a-directory");
-  await writeFile(parent, "not a directory\n");
+  const { directory, config } = await createGitWorkspace("vyops-invalid-git-");
+  const git = createGitMock(jest, directory, async () => {
+    throw new Error("unexpected repository error");
+  });
   try {
-    await expect(shouldSkip(join(parent, "config.boot"))).rejects.toThrow();
+    await expect(shouldSkip(config, git)).rejects.toThrow("unexpected repository error");
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await removeGitWorkspace(directory);
   }
 });
 
@@ -88,43 +84,57 @@ test("joins Git state fields into a snapshot", async () => {
 });
 
 test("pushBack refuses a repository changed during deployment", async () => {
-  const { directory, config } = await repository();
-  const snapshot = await repositorySnapshot(config);
-  await writeFile(config, "system {\n    host-name changed\n}\n");
-  await expect(
-    pushBack(config, { expectedState: { ...snapshot, state: `${snapshot.state}stale` } }),
-  ).rejects.toThrow("repository changed during deployment; refusing to commit");
-  await expect(run("git", ["log", "-1", "--format=%s"], { cwd: directory })).resolves.toMatchObject(
-    { stdout: "Initial\n" },
-  );
-  await rm(directory, { recursive: true, force: true });
+  const { directory, config } = await createGitWorkspace();
+  const git = createGitMock(jest, directory);
+  try {
+    await expect(
+      pushBack(config, { runGit: git, expectedState: { repo: directory, state: "stale" } }),
+    ).rejects.toThrow("repository changed during deployment; refusing to commit");
+  } finally {
+    await removeGitWorkspace(directory);
+  }
 });
 
-test("pushBack still refuses unrelated repository changes during deployment", async () => {
-  const { directory, config } = await repository();
-  const snapshot = await repositorySnapshot(config);
-  await writeFile(config, "system {\n    host-name changed\n}\n");
-  await writeFile(join(directory, "other.txt"), "concurrent change\n");
+test("pushBack refuses unrelated repository changes during deployment", async () => {
+  const { directory, config } = await createGitWorkspace();
+  let changed = false;
+  const git = createGitMock(jest, directory, async (args) => {
+    if (changed && args[0] === "status" && args[2] === "--untracked-files=all")
+      return { stdout: " M other.txt\n" };
+    if (args[0] === "diff" && args[1] === "HEAD") return { stdout: "changed config" };
+  });
   try {
-    await expect(pushBack(config, { expectedState: snapshot })).rejects.toThrow(
-      "repository changed during deployment; refusing to commit",
-    );
+    await expect(
+      pushBack(config, {
+        runGit: git,
+        beforeCommit: async () => {
+          changed = true;
+        },
+      }),
+    ).rejects.toThrow("repository changed during pushback; refusing to commit");
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await removeGitWorkspace(directory);
   }
 });
 
 test("pushBack refuses a repository changed after diff calculation", async () => {
-  const { directory, config } = await repository();
-  await writeFile(config, "system {\n    host-name changed\n}\n");
+  const { directory, config } = await createGitWorkspace();
+  let changed = false;
+  const git = createGitMock(jest, directory, async (args) => {
+    if (changed && args[0] === "status" && args[2] === "--untracked-files=all")
+      return { stdout: "?? created-during-pushback.txt\n" };
+    if (args[0] === "diff" && args[1] === "HEAD") return { stdout: "changed config" };
+  });
   try {
     await expect(
       pushBack(config, {
-        beforeCommit: async (repo) =>
-          writeFile(join(repo, "created-during-pushback.txt"), "changed\n"),
+        runGit: git,
+        beforeCommit: async () => {
+          changed = true;
+        },
       }),
     ).rejects.toThrow("repository changed during pushback; refusing to commit");
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await removeGitWorkspace(directory);
   }
 });

@@ -1,0 +1,36 @@
+version: "11.0"
+description: "Script upload, install, manifest, and rollback behavior."
+directives:
+  - id: E-1110.60
+    dos:
+      - Sort script paths before upload.
+      - Check live scripts against the local saved manifest.
+      - Warn when the router has unmanaged script files.
+      - Stage scripts and backups under unique paths in the vyos home folder.
+      - Create a remote install manifest before script changes.
+      - Record prior file and directory state before an install.
+      - Record whether each destination file or directory existed before release.
+      - Record prior mode, hash, and file type for each managed file.
+      - Back up a managed file before the program replaces it.
+      - Set new unmanaged files to root ownership.
+      - Preserve the owner of a previously managed file.
+      - Set local script mode from the source mode and script type.
+      - Set mode 0755 for shebang files, executable script types, and hook paths.
+      - Preserve the source mode for other files.
+      - Require each uploaded path to resolve to its exact remote path.
+      - Require executable scripts to pass a remote execute check.
+      - Require text scripts to contain no carriage-return bytes on the router.
+      - Create parent folders before the program uploads nested scripts.
+      - Install each staged file through a temporary file and an atomic move.
+      - Record installed file mode, hash, and type in the remote manifest.
+      - Restore prior files and remove new files when an install fails.
+      - Keep installed scripts after config confirmation.
+      - Restore prior scripts if the release does not confirm.
+      - Remove temporary script and backup folders after finalization.
+    donts:
+      - Do not follow script links during discovery or install.
+      - Do not overwrite a remote symbolic link.
+      - Do not install a file that fails path, mode, or line break checks.
+      - Do not remove an unmanaged script during rollback.
+      - Do not run hook cleanup after the program has finalized hooks.
+      - Do not run synchronized scripts when --no-hooks is set.

@@ -1,0 +1,43 @@
+version: "11.0"
+description: "Script tree, path, and manifest requirements."
+directives:
+  - id: E-1110.30
+    dos:
+      - Find scripts in the scripts folder beside the config file.
+      - Search script folders recursively.
+      - Include regular files and ignore symbolic links.
+      - Use forward slashes in script names.
+      - Accept letters, digits, period, underscore, slash, at sign, and hyphen in script paths.
+      - Allow the at sign in safe systemd template paths.
+      - Reject absolute paths, empty path parts, dot parts, and parent path parts.
+      - Read the saved manifest from config.boot.manifest.tsv beside the config.
+      - Accept the manifest header kind and path, with optional preexisting column.
+      - Require each manifest record to name one file and one safe path.
+      - Reject duplicate paths and malformed manifest records.
+      - Treat a missing manifest as an empty manifest.
+    donts:
+      - Do not include symbolic links in the script tree.
+      - Do not reject a safe script path because it contains an at sign.
+      - Do not accept paths that can escape the script root.
+  - id: E-1110.31
+    dos:
+      - Reject carriage-return bytes in text scripts.
+      - Allow carriage-return bytes in .exe files.
+      - Treat .exe files as binary files.
+      - Require a shebang for executable text scripts.
+      - Treat executable mode, a shebang, .sh, .script, and hook paths as executable.
+      - Treat files under commit/post-hooks.d as executable.
+      - Treat vyos-preconfig-bootup.script and vyos-postconfig-bootup.script as executable.
+      - Allow /bin/sh, /bin/bash, /bin/vbash, and /usr/bin/env as script interpreters.
+      - Preserve each script path in the manifest.
+    donts:
+      - Do not require a shebang for a non-executable text file without an executable name.
+      - Do not follow a symbolic link outside the bundle.
+  - id: E-1110.32
+    dos:
+      - Treat an .exe file as a binary script during release.
+      - Check binary type and CPU type on the router.
+      - Accept x86-64, AArch64, and ARMv7 ELF binaries.
+      - Compare the remote binary hash with the local hash when --verify-binaries is set.
+    donts:
+      - Do not accept a binary with a different file type or CPU type.

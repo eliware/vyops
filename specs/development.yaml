@@ -1,0 +1,23 @@
+version: "11.0"
+description: "Repository layout, package rules, and validation."
+directives:
+  - id: E-1110.110
+    dos:
+      - Keep application source in src/ and the command entry point in bin/.
+      - Keep tests in tests/ and checked-in test support in test-fixtures/.
+      - Keep user docs in docs/ and behavior specs in specs/.
+      - Mirror each source module with one test module.
+      - Use native ECMAScript modules with the .mjs suffix.
+      - Mock SSH and Git process calls in unit tests.
+      - Keep tests independent from live routers and external Git remotes.
+      - Keep package metadata and version in package.json.
+      - Limit npm package files to src/, docs/, README.md, AGENTS.md, LICENSE, RELEASE_NOTES.md, and bin/.
+      - Run npm ci after a package-lock.json change.
+      - Run npm test after code or behavior changes.
+      - Require 100 percent statement, branch, function, and line coverage for src/ modules.
+      - Use Node.js 26 in Ubuntu CI.
+      - Run CI for pushes and pull requests against main.
+    donts:
+      - Do not put credentials or private data in the repository.
+      - Do not test router operations against a live router.
+      - Do not publish the package without the authorized release handoff.

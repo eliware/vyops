@@ -1,0 +1,62 @@
+version: "11.0"
+description: "Release order, router checks, and recovery behavior."
+directives:
+  - id: E-1110.50
+    dos:
+      - Run local preflight before Git checks or SSH setup.
+      - Show the derived target and release options before router changes.
+      - Require --yes before the release command can start.
+      - Connect only after local checks pass.
+      - Check for sudo and systemctl on the router.
+      - Require a writable /config folder on the router.
+      - Check router free disk space before upload.
+      - Require more than 10240 kilobytes of free space in /config.
+      - Require haproxy when a local script name contains haproxy.
+      - Require file and uname when the bundle has an .exe script.
+      - Upload the config to a unique path under the router user's home folder.
+      - Stage the config and scripts before the interactive release sequence.
+      - Open an interactive VyOS shell after the program uploads all files to temporary paths.
+      - Enter configure mode and load the staged config.
+      - Disable terminal paging before the compare output.
+      - Mark the compare output and include it in command output.
+      - Run commit-confirm with a five-minute timer.
+      - Answer yes when VyOS asks to confirm the commit.
+      - Confirm the candidate before the program saves it.
+      - Save the confirmed config before the program reports success.
+      - Download the active config after the router accepts the release.
+      - Download the script manifest when the release installs scripts.
+      - Run optional service checks when --verify is set.
+      - Run configured hooks after the config and scripts pass their checks.
+      - Remove remote temporary files after success or failure.
+      - Reconnect after a release error and restore scripts when needed.
+    donts:
+      - Do not connect before preflight passes.
+      - Do not continue when config load or commit-confirm reports an error.
+      - Do not save the candidate before confirmation.
+      - Do not claim success when the interactive sequence did not confirm.
+  - id: E-1110.51
+    dos:
+      - Run show vrrp, show interfaces wireguard, show bgp summary, show ip route, and show haproxy when --verify is set.
+      - Treat an unconfigured VRRP, BGP, or HAProxy feature as an optional result.
+      - Treat an empty WireGuard interface list as an optional result.
+      - Log successful verification output after secret redaction.
+      - Report a required verification failure and stop the release.
+      - Reconnect before the interactive release sequence.
+      - Reconnect before the program downloads the confirmed config.
+      - Restore script files when the release does not confirm.
+      - Keep confirmed script files when hook finalization completes.
+    donts:
+      - Do not treat a failed route check as an optional result.
+      - Do not suppress a required verification failure.
+  - id: E-1110.52
+    dos:
+      - Skip an unchanged release when the latest commit is a VyOps Pushback commit.
+      - Skip this check when --force or --no-pushback is set.
+      - Create a repository snapshot before release when pushback is enabled.
+      - Push confirmed router state to Git unless --no-pushback is set.
+      - Warn that --no-pushback can leave router state and Git out of sync.
+      - Warn that --no-hooks skips all synchronized scripts.
+      - Allow --verify-binaries to compare binary hashes after upload.
+    donts:
+      - Do not offer a release dry-run mode.
+      - Do not run a release against two routers at the same time.

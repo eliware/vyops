@@ -1,0 +1,25 @@
+version: "11.0"
+description: "Public commands, options, and process results."
+directives:
+  - id: E-1110.10
+    dos:
+      - Support the preflight, release, and backup commands.
+      - Print usage and return an error when no command is given.
+      - Print usage for an invalid command or invalid arguments.
+      - Accept command options before or after the command name.
+      - Print usage and return success for standalone --help.
+      - Print package.json version and return success for standalone --version.
+      - Accept one config path for preflight and release.
+      - Accept one target and one destination path for backup.
+      - Allow --debug and --password-stdin for preflight and backup.
+      - Allow --yes, --force, --debug, --verify, --verify-binaries, --no-pushback, --no-hooks, and --password-stdin for release.
+      - Require --yes for release.
+      - Require --force when release uses --no-hooks.
+      - Read a password from standard input when --password-stdin is set.
+      - Remove one final line break from the password input.
+      - Return an error when password input is empty.
+    donts:
+      - Do not accept unknown options.
+      - Do not accept extra positional values.
+      - Do not accept a password as a command-line value.
+      - Do not accept --yes for preflight or backup.

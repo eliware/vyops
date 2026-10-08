@@ -1,0 +1,30 @@
+version: "11.0"
+description: "System behavior and runtime requirements for VyOps."
+directives:
+  - id: E-1110.1
+    dos:
+      - Build VyOps as a command-line tool for VyOS configuration bundles.
+      - Provide local preflight, router release, and router backup commands.
+      - Use Node.js 26 and native ECMAScript modules.
+      - Start the program from bin/vyops and load src/main.mjs.
+      - Read runtime settings from process environment variables.
+      - Use package.json as the source of the package version.
+      - Parse command arguments before each command starts.
+      - Create one operation ID for each command run.
+      - Close active SSH clients during normal shutdown.
+      - Run remote cleanup when a release stops or fails.
+    donts:
+      - Do not load .env files.
+      - Do not connect to a router during preflight.
+      - Do not release a router without the required --yes option.
+      - Do not add a release dry-run command.
+  - id: E-1110.2
+    dos:
+      - Keep local validation separate from router operations.
+      - Return exit code zero after a successful command.
+      - Set a non-zero exit code after a command error.
+      - Log command phases without passwords or private keys.
+      - Keep each source module focused on one responsibility.
+    donts:
+      - Do not change router state during tests.
+      - Do not expose a secret in an error or log.

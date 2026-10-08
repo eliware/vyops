@@ -1,0 +1,31 @@
+version: "11.0"
+description: "Local VyOS configuration syntax and target rules."
+directives:
+  - id: E-1110.20
+    dos:
+      - Read the config file as UTF-8 text.
+      - Reject an empty config file.
+      - Require at least one config statement.
+      - Require four spaces for each nested config level.
+      - Put the brace that starts a block at the end of its line.
+      - Put the brace that ends a block alone on its line.
+      - "Allow comments that start with # outside quoted text."
+      - Allow single or double quotes around config values.
+      - Ignore braces and comment marks inside quoted values.
+      - Reject an unterminated quote.
+      - Reject two start braces on one line.
+      - Reject two end braces on one line.
+      - Reject start and end braces on the same line.
+      - Reject unbalanced braces and unexpected closing braces.
+      - Require a host-name statement inside the system block.
+      - Require exactly one user in the system login block.
+      - Form the SSH target as user@host from that config.
+      - Start a host name with a letter or digit.
+      - Use letters, digits, period, underscore, or hyphen in the rest of a host name.
+      - Accept an IPv4 address as a host name.
+      - Accept usernames that contain letters, digits, period, underscore, or hyphen.
+      - Accept host names that contain letters, digits, period, underscore, or hyphen.
+    donts:
+      - Do not connect to a router when the program reads or checks a config.
+      - Do not accept multiple system login users for a release target.
+      - Do not accept a target with whitespace or more than one at sign.

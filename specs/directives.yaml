@@ -1,19 +1,16 @@
 version: "11.0"
-description: "VyOps local preflight and safe script path requirements."
+description: "Shared boundaries for the complete VyOps specification."
 directives:
   - id: E-1110
     dos:
-      - Define the public behavior and validation scope for VyOps.
+      - Use every focused specification file to describe one part of VyOps.
+      - Read all focused files to understand the full program.
+      - Keep preflight local and read-only.
+      - Run preflight before each release.
+      - Require --yes before a release can change router state.
+      - Use safe paths for local and remote script files.
+      - Keep router config, credentials, and private data out of public files.
+      - Use the system, CLI, config, bundle, preflight, release, script, backup, SSH, Git, security, and development rules in this directory.
     donts:
-      - Do not store credentials or live router data in repository specifications.
-    directives:
-      - id: E-1110.1
-        dos:
-          - Preflight validates the config, script tree, and saved script manifest before a release connects to a router.
-          - Preflight makes no SSH connection.
-          - Script paths are safe relative paths. A path may contain an at sign.
-          - Release rejects absolute paths and paths with traversal segments.
-        donts:
-          - Do not connect to a router during preflight.
-          - Do not reject a safe systemd template path because it contains an at sign.
-          - Do not allow an absolute script path or a traversal path.
+      - Do not treat this file as the full program specification.
+      - Do not let one focused file weaken a shared boundary.

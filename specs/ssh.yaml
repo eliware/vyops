@@ -1,0 +1,30 @@
+version: "11.0"
+description: "SSH target, connection, transfer, and shutdown rules."
+directives:
+  - id: E-1110.80
+    dos:
+      - Accept one user and one host in the form user@host.
+      - Accept a valid DNS-style host, IPv4 address, or IPv6 address.
+      - Use the configured private key when no password is set.
+      - Use the SSH agent when SSH_AUTH_SOCK is set.
+      - Use ~/.ssh/known_hosts when SSH_KNOWN_HOSTS is not set.
+      - Use SSH_HOST_CA when the process sets that value.
+      - Keep host key verification enabled.
+      - Use VYOPS_SSH_KEY for the private key path when it is set.
+      - Use ~/.ssh/id_rsa when VYOPS_SSH_KEY is not set.
+      - Set the phase and target on each active SSH client for error context.
+      - Use VYOPS_CONNECT_TIMEOUT for the connection timeout.
+      - Use VYOPS_OPERATION_TIMEOUT for command and transfer timeouts.
+      - Use VYOPS_INTERACTIVE_TIMEOUT for interactive shell timeouts.
+      - Use defaults of 30000, 60000, and 60000 milliseconds for those timeouts.
+      - Close the stream and SSH client when an operation times out.
+      - Close every active SSH client during shutdown.
+      - Stop a command when its operation timeout expires.
+      - Stop an interactive shell when its interactive timeout expires.
+      - Use SFTP for config and script file transfer.
+      - Use SSH command channels for remote checks and cleanup.
+      - Close transfer channels after success or failure.
+    donts:
+      - Do not disable host key verification.
+      - Do not accept an invalid user, host, or IP address.
+      - Do not leave an SSH stream open after a timeout.

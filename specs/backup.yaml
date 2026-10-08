@@ -1,0 +1,24 @@
+version: "11.0"
+description: "Router reads and local backup publication."
+directives:
+  - id: E-1110.70
+    dos:
+      - Parse the target before an SSH connection.
+      - Reject a destination that is a filesystem root.
+      - Check the remote script folder for symbolic links.
+      - Reject the backup when the remote script folder has a symbolic link.
+      - List remote script files with NUL separators.
+      - Validate each remote script path and file before download.
+      - Read each remote script through a checked file handle.
+      - Download the active config and scripts to a private temporary folder.
+      - Set backed-up files to mode 0600.
+      - Write config.boot.manifest.tsv with the backed-up script paths.
+      - Replace config.boot, scripts, and the manifest as one local update.
+      - Restore prior backup files when publication fails.
+      - Close the SSH client after success or failure.
+      - Return success after all backup files are in place.
+    donts:
+      - Do not change router config during backup.
+      - Do not publish a partial backup.
+      - Do not follow a remote script link.
+      - Do not write a backup over a filesystem root.

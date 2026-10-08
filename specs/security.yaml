@@ -1,0 +1,23 @@
+version: "11.0"
+description: "Secret, path, router, and output safeguards."
+directives:
+  - id: E-1110.100
+    dos:
+      - Keep router config, router output, and SSH keys private.
+      - Redact passwords, private keys, tokens, and secret values from release output.
+      - Limit each logged remote command summary to 240 characters.
+      - Do not log full router config content.
+      - Use least-privilege router access.
+      - Validate local and remote script paths before use.
+      - Reject absolute paths and traversal paths.
+      - Reject symbolic links in local and remote script trees.
+      - Quote paths that the program uses in remote shell commands.
+      - Keep SSH host verification enabled.
+      - Use mocks for router operations in tests.
+      - Use mocks for Git process calls in tests.
+      - Require a specific user request before any live router test or release.
+    donts:
+      - Do not store credentials or private router data in the repository.
+      - Do not put credentials in source code, tests, docs, or command arguments.
+      - Do not log passwords, private keys, or full router configs.
+      - Do not connect to a live router during routine tests.
