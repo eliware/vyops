@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { join } from "node:path";
 
 const readdir = jest.fn();
 const readFile = jest.fn();
@@ -9,7 +10,7 @@ const { deploymentRemotePaths } = await import("../../src/deploy/remote-paths.mj
 const scriptsRoot = deploymentRemotePaths("run-id").scripts;
 jest.unstable_mockModule("@eliware/common", () => ({
   fs: { promises: { readdir, readFile, stat } },
-  path: (...parts) => parts.join("/"),
+  path: (...parts) => join(...parts),
   log: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 jest.unstable_mockModule("../../src/ssh.mjs", () => ({ exec, upload }));
@@ -49,7 +50,7 @@ test("stages, validates, installs, and finalizes a script tree", async () => {
   const finalize = await installScripts({}, "/tmp/config.boot", debug, "run-id", true);
   expect(upload).toHaveBeenCalledWith(
     {},
-    "/tmp/config.boot/../scripts/health.sh",
+    "/tmp/scripts/health.sh",
     `${scriptsRoot}/health.sh`,
     0o755,
   );
@@ -125,7 +126,7 @@ test("creates and uploads nested script directories", async () => {
   );
   expect(upload).toHaveBeenCalledWith(
     {},
-    "/tmp/config.boot/../scripts/health/check.sh",
+    "/tmp/scripts/health/check.sh",
     `${scriptsRoot}/health/check.sh`,
     0o755,
   );
