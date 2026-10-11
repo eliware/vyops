@@ -32,7 +32,7 @@ export async function installScripts(
   if (!names.length) return null;
   const made = await exec(
     client,
-    `mkdir -m 700 ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)} && sudo mkdir -p ${JSON.stringify(installDir)} && printf '%s\\n' 'kind\\tpath\\tpreexisting\\told_mode\\told_sha256\\told_type\\tnew_mode\\tnew_sha256\\tnew_type' > ${JSON.stringify(manifest)}`,
+    `mkdir -m 700 ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)} && sudo mkdir -p ${JSON.stringify(installDir)} && printf 'kind\\tpath\\tpreexisting\\told_mode\\told_sha256\\told_type\\tnew_mode\\tnew_sha256\\tnew_type\\n' > ${JSON.stringify(manifest)}`,
   );
   if (made.code !== 0)
     throw new Error(`script directory setup failed: ${made.stderr || made.stdout}`.trim());

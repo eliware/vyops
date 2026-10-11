@@ -57,6 +57,9 @@ test("stages, validates, installs, and finalizes a script tree", async () => {
   expect(exec.mock.calls.some(([, command]) => command.includes("sha256sum"))).toBe(true);
   await finalize(true, {});
   expect(exec.mock.calls.at(-1)[1]).toContain("rm -rf");
+  expect(exec.mock.calls[1][1]).toContain(
+    "printf 'kind\\tpath\\tpreexisting\\told_mode\\told_sha256\\told_type\\tnew_mode\\tnew_sha256\\tnew_type\\n'",
+  );
   expect(debug).toHaveBeenCalledWith("installed script: health.sh");
 });
 

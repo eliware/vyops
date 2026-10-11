@@ -96,6 +96,15 @@ test("skips unchanged releases and deploys other commands", async () => {
   expect(cli.deploy).toHaveBeenCalled();
 });
 
+test("forces a release when unchanged files would normally skip deployment", async () => {
+  args = { command: "release", config: "config.boot", noPushback: false, force: true };
+  cli.shouldSkip.mockResolvedValue(true);
+  await cli.runCli();
+  expect(cli.shouldSkip).not.toHaveBeenCalled();
+  expect(cli.deploy).toHaveBeenCalled();
+  expect(cli.closeAll).toHaveBeenCalled();
+});
+
 test("handles argument errors and removes handlers", async () => {
   cli.parseArgs.mockImplementation(() => {
     throw new Error("invalid arguments");

@@ -26,6 +26,8 @@ directives:
       - Download the active config after the router accepts the release.
       - Download router script state to config.boot.deployment.tsv.
       - Keep router script state separate from config.boot.manifest.tsv.
+      - Write a nine-column tab-separated header to config.boot.deployment.tsv.
+      - "Use these columns in order: kind, path, preexisting, old_mode, old_sha256, old_type, new_mode, new_sha256, new_type."
       - Run optional service checks when --verify is set.
       - Run configured hooks after the config and scripts pass their checks.
       - Remove remote temporary files after success or failure.
