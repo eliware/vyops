@@ -26,7 +26,7 @@ Repository structure: source files live in `src/`, commands live in `bin/`, docs
 
 ## Development
 
-Use Node.js 26 and npm. Use native ESM with `.mjs` files. Runtime commands are `node bin/vyops` and `npm run deploy`.
+Use Node.js 26 or later and npm 12 or later. Use native ESM with `.mjs` files. Runtime commands are `node bin/vyops` and `npm run deploy`.
 
 Runtime environment settings are listed in README.md and `.env.example`. The app reads process environment variables; it does not load `.env` files. Package metadata belongs in `package.json`. CLI arguments do not replace runtime environment settings.
 
@@ -86,7 +86,7 @@ The CLI targets Node.js 26. Supported platforms are Linux and Windows. Ubuntu CI
 
 ## npm publication
 
-The package is `@eliware/vyops`. `package.json` is the version source. The exact npm files allowlist is `src/`, `docs/`, `README.md`, `AGENTS.md`, `LICENSE`, `RELEASE_NOTES.md`, and `bin/`.
+The package is `@eliware/vyops`. `package.json` is the version source. Required package paths are `src/`, `docs/`, `README.md`, `AGENTS.md`, `LICENSE`, `RELEASE_NOTES.md`, `bin/`, and `specs/`.
 
 Run `eliware-test --pack` or `npm run pack`. The harness pack stage must pass and check the package manifest. Trusted Publishing uses npm provenance through GitHub OIDC. After release, verify the exact `package.json` version for `@eliware/vyops` at `registry.npmjs.org`.
 

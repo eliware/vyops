@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Router reads and local backup publication."
 directives:
-  - id: E-1110.70
+  - id: E-1110.13
     dos:
       - Parse the target before an SSH connection.
       - Reject a destination that is a filesystem root.

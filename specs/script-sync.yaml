@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Script upload, install, manifest, and rollback behavior."
 directives:
-  - id: E-1110.60
+  - id: E-1110.12
     dos:
       - Sort script paths before upload.
       - Check live scripts against the local saved manifest.

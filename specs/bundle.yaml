@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Script tree, path, and manifest requirements."
 directives:
-  - id: E-1110.30
+  - id: E-1110.5
     dos:
       - Find scripts in the scripts folder beside the config file.
       - Search script folders recursively.
@@ -19,7 +19,7 @@ directives:
       - Do not include symbolic links in the script tree.
       - Do not reject a safe script path because it contains an at sign.
       - Do not accept paths that can escape the script root.
-  - id: E-1110.31
+  - id: E-1110.6
     dos:
       - Reject carriage-return bytes in text scripts.
       - Allow carriage-return bytes in .exe files.
@@ -33,7 +33,7 @@ directives:
     donts:
       - Do not require a shebang for a non-executable text file without an executable name.
       - Do not follow a symbolic link outside the bundle.
-  - id: E-1110.32
+  - id: E-1110.7
     dos:
       - Treat an .exe file as a binary script during release.
       - Check binary type and CPU type on the router.

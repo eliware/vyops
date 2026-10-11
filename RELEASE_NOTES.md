@@ -1,5 +1,12 @@
 # Release Notes
 
+## 12.0.0 — 2026-10-11
+
+### Changed
+
+- Align package metadata, repository guidance, and validation workflows with Eliware Test v12.
+- Publish the specification files with the npm package.
+
 ## 11.0.0 — 2026-10-07
 
 ### Changed

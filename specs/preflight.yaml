@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Local checks that run before a release."
 directives:
-  - id: E-1110.40
+  - id: E-1110.8
     dos:
       - Read and validate the local config first.
       - Find and validate the local script tree.

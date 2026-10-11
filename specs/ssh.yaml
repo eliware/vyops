@@ -1,7 +1,7 @@
 version: "11.0"
 description: "SSH target, connection, transfer, and shutdown rules."
 directives:
-  - id: E-1110.80
+  - id: E-1110.14
     dos:
       - Accept one user and one host in the form user@host.
       - Accept a valid DNS-style host, IPv4 address, or IPv6 address.

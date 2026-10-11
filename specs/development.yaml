@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Repository layout, package rules, and validation."
 directives:
-  - id: E-1110.110
+  - id: E-1110.17
     dos:
       - Keep application source in src/ and the command entry point in bin/.
       - Keep tests in tests/ and checked-in test support in test-fixtures/.

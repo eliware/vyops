@@ -1,9 +1,34 @@
 {
   "name": "@eliware/vyops",
-  "version": "11.0.0",
+  "version": "12.0.0",
+  "type": "module",
   "description": "Preflight, release, and back up native VyOS configuration bundles over SSH.",
+  "keywords": [
+    "vyos",
+    "networking",
+    "gitops",
+    "ssh",
+    "cli"
+  ],
+  "private": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "main": "bin/vyops",
-  "author": "Eliware <eliware@eliware.org>",
+  "bin": {
+    "vyops": "./bin/vyops"
+  },
+  "files": [
+    "src/",
+    "docs/",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE",
+    "RELEASE_NOTES.md",
+    "bin/",
+    "specs/"
+  ],
   "scripts": {
     "test": "eliware-test",
     "lint": "eliware-test --lint",
@@ -13,20 +38,8 @@
     "deploy": "node bin/vyops",
     "pack": "eliware-test --pack"
   },
-  "keywords": [
-    "vyos",
-    "networking",
-    "gitops",
-    "ssh",
-    "cli"
-  ],
-  "type": "module",
   "engines": {
-    "node": "26"
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "node": ">=26"
   },
   "dependencies": {
     "@eliware/common": "^2.0.0",
@@ -35,28 +48,6 @@
   "devDependencies": {
     "@eliware/test": "^11.0.0"
   },
-  "bin": {
-    "vyops": "./bin/vyops"
-  },
-  "license": "MIT",
-  "private": false,
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/eliware/vyops.git"
-  },
-  "homepage": "https://github.com/eliware/vyops#readme",
-  "bugs": {
-    "url": "https://github.com/eliware/vyops/issues"
-  },
-  "files": [
-    "src/",
-    "docs/",
-    "README.md",
-    "AGENTS.md",
-    "LICENSE",
-    "RELEASE_NOTES.md",
-    "bin/"
-  ],
   "jest": {
     "testEnvironment": "node",
     "testMatch": [
@@ -93,6 +84,16 @@
     "proseWrap": "preserve",
     "endOfLine": "lf"
   },
+  "author": "Eliware <eliware@eliware.org>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliware/vyops.git"
+  },
+  "homepage": "https://github.com/eliware/vyops#readme",
+  "bugs": {
+    "url": "https://github.com/eliware/vyops/issues"
+  },
   "eliware": {
     "id": "E-1110",
     "apply": [
@@ -100,6 +101,10 @@
       "application",
       "cli",
       "npm-published"
-    ]
+    ],
+    "exempt": []
+  },
+  "exports": {
+    ".": "./bin/vyops"
   }
 }

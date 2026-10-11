@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Public commands, options, and process results."
 directives:
-  - id: E-1110.10
+  - id: E-1110.3
     dos:
       - Support the preflight, release, and backup commands.
       - Print usage and return an error when no command is given.

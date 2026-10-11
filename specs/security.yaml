@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Secret, path, router, and output safeguards."
 directives:
-  - id: E-1110.100
+  - id: E-1110.16
     dos:
       - Keep router config, router output, and SSH keys private.
       - Redact passwords, private keys, tokens, and secret values from release output.

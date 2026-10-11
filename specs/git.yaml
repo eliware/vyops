@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Git state checks and release pushback rules."
 directives:
-  - id: E-1110.90
+  - id: E-1110.15
     dos:
       - Find the Git root from the config folder.
       - Return no repository state when the config is outside a Git work tree.

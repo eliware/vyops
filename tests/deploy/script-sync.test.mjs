@@ -50,7 +50,7 @@ test("stages, validates, installs, and finalizes a script tree", async () => {
   const finalize = await installScripts({}, "/tmp/config.boot", debug, "run-id", true);
   expect(upload).toHaveBeenCalledWith(
     {},
-    "/tmp/scripts/health.sh",
+    join("/tmp", "scripts", "health.sh"),
     `${scriptsRoot}/health.sh`,
     0o755,
   );
@@ -126,7 +126,7 @@ test("creates and uploads nested script directories", async () => {
   );
   expect(upload).toHaveBeenCalledWith(
     {},
-    "/tmp/scripts/health/check.sh",
+    join("/tmp", "scripts", "health", "check.sh"),
     `${scriptsRoot}/health/check.sh`,
     0o755,
   );

@@ -1,7 +1,7 @@
-version: "11.0"
+version: "12.0"
 description: "Shared boundaries for the complete VyOps specification."
 directives:
-  - id: E-1110
+  - id: E-1110.0
     dos:
       - Use every focused specification file to describe one part of VyOps.
       - Read all focused files to understand the full program.

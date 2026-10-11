@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Release order, router checks, and recovery behavior."
 directives:
-  - id: E-1110.50
+  - id: E-1110.9
     dos:
       - Run local preflight before Git checks or SSH setup.
       - Show the derived target and release options before router changes.
@@ -34,7 +34,7 @@ directives:
       - Do not continue when config load or commit-confirm reports an error.
       - Do not save the candidate before confirmation.
       - Do not claim success when the interactive sequence did not confirm.
-  - id: E-1110.51
+  - id: E-1110.10
     dos:
       - Run show vrrp, show interfaces wireguard, show bgp summary, show ip route, and show haproxy when --verify is set.
       - Treat an unconfigured VRRP, BGP, or HAProxy feature as an optional result.
@@ -48,7 +48,7 @@ directives:
     donts:
       - Do not treat a failed route check as an optional result.
       - Do not suppress a required verification failure.
-  - id: E-1110.52
+  - id: E-1110.11
     dos:
       - Skip an unchanged release when the latest commit is a VyOps Pushback commit.
       - Skip this check when --force or --no-pushback is set.

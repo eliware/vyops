@@ -1,7 +1,7 @@
 version: "11.0"
 description: "Local VyOS configuration syntax and target rules."
 directives:
-  - id: E-1110.20
+  - id: E-1110.4
     dos:
       - Read the config file as UTF-8 text.
       - Reject an empty config file.
