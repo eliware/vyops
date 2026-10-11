@@ -121,10 +121,22 @@ test("ignores SSH and SFTP callbacks that arrive after timeout", async () => {
 test("close handles null and error", async () => {
   await expect(close(null)).resolves.toBeUndefined();
   jest.useFakeTimers();
-  const client = new MockClient();
+  const handlers = {};
+  const removeListener = jest.fn();
+  const client = {
+    once: (event, callback) => {
+      handlers[event] = callback;
+    },
+    removeListener,
+    end: () => {
+      handlers.error(new Error("close error"));
+      handlers.close();
+    },
+  };
   const promise = close(client);
-  client.emit("error", new Error("close error"));
   await expect(promise).resolves.toBeUndefined();
+  expect(removeListener).toHaveBeenCalledWith("close", expect.any(Function));
+  expect(removeListener).toHaveBeenCalledWith("error", expect.any(Function));
   expect(jest.getTimerCount()).toBe(0);
 });
 

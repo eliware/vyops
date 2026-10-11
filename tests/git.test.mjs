@@ -20,7 +20,17 @@ test("git checks use the config directory and skip unchanged pushback commits", 
   try {
     await expect(shouldSkip(config, git)).resolves.toBe(true);
     expect(git).toHaveBeenCalledWith(["rev-parse", "--show-toplevel"], directory);
-    expect(git).toHaveBeenCalledWith(["status", "--porcelain", "--", "config.boot"], directory);
+    expect(git).toHaveBeenCalledWith(
+      [
+        "status",
+        "--porcelain",
+        "--",
+        "config.boot",
+        "config.boot.manifest.tsv",
+        "config.boot.deployment.tsv",
+      ],
+      directory,
+    );
   } finally {
     chdir(outside);
     await removeGitWorkspace(directory);

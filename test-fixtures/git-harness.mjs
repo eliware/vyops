@@ -21,7 +21,10 @@ export function createGitMock(jest, directory, override = () => undefined) {
     if (result !== undefined) return result;
     if (args[0] === "rev-parse" && args[1] === "--show-toplevel")
       return { stdout: `${directory}\n` };
-    if (args[0] === "ls-files") return { stdout: "config.boot.manifest.tsv\n" };
+    if (args[0] === "ls-files" && args.at(-1) === "config.boot.manifest.tsv")
+      return { stdout: "config.boot.manifest.tsv\n" };
+    if (args[0] === "ls-files")
+      throw Object.assign(new Error("path is not tracked"), { stderr: "path is not tracked" });
     if (args[0] === "rev-parse" && args[1] === "HEAD") return { stdout: "head\n" };
     if (args[0] === "symbolic-ref") return { stdout: "main\n" };
     if (args[0] === "rev-parse" && args[1] === "--abbrev-ref") return { stdout: "origin/main\n" };

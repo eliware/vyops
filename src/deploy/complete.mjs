@@ -1,6 +1,7 @@
 import { verifyRelease } from "./verify-release.mjs";
 import { promises as fs } from "node:fs";
 import { downloadToReplace } from "./download-to-replace.mjs";
+import { deploymentManifestPath } from "./deployment-manifest-path.mjs";
 
 export async function completeDeployment(options) {
   const {
@@ -29,7 +30,7 @@ export async function completeDeployment(options) {
   await downloadToReplace(fs, download, getClient(), "/config/config.boot", config);
   if (finalizeHooks) {
     phase("download deployment manifest");
-    await downloadToReplace(fs, download, getClient(), manifest, `${config}.manifest.tsv`);
+    await downloadToReplace(fs, download, getClient(), manifest, deploymentManifestPath(config));
   }
   if (verify) await verifyRelease(getClient(), exec, log, redact);
   phase("run hooks");

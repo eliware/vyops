@@ -4,14 +4,17 @@ directives:
   - id: E-1110.12
     dos:
       - Sort script paths before upload.
-      - Check live scripts against the local saved manifest.
-      - Warn when the router has unmanaged script files.
+      - Check live scripts against config.boot.deployment.tsv.
+      - Compare live script paths with local bundle paths.
+      - Report bundle paths that match live files.
+      - Report router-only paths that remain unchanged.
+      - Ask the operator to run VyOps backup for a full router baseline.
       - Stage scripts and backups under unique paths in the vyos home folder.
       - Create a remote install manifest before script changes.
       - Record prior file and directory state before an install.
       - Record whether each destination file or directory existed before release.
-      - Record prior mode, hash, and file type for each managed file.
-      - Back up a managed file before the program replaces it.
+      - Record prior mode, hash, and file type for each existing file.
+      - Back up each existing file before the program replaces it.
       - Set new unmanaged files to root ownership.
       - Preserve the owner of a previously managed file.
       - Set local script mode from the source mode and script type.
@@ -23,7 +26,8 @@ directives:
       - Create parent folders before the program uploads nested scripts.
       - Install each staged file through a temporary file and an atomic move.
       - Record installed file mode, hash, and type in the remote manifest.
-      - Restore prior files and remove new files when an install fails.
+      - Restore prior managed and unmanaged files when an install fails.
+      - Remove files that did not exist before an install when it fails.
       - Keep installed scripts after config confirmation.
       - Restore prior scripts if the release does not confirm.
       - Remove temporary script and backup folders after finalization.

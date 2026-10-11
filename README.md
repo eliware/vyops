@@ -134,6 +134,8 @@ VyOps starts through `bin/vyops`. Preflight reads local files and makes no SSH c
 
 The externally observable workflows are preflight, release, and backup. Release uploads a candidate configuration, shows the router diff, and uses `commit-confirm`. It confirms and saves after the router accepts the candidate. It downloads the confirmed configuration and pushes the resulting change to the current Git repository unless `--no-pushback` is set.
 
+The local bundle manifest is `config.boot.manifest.tsv`. The router deployment manifest is `config.boot.deployment.tsv`. VyOps keeps these files separate.
+
 Preflight is read-only and does not modify router state. Backup reads router state. Release changes router state only after `--yes` confirms the target summary.
 
 Use `--no-hooks` only with `--force`. This option skips all synchronized scripts. Do not run releases against `core1` and `core2` at the same time.

@@ -23,6 +23,8 @@ export function close(client) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      client.removeListener("close", done);
+      client.removeListener("error", done);
       activeClients.delete(client);
       resolve();
     };

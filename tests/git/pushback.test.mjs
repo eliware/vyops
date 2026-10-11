@@ -55,13 +55,14 @@ test("pushback rejects a configuration outside the repository", async () => {
 
 test("pushBack commits and pushes a changed config", async () => {
   const { directory, config } = await createGitWorkspace();
+  await writeFile(`${config}.deployment.tsv`, "kind\tpath\tstate\n");
   const git = createGitMock(jest, directory, async (args) => {
     if (args[0] === "diff" && args[1] === "HEAD") return { stdout: "changed config" };
   });
   try {
     await expect(pushBack(config, { runGit: git })).resolves.toBe(true);
     expect(git).toHaveBeenCalledWith(
-      ["add", "--", "config.boot", "config.boot.manifest.tsv"],
+      ["add", "--", "config.boot", "config.boot.manifest.tsv", "config.boot.deployment.tsv"],
       directory,
     );
     expect(git.mock.calls.some(([args]) => args[0] === "commit")).toBe(true);

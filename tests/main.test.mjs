@@ -39,6 +39,7 @@ test("covers help, version, backup, and preflight branches", async () => {
   args = { command: "preflight" };
   await cli.runCli();
   expect(cli.runPreflight).toHaveBeenCalled();
+  expect(cli.closeAll).toHaveBeenCalled();
 });
 
 test("preflight failures use the mocked command and do not deploy", async () => {
@@ -46,7 +47,7 @@ test("preflight failures use the mocked command and do not deploy", async () => 
   await cli.runCli();
   expect(cli.log.error).toHaveBeenCalledWith("invalid config");
   expect(cli.deploy).not.toHaveBeenCalled();
-  expect(cli.closeAll).not.toHaveBeenCalled();
+  expect(cli.closeAll).toHaveBeenCalled();
   expect(process.exitCode).toBe(1);
 });
 

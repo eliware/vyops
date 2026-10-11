@@ -41,6 +41,10 @@ export async function cleanupRemoteStaging({
   debugLog("cleaning up remote file");
   let cleanupClient = client;
   try {
+    if (cleanupClient?.__vyopsConnection && cleanupClient.__vyopsConnection.state !== "open") {
+      await close(cleanupClient);
+      cleanupClient = null;
+    }
     if (!cleanupClient) cleanupClient = await connectClient();
     await removeStaging(exec, cleanupClient, remotePaths);
   } catch (error) {

@@ -3,11 +3,27 @@ import { tmpdir } from "node:os";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
 import { jest } from "@jest/globals";
-import { readManagedPaths, unmanagedPaths } from "../../src/deploy/script-manifest.mjs";
+import {
+  readDeploymentState,
+  readManagedPaths,
+  unmanagedPaths,
+} from "../../src/deploy/script-manifest.mjs";
 
 test("reads and validates managed file paths", async () => {
   const readFile = jest.fn().mockResolvedValue("file\thook.sh\tfalse\n");
   await expect(readManagedPaths(readFile, "/tmp/manifest")).resolves.toEqual(new Set(["hook.sh"]));
+});
+
+test("reports whether a deployment manifest exists", async () => {
+  await expect(
+    readDeploymentState(jest.fn().mockResolvedValue("file\thook.sh\tfalse\n"), "/tmp/manifest"),
+  ).resolves.toEqual({ managed: new Set(["hook.sh"]), hasManifest: true });
+  await expect(
+    readDeploymentState(
+      jest.fn().mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" })),
+      "/tmp/manifest",
+    ),
+  ).resolves.toEqual({ managed: new Set(), hasManifest: false });
 });
 
 test("rejects unsafe manifest paths and tolerates a missing manifest", async () => {
@@ -36,7 +52,7 @@ test("restores a previously managed file through the manifest on failure", async
   await mkdir(hooks, { recursive: true });
   await writeFile(join(hooks, "managed.sh"), "#!/bin/sh\n");
   await writeFile(
-    `${join(root, "config.boot")}.manifest.tsv`,
+    `${join(root, "config.boot")}.deployment.tsv`,
     "kind\tpath\tpreexisting\nfile\tmanaged.sh\ttrue\n",
   );
   try {

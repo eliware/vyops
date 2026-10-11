@@ -41,6 +41,29 @@ test("cleans remote staging and closes the SSH client", async () => {
   expect(close).toHaveBeenCalledWith(client);
 });
 
+test("reconnects when the SSH client is closed before remote cleanup", async () => {
+  const close = jest.fn();
+  const client = { __vyopsConnection: { state: "closed" } };
+  const cleanupClient = { __vyopsConnection: { state: "open" } };
+  const connectClient = jest.fn().mockResolvedValue(cleanupClient);
+  const exec = jest.fn().mockResolvedValue({ code: 0 });
+  const log = { warn: jest.fn() };
+  await cleanupRemoteStaging({
+    exec,
+    close,
+    connectClient,
+    client,
+    remotePaths: { config: "c", scripts: "s", scriptsBackup: "b" },
+    log,
+    debugLog: jest.fn(),
+  });
+  expect(close).toHaveBeenNthCalledWith(1, client);
+  expect(connectClient).toHaveBeenCalledTimes(1);
+  expect(exec).toHaveBeenCalledWith(cleanupClient, expect.any(String));
+  expect(close).toHaveBeenNthCalledWith(2, cleanupClient);
+  expect(log.warn).not.toHaveBeenCalled();
+});
+
 const { fsMocks, logMock, mocks, client, deploy, cleanupActiveDeployments } =
   await setupDeployHarness(jest);
 

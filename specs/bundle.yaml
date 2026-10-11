@@ -10,11 +10,13 @@ directives:
       - Accept letters, digits, period, underscore, slash, at sign, and hyphen in script paths.
       - Allow the at sign in safe systemd template paths.
       - Reject absolute paths, empty path parts, dot parts, and parent path parts.
-      - Read the saved manifest from config.boot.manifest.tsv beside the config.
-      - Accept the manifest header kind and path, with optional preexisting column.
-      - Require each manifest record to name one file and one safe path.
-      - Reject duplicate paths and malformed manifest records.
-      - Treat a missing manifest as an empty manifest.
+      - Read the local bundle manifest from config.boot.manifest.tsv beside the config.
+      - Accept the header kind and path, with an optional preexisting column.
+      - Require each record to name one file and one safe path.
+      - Reject duplicate paths and malformed records.
+      - Treat a missing local bundle manifest as empty.
+      - Keep router deployment state in config.boot.deployment.tsv.
+      - Do not read router deployment state as a local bundle manifest.
     donts:
       - Do not include symbolic links in the script tree.
       - Do not reject a safe script path because it contains an at sign.

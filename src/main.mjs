@@ -62,7 +62,7 @@ export async function runCli() {
     log.debug(`[vyops] [deployment ${args.operationId}] config validation complete`);
     if (!args.force && !args.noPushback && (await shouldSkip(args.config))) {
       log.info(
-        `[deployment ${args.operationId}] Latest commit is Pushback and config is unchanged; skipping deployment`,
+        `[deployment ${args.operationId}] Latest commit is Pushback and deployment files are unchanged; skipping deployment`,
       );
       return;
     }
@@ -81,6 +81,7 @@ export async function runCli() {
     log.error(error.message);
     process.exitCode = 1;
   } finally {
+    await closeAll();
     signals.removeHandlers();
     errors.removeHandlers();
   }

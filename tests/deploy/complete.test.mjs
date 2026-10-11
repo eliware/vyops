@@ -3,13 +3,24 @@ import { completeDeployment } from "../../src/deploy/complete.mjs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { runPreflight } from "../../src/commands/preflight.mjs";
 
 test("downloads the confirmed config and finalizes hooks", async () => {
   const root = await mkdtemp(join(tmpdir(), "vyops-complete-"));
   const config = join(root, "config.boot");
-  await writeFile(config, "old config");
+  const configText =
+    "system {\n    host-name test-router\n    login {\n        user vyos {\n        }\n    }\n}\n";
+  await writeFile(config, configText);
+  await writeFile(`${config}.manifest.tsv`, "kind\tpath\nfile\tbundle.sh\n");
   let client = {};
-  const download = jest.fn();
+  const download = jest.fn(async (_client, remote, local) =>
+    writeFile(
+      local,
+      remote === "/config/config.boot"
+        ? configText
+        : "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\tbundle.sh\tfalse\t-\t-\t-\t755\t-\tfile\n",
+    ),
+  );
   const finalizeHooks = jest.fn();
   await completeDeployment({
     getClient: () => client,
@@ -31,9 +42,18 @@ test("downloads the confirmed config and finalizes hooks", async () => {
     setHooksFinalized: jest.fn(),
   });
   expect(download).toHaveBeenCalledTimes(2);
-  await expect(readFile(config, "utf8")).resolves.toBe("");
-  await expect(readFile(`${config}.manifest.tsv`, "utf8")).resolves.toBe("");
+  await expect(readFile(config, "utf8")).resolves.toBe(configText);
+  await expect(readFile(`${config}.manifest.tsv`, "utf8")).resolves.toBe(
+    "kind\tpath\nfile\tbundle.sh\n",
+  );
+  await expect(readFile(`${config}.deployment.tsv`, "utf8")).resolves.toContain(
+    "new_mode\tnew_sha256\tnew_type",
+  );
   expect(finalizeHooks).toHaveBeenCalledWith(true, client);
+  await expect(runPreflight({ config }, { info: jest.fn() })).resolves.toMatchObject({
+    target: "vyos@test-router",
+    scripts: [],
+  });
   await rm(root, { recursive: true, force: true });
 });
 

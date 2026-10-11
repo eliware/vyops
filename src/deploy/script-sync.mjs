@@ -28,7 +28,7 @@ export async function installScripts(
   const backupDir = remotePaths.scriptsBackup;
   const manifest = remotePaths.manifest;
   const installDir = "/config/scripts";
-  const previouslyManaged = await inspectLiveScripts(client, config);
+  const previouslyManaged = await inspectLiveScripts(client, config, names);
   if (!names.length) return null;
   const made = await exec(
     client,

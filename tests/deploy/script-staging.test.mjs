@@ -62,3 +62,28 @@ test("reports remote script validation failures without output", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("backs up a preexisting unmanaged script before replacement", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-unmanaged-"));
+  const scripts = join(root, "scripts");
+  await mkdir(scripts, { recursive: true });
+  await writeFile(join(scripts, "manual.sh"), "#!/bin/sh\n");
+  try {
+    fsMocks.readdir.mockResolvedValue([{ name: "manual.sh", isFile: () => true }]);
+    mocks.exec.mockImplementation(async (_client, command) =>
+      command.includes("find -P /config/scripts")
+        ? { code: 0, stdout: "/config/scripts/manual.sh\0", stderr: "" }
+        : { code: 0, stdout: "", stderr: "" },
+    );
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).resolves.toBe(0);
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) => command.includes("cp -p") && command.includes("/config/scripts/manual.sh"),
+      ),
+    ).toBe(true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

@@ -24,10 +24,12 @@ directives:
       - Confirm the candidate before the program saves it.
       - Save the confirmed config before the program reports success.
       - Download the active config after the router accepts the release.
-      - Download the script manifest when the release installs scripts.
+      - Download router script state to config.boot.deployment.tsv.
+      - Keep router script state separate from config.boot.manifest.tsv.
       - Run optional service checks when --verify is set.
       - Run configured hooks after the config and scripts pass their checks.
       - Remove remote temporary files after success or failure.
+      - Close all SSH clients before the command exits.
       - Reconnect after a release error and restore scripts when needed.
     donts:
       - Do not connect before preflight passes.

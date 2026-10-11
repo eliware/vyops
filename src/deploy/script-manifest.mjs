@@ -1,6 +1,6 @@
 import { isSafeScriptPath } from "../bundle.mjs";
 
-export async function readManagedPaths(readFile, manifestPath) {
+export async function readDeploymentState(readFile, manifestPath) {
   try {
     const names = (await readFile(manifestPath, "utf8"))
       .split(/\r?\n/)
@@ -9,11 +9,15 @@ export async function readManagedPaths(readFile, manifestPath) {
       .filter(Boolean);
     if (names.some((name) => !isSafeScriptPath(name)))
       throw new Error("deployment manifest contains an unsafe script path");
-    return new Set(names);
+    return { managed: new Set(names), hasManifest: true };
   } catch (error) {
-    if (error.code === "ENOENT") return new Set();
+    if (error.code === "ENOENT") return { managed: new Set(), hasManifest: false };
     throw error;
   }
+}
+
+export async function readManagedPaths(readFile, manifestPath) {
+  return (await readDeploymentState(readFile, manifestPath)).managed;
 }
 
 export function unmanagedPaths(liveOutput, managed) {
