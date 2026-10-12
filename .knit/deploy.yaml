@@ -3,7 +3,8 @@ on:
   push:
     deployments:
       - target: dev
-        cwd: /opt/vyops
+        cwd: /eliware/vyops
+        timeoutMs: 300000
         commands:
           - git pull --ff-only origin main
           - npm ci

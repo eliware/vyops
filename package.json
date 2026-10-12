@@ -42,8 +42,8 @@
     "node": ">=26"
   },
   "dependencies": {
-    "@eliware/common": "^2.0.0",
-    "@eliware/ssh-client": "^2.1.0"
+    "@eliware/common": "^12.0.1",
+    "@eliware/ssh-client": "^12.0.0"
   },
   "devDependencies": {
     "@eliware/test": "^12.0.0"
