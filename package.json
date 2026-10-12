@@ -46,7 +46,7 @@
     "@eliware/ssh-client": "^2.1.0"
   },
   "devDependencies": {
-    "@eliware/test": "^11.0.0"
+    "@eliware/test": "^12.0.0"
   },
   "jest": {
     "testEnvironment": "node",
