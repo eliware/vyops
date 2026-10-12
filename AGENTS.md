@@ -2,13 +2,12 @@
 
 ## Project
 
-This repository is `eliware/vyops`.
-
-It checks and transfers VyOS configuration bundles.
+This repository contains the VyOps CLI.
 
 ## Scope and boundaries
 
-Use README.md for repository purpose, scope, and ownership.
+Use README.md for repository purpose, ownership, scope, and boundaries.
+Get Eliware Operations approval before an external change.
 
 ## Layout
 
@@ -16,12 +15,11 @@ Use README.md and specs/README.md to find repository files.
 
 ## Development
 
-Keep each source and test module focused on one responsibility.
+Use Node.js 26 or later.
+Use native ESM for maintained JavaScript modules.
 
 ## Validation
 
-Use Node.js 26 or later and npm 12 or later.
-Use native ESM for maintained JavaScript modules.
 Run `npm test` for aggregate validation.
 Run `npm run lint` for lint checks.
 Run `npm run audit` for dependency checks.
@@ -30,16 +28,15 @@ Run `npm run format:check` to check formatting.
 
 ## Security
 
-Keep credentials, secret values, private data, and runtime state out of Git.
+Keep credentials, private data, router data, and runtime state out of Git.
 
 ## Changes
 
 Keep changes within this repository scope.
-Use Eliware Operations for approval before external changes.
 
 ## Application
 
-Document entrypoints, workflows, settings, startup, and shutdown in README.md.
+Document workflows, entrypoints, settings, startup, and shutdown in README.md.
 
 ## CLI
 

@@ -1,12 +1,13 @@
 # Documentation
 
-## Purpose
+Use these guides to install and operate VyOps.
 
-These documents explain how to use VyOps. They cover the supported CLI workflow.
-
-The documentation scope includes setup, usage, validation, and support.
-
-## Documents
-
-- [docs/overview.md](overview.md)
-- [docs/usage.md](usage.md)
+- [Overview](overview.md)
+- [Installation](installation.md)
+- [Command use](usage.md)
+- [Bundle format](bundle.md)
+- [Runtime settings](configuration.md)
+- [Preflight](preflight.md)
+- [Release](release.md)
+- [Backup](backup.md)
+- [Troubleshooting](troubleshooting.md)

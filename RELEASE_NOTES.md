@@ -1,19 +1,36 @@
 # Release Notes
 
-## 12.0.0 — 2026-10-11
+## 12.0.0 — 2026-10-12
+
+### Breaking changes
+
+- Require Node.js 26 or later.
+- Require `--yes` before release.
+
+### Added
+
+- Add full user guides for install, commands, bundles, settings, release, backup, and errors.
+- Add modular behavior specifications and package checks.
+- Add safe debug details to preflight, release, and backup.
 
 ### Changed
 
-- Align package metadata, repository guidance, and validation workflows with Eliware Test v12.
-- Publish the specification files with the npm package.
+- Run preflight before Git checks and SSH setup during release.
+- Use the shared SSH client API for router connections.
+- Keep bundle and router deployment manifests in separate files.
+- Push confirmed config and manifest changes to Git after release.
+- Skip an unchanged pushback release unless the user sets `--force`.
+- Align package metadata, workflows, and tests with Eliware Test 12.
 
-## 11.0.0 — 2026-10-07
+### Fixed
 
-### Changed
-
-- Run local bundle and manifest checks before release operations.
-- Allow `@` in safe relative script paths.
-- Align the package with Eliware repository conventions.
+- Accept `@` in safe script paths.
+- Reject malformed, duplicate, and unsafe script manifest paths.
+- Preserve prior backup files when backup publication fails.
+- Restore script files after a failed release and remove temporary router files.
+- Preserve manifest updates during Git pushback.
+- Hide raw interactive router output from debug logs.
+- Mock Git and SSH operations in automated tests.
 
 ## 2.1.1 — 2026-08-25
 
@@ -31,44 +48,44 @@
 ### Added
 
 - Validate nested script bundles before release.
-- Derive the router target from VyOS system configuration.
+- Get the router target from VyOS system config.
 - Support global command switches before or after the command name.
 
 ### Changed
 
-- Normalize executable script permissions and clean staged scripts after errors.
+- Set executable script permissions and clean staged scripts after errors.
 
 ## 2.0.0 — 2026-08-24
 
 ### Breaking changes
 
-- Replace direct SSH integration with the shared SSH client.
+- Replace direct SSH code with the shared SSH client.
 
 ### Added
 
-- Add host certificate checks, transactional hook backup, Git pushback isolation, and debug logging.
+- Add host certificate checks, hook backup, Git pushback, and debug logs.
 - Add Windows and Ubuntu CI checks.
 
 ### Fixed
 
 - Close SFTP channels after file transfer.
-- Reconnect after interactive deployment before downloads and cleanup.
+- Reconnect after interactive release before download and cleanup.
 
 ## 1.0.11 — 2026-08-21
 
 ### Fixed
 
-- Confirm VyOS 1.5 commits with the full `yes` response.
+- Send the full `yes` response to confirm VyOS 1.5 commits.
 
 ### Added
 
-- Add opt-in integration tests for disposable VyOS routers.
+- Add opt-in tests for disposable VyOS routers.
 
 ## 1.0.10 — 2026-08-21
 
 ### Fixed
 
-- Allow deploy without Git and skip pushback outside a Git working tree.
+- Allow release without Git and skip pushback outside a Git repository.
 
 ## 1.0.9 — 2026-08-21
 
@@ -84,50 +101,50 @@
 
 ### Fixed
 
-- Report commit validation errors without waiting for a timeout.
+- Report commit errors without waiting for a timeout.
 
 ## 1.0.7 — 2026-08-20
 
 ### Added
 
-- Add password-based SSH bootstrap with strict host verification.
-- Add CLI, backup, and deployment regression tests.
+- Add password-based SSH bootstrap with strict host checks.
+- Add CLI, backup, and release regression tests.
 
 ## 1.0.6 — 2026-08-20
 
 ### Added
 
-- Add backup of the active config and complete scripts tree.
-- Add handling for load and commit errors.
+- Back up the active config and complete scripts tree.
+- Handle config load and commit errors.
 
 ### Fixed
 
-- Preserve synchronized scripts when config download fails.
+- Keep synchronized scripts when config download fails.
 - Include staged changes in Git pushback checks.
 
 ## 1.0.5 — 2026-08-13
 
 ### Fixed
 
-- Create nested temporary directories before script upload.
+- Create nested temporary folders before script upload.
 
 ## 1.0.4 — 2026-08-13
 
 ### Added
 
-- Synchronize nested script files and preserve file modes.
-- Back up and roll back synchronized paths as one transaction.
+- Sync nested script files and keep file modes.
+- Back up and restore script paths as one transaction.
 
 ## 1.0.3 — 2026-08-10
 
 ### Added
 
-- Add installation, configuration, usage, security, and operations guidance.
-- Add shared logging, filesystem, path, error, and signal utilities.
+- Add install, config, usage, security, and operations guidance.
+- Add shared logging, file, path, error, and signal tools.
 
 ## 1.0.2 — 2026-08-10
 
 ### Added
 
-- Add SSH host checks, timeouts, remote cleanup, transactional hooks, and Git pushback.
-- Add package allowlist and CI validation.
+- Add SSH host checks, timeouts, remote cleanup, hook backup, and Git pushback.
+- Add package file rules and CI validation.
