@@ -36,11 +36,13 @@ test("completes structured commands and empty sequences", async () => {
   const client = new MockClient();
   const completed = jest.fn();
   const promise = interactive(client, [{ phase: "save", command: "save" }], jest.fn(), completed);
+  await Promise.resolve();
   client.shellStream.emit("data", "\ntestuser@test-router.example.test# ");
   await expect(promise).resolves.toContain("testuser@test-router.example.test");
   expect(completed).toHaveBeenCalledWith("save");
   const emptyClient = new MockClient();
   const empty = interactive(emptyClient, []);
+  await Promise.resolve();
   emptyClient.shellStream.emit("close");
   await expect(empty).resolves.toBe("");
 });

@@ -1,112 +1,61 @@
 import { jest } from "@jest/globals";
 
-const readFile = jest.fn();
 const debug = jest.fn();
-jest.unstable_mockModule("@eliware/common", () => ({
-  fs: { promises: { readFile } },
-  log: { debug },
-}));
+jest.unstable_mockModule("@eliware/common", () => ({ log: { debug } }));
 const { download } = await import("../../src/ssh/download.mjs");
 
-beforeEach(() => {
-  jest.clearAllMocks();
-  readFile.mockResolvedValue(Buffer.from("data"));
-});
-
 afterEach(() => {
+  jest.restoreAllMocks();
   delete process.env.VYOPS_OPERATION_TIMEOUT;
 });
 
-test("downloads and propagates SFTP failures", async () => {
-  const sftp = {
-    fastGet: jest.fn((_remote, _local, done) => done(new Error("download failed"))),
-    end: jest.fn(),
-  };
-  const client = { sftp: (callback) => callback(null, sftp) };
-  await expect(download(client, "remote", "local")).rejects.toThrow("download failed");
-  expect(sftp.end).toHaveBeenCalled();
-});
-
-test("downloads successfully and rejects download setup failures", async () => {
-  const sftp = { fastGet: jest.fn((_remote, _local, done) => done()), end: jest.fn() };
-  await expect(
-    download({ sftp: (callback) => callback(null, sftp) }, "remote", "local"),
-  ).resolves.toBeUndefined();
-  await expect(
-    download({ sftp: (callback) => callback(new Error("setup failed")) }, "remote", "local"),
-  ).rejects.toThrow("setup failed");
-});
-
-test("rejects download on timeout and includes client context", async () => {
-  process.env.VYOPS_OPERATION_TIMEOUT = "1";
-  const client = {
-    sftp: jest.fn(),
-    end: jest.fn(),
-    __vyopsDeploymentId: "op",
-    __vyopsTarget: "router",
-    __vyopsPhase: "download",
-  };
-  await expect(download(client, "remote", "local")).rejects.toMatchObject({
-    code: "VYOPS_TIMEOUT",
-    message: expect.stringContaining("deployment=op target=router phase=download"),
-  });
-  expect(client.end).toHaveBeenCalled();
-});
-
-test("closes a late download SFTP callback after timeout", async () => {
-  process.env.VYOPS_OPERATION_TIMEOUT = "1";
-  let callback;
-  const lateSftp = { end: jest.fn() };
-  const client = {
-    sftp: (value) => {
-      callback = value;
-    },
-    end: jest.fn(),
-  };
-  await expect(download(client, "remote", "local")).rejects.toMatchObject({
-    code: "VYOPS_TIMEOUT",
-  });
-  callback(null, lateSftp);
-  expect(lateSftp.end).toHaveBeenCalled();
-});
-
-test("ignores duplicate download callbacks", async () => {
-  let done;
-  const sftp = {
-    fastGet: jest.fn((_remote, _local, callback) => {
-      done = callback;
-    }),
-    end: jest.fn(),
-  };
-  const promise = download({ sftp: (callback) => callback(null, sftp) }, "remote", "local");
-  await new Promise((resolve) => setImmediate(resolve));
-  done();
-  done(new Error("late failure"));
-  await expect(promise).resolves.toBeUndefined();
-});
-
-test("uses shared SSH transfers and maps timeout errors", async () => {
-  const connection = { download: jest.fn().mockResolvedValue(undefined) };
-  const client = {
-    __vyopsConnection: connection,
-    __vyopsDeploymentId: "op",
-    __vyopsTarget: "router",
-    __vyopsPhase: "download",
-  };
+test("downloads with the configured timeout", async () => {
+  process.env.VYOPS_OPERATION_TIMEOUT = "321";
+  const client = { download: jest.fn().mockResolvedValue(undefined) };
   await expect(download(client, "remote", "local")).resolves.toBeUndefined();
-  expect(connection.download).toHaveBeenCalledWith({
+  expect(client.download).toHaveBeenCalledWith({
     remotePath: "remote",
     localPath: "local",
-    timeout: 60000,
+    timeout: 321,
   });
+  expect(debug).toHaveBeenCalledWith(expect.stringContaining("remote -> local"));
+});
+
+test("uses the default timeout for invalid and non-positive values", async () => {
+  const client = { download: jest.fn().mockResolvedValue(undefined) };
+  for (const value of ["bad", "0"]) {
+    process.env.VYOPS_OPERATION_TIMEOUT = value;
+    await download(client, "remote", "local");
+  }
+  expect(client.download).toHaveBeenNthCalledWith(1, expect.objectContaining({ timeout: 60000 }));
+  expect(client.download).toHaveBeenNthCalledWith(2, expect.objectContaining({ timeout: 60000 }));
+});
+
+test("maps transfer timeouts and adds VyOps context", async () => {
+  const client = {
+    __vyopsDeploymentId: "op",
+    __vyopsTarget: "router",
+    __vyopsPhase: "download",
+    download: jest.fn(),
+  };
   for (const code of ["SSH_TIMEOUT", "SSH_TRANSFER_TIMEOUT"]) {
-    connection.download.mockRejectedValueOnce(Object.assign(new Error("timeout"), { code }));
+    client.download.mockRejectedValueOnce(Object.assign(new Error("timed out"), { code }));
     await expect(download(client, "remote", "local")).rejects.toMatchObject({
       code: "VYOPS_TIMEOUT",
       message: expect.stringContaining("deployment=op target=router phase=download"),
     });
   }
-  const failure = new Error("transfer failed");
-  connection.download.mockRejectedValueOnce(failure);
-  await expect(download(client, "remote", "local")).rejects.toBe(failure);
+  client.download.mockRejectedValueOnce(
+    Object.assign(new Error("timed out"), { code: "SSH_TIMEOUT" }),
+  );
+  await expect(download({ download: client.download }, "remote", "local")).rejects.toThrow(
+    /deployment=unknown target=unknown phase=unknown/,
+  );
+});
+
+test("preserves other transfer errors", async () => {
+  const error = new Error("transfer failed");
+  await expect(
+    download({ download: jest.fn().mockRejectedValue(error) }, "remote", "local"),
+  ).rejects.toBe(error);
 });

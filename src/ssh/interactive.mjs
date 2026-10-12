@@ -19,8 +19,7 @@ function timeoutError(message, _client) {
 export function interactive(client, commands, log = () => {}, onCommandComplete = () => {}) {
   const operation = randomUUID();
   return new Promise((resolve, reject) => {
-    client.shell({ term: "xterm", cols: 160, rows: 48 }, (error, stream) => {
-      if (error) return reject(error);
+    client.shell({ term: "xterm", cols: 160, rows: 48 }).then((stream) => {
       log("VyOS interactive shell opened");
       const state = {
         output: "",
@@ -42,7 +41,6 @@ export function interactive(client, commands, log = () => {}, onCommandComplete 
           state.timedOut = true;
           state.settled = true;
           stream.close();
-          client.end?.();
           const command = state.currentItem
             ? typeof state.currentItem === "string"
               ? state.currentItem
@@ -88,6 +86,6 @@ export function interactive(client, commands, log = () => {}, onCommandComplete 
         onCommandComplete,
       });
       sendNext();
-    });
+    }, reject);
   });
 }

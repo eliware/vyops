@@ -5,14 +5,13 @@ import {
 import { attachInteractiveData } from "./interactive-data.mjs";
 
 export function attachInteractiveListeners(options) {
-  const { client, stream, commands, log, state, timer, resolve, reject } = options;
+  const { stream, commands, log, state, timer, resolve, reject } = options;
   attachInteractiveData(options);
   stream.on("error", (error) => {
     log(`interactive stream error: ${error.message}`);
     clearTimeout(timer);
     state.settled = true;
     stream.close?.();
-    client.end?.();
     reject(error);
   });
   stream.stderr.on("data", (data) => {
@@ -28,7 +27,6 @@ export function attachInteractiveListeners(options) {
       state.settled = true;
       clearTimeout(timer);
       stream.close();
-      client.end?.();
       const detail = failureDetail(clean(state.response));
       reject(
         new Error(

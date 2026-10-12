@@ -43,8 +43,8 @@ test("cleans remote staging and closes the SSH client", async () => {
 
 test("reconnects when the SSH client is closed before remote cleanup", async () => {
   const close = jest.fn();
-  const client = { __vyopsConnection: { state: "closed" } };
-  const cleanupClient = { __vyopsConnection: { state: "open" } };
+  const client = { state: "closed" };
+  const cleanupClient = { state: "open" };
   const connectClient = jest.fn().mockResolvedValue(cleanupClient);
   const exec = jest.fn().mockResolvedValue({ code: 0 });
   const log = { warn: jest.fn() };

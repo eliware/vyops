@@ -1,6 +1,5 @@
 import {
   MockClient,
-  MockStream,
   fs,
   mockHostVerifier,
   createSshClientModule,
@@ -14,7 +13,6 @@ testJest.unstable_mockModule("@eliware/ssh-client", () =>
 );
 const { connect } = await import("../../src/ssh.mjs");
 const { connect: establishConnection } = await import("../../src/ssh/connection.mjs");
-const { exec } = await import("../../src/ssh/exec.mjs");
 
 beforeEach(() => {
   MockClient.instances.length = 0;
@@ -28,9 +26,6 @@ afterEach(() => {
   delete process.env.VYOPS_CONNECT_TIMEOUT;
 });
 
-test("connection module exports its connection operation", () => {
-  expect(establishConnection).toBeInstanceOf(Function);
-});
 test("connect parses user@host and resolves on ready", async () => {
   const keyDir = await mkdtemp(join(tmpdir(), "ssh-test-"));
   const key = join(keyDir, "key");
@@ -91,15 +86,17 @@ test("connect rejects host-only targets and connection errors", async () => {
   await rm(keyDir, { recursive: true, force: true });
 });
 
-test("uses the operation timeout fallback for non-positive configuration", async () => {
+test("returns the reusable connection with VyOps metadata", async () => {
   process.env.VYOPS_OPERATION_TIMEOUT = "0";
-  const client = new MockClient();
-  client.execCallback = (_command, callback) => {
-    const stream = new MockStream();
-    callback(null, stream);
-    stream.emit("close", 0);
-  };
-  await expect(exec(client, "show version")).resolves.toMatchObject({ code: 0 });
+  const dir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  await mkdir(join(dir, ".ssh"), { recursive: true });
+  await writeFile(join(dir, ".ssh/id_rsa"), "key");
+  await writeFile(join(dir, ".ssh/known_hosts"), "router ssh-ed25519 AAAA\n");
+  process.env.HOME = dir;
+  const client = await connect("vyos@router");
+  expect(client).toMatchObject({ __vyopsTarget: "vyos@router", __vyopsPhase: "connect" });
+  expect(client.raw).toBeUndefined();
+  await rm(dir, { recursive: true, force: true });
 });
 
 test("uses timeout defaults for invalid and non-positive environment values", async () => {
@@ -109,6 +106,9 @@ test("uses timeout defaults for invalid and non-positive environment values", as
   await writeFile(join(keyDir, ".ssh/id_rsa"), "default-key");
   await writeFile(join(keyDir, ".ssh/known_hosts"), "router ssh-ed25519 AAAA\n");
   process.env.VYOPS_CONNECT_TIMEOUT = "invalid";
+  await expect(establishConnection("vyos@router")).resolves.toMatchObject({
+    __vyopsTarget: "vyos@router",
+  });
   const invalid = await connect("vyos@router");
   expect(invalid.options.connectTimeout).toBe(30000);
   process.env.VYOPS_CONNECT_TIMEOUT = "0";

@@ -58,9 +58,9 @@ export class MockClient extends EventEmitter {
   sftp(callback) {
     callback(null, this.sftpClient);
   }
-  shell(options, callback) {
+  shell(options) {
     this.shellOptions = options;
-    callback(null, this.shellStream);
+    return Promise.resolve(this.shellStream);
   }
 }
 
@@ -99,7 +99,20 @@ export function createSshClientModule({ MockClient, fs, join, mockHostVerifier }
         client.once("error", reject);
         client.connect(connectionOptions);
       });
-      return { raw: client };
+      let state = "open";
+      return {
+        options: client.options,
+        get state() {
+          return state;
+        },
+        exec: async () => [{ code: 0, stdout: "", stderr: "" }],
+        shell: async () => client.shellStream,
+        upload: async () => {},
+        download: async () => {},
+        close: async () => {
+          state = "closed";
+        },
+      };
     },
   };
 }

@@ -26,7 +26,7 @@ export async function setupDeployHarness(jest) {
   jest.unstable_mockModule(source("src/ssh/download.mjs"), () => ({ download: mocks.download }));
   jest.unstable_mockModule(source("src/ssh/upload.mjs"), () => ({ upload: mocks.upload }));
   const { cleanupActiveDeployments, deploy } = await import(source("src/deploy.mjs"));
-  const client = () => ({ end: jest.fn() });
+  const client = () => ({ state: "open", end: jest.fn() });
   const reset = () => {
     jest.clearAllMocks();
     delete process.env.VYOPS_DEBUG;

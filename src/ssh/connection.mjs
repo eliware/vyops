@@ -1,7 +1,6 @@
 import { log } from "@eliware/common";
 import { connect as sharedConnect } from "@eliware/ssh-client";
 import { parseTarget } from "./target.mjs";
-import { adaptConnection } from "./adapt-connection.mjs";
 
 const timeout = (name, fallback) =>
   Number.isFinite(Number(process.env[name])) && Number(process.env[name]) > 0
@@ -21,10 +20,9 @@ export async function connect(target, { password, register = () => {} } = {}) {
     password,
     connectTimeout: timeout("VYOPS_CONNECT_TIMEOUT", 30000),
   });
-  const client = connection.raw || adaptConnection(connection);
-  client.__vyopsTarget = target;
-  client.__vyopsPhase = "connect";
-  register(client);
+  connection.__vyopsTarget = target;
+  connection.__vyopsPhase = "connect";
+  register(connection);
   log.debug(`[vyops] SSH connected: ${username}@${host}`);
-  return client;
+  return connection;
 }
