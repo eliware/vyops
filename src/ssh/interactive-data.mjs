@@ -1,9 +1,9 @@
 import {
   cleanInteractiveText as clean,
   isRouterPrompt as prompt,
-  isPagerPrompt,
   isCommitPrompt,
 } from "./interactive-support.mjs";
+import { answerInteractivePrompt } from "./interactive-prompts.mjs";
 import {
   completeInteractiveCommand,
   rejectInteractiveCommand,
@@ -20,25 +20,11 @@ export function attachInteractiveData(options) {
     log(`received ${text.length} interactive output bytes`);
     const cleaned = clean(state.response);
     if (rejectInteractiveCommand({ state, stream, timer, reject, cleaned })) return;
-    const { found: pager, returnPager: pagerReturn } = isPagerPrompt(cleaned);
+    const promptHandled = answerInteractivePrompt({ cleaned, state, stream, log });
     log(
-      `state after data: index=${state.index}, waiting=${state.waiting}, answering=${state.answering}, prompt=${prompt(cleaned)}, pager=${pager}, bytes=${text.length}`,
+      `state after data: index=${state.index}, waiting=${state.waiting}, answering=${state.answering}, prompt=${prompt(cleaned)}, promptHandled=${promptHandled}, bytes=${text.length}`,
     );
-    if (pager) {
-      const key = pagerReturn ? "\n" : " ";
-      log(`pager prompt detected; sending ${pagerReturn ? "return" : "space"}`);
-      stream.write(key);
-      log(`write complete: ${pagerReturn ? "return" : "space"}`);
-      return;
-    }
-    if (isCommitPrompt(cleaned) && !state.answering) {
-      state.answering = true;
-      log("commit-confirm prompt detected; sending: yes");
-      state.response = "";
-      stream.write("yes\n");
-      log("write complete: yes");
-      return;
-    }
+    if (promptHandled) return;
     const commandComplete = state.waiting && prompt(cleaned) && !isCommitPrompt(cleaned);
     log(`command completion check: complete=${commandComplete}`);
     if (commandComplete) {

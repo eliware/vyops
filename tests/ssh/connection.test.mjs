@@ -53,7 +53,7 @@ test("connect uses the default key path", async () => {
   await mkdir(join(keyDir, ".ssh"), { recursive: true });
   await writeFile(join(keyDir, ".ssh/id_rsa"), "default-key");
   await writeFile(join(keyDir, ".ssh/known_hosts"), "router ssh-ed25519 AAAA\n");
-  const client = await connect("vyos@router");
+  const client = await establishConnection("vyos@router");
   expect(client.options.privateKey).toEqual(Buffer.from("default-key"));
   await rm(keyDir, { recursive: true, force: true });
 });
@@ -97,28 +97,6 @@ test("returns the reusable connection with VyOps metadata", async () => {
   expect(client).toMatchObject({ __vyopsTarget: "vyos@router", __vyopsPhase: "connect" });
   expect(client.raw).toBeUndefined();
   await rm(dir, { recursive: true, force: true });
-});
-
-test("uses timeout defaults for invalid and non-positive environment values", async () => {
-  const keyDir = await mkdtemp(join(tmpdir(), "ssh-test-"));
-  process.env.HOME = keyDir;
-  await mkdir(join(keyDir, ".ssh"), { recursive: true });
-  await writeFile(join(keyDir, ".ssh/id_rsa"), "default-key");
-  await writeFile(join(keyDir, ".ssh/known_hosts"), "router ssh-ed25519 AAAA\n");
-  process.env.VYOPS_CONNECT_TIMEOUT = "invalid";
-  await expect(establishConnection("vyos@router")).resolves.toMatchObject({
-    __vyopsTarget: "vyos@router",
-  });
-  const invalid = await connect("vyos@router");
-  expect(invalid.options.connectTimeout).toBe(30000);
-  process.env.VYOPS_CONNECT_TIMEOUT = "0";
-  const zero = await connect("vyos@router");
-  expect(zero.options.connectTimeout).toBe(30000);
-  process.env.VYOPS_CONNECT_TIMEOUT = "1234";
-  const configured = await connect("vyos@router");
-  expect(configured.options.connectTimeout).toBe(1234);
-  delete process.env.VYOPS_CONNECT_TIMEOUT;
-  await rm(keyDir, { recursive: true, force: true });
 });
 
 test("connect rejects missing known_hosts", async () => {

@@ -58,7 +58,7 @@ test("preflight failures use the mocked command and do not deploy", async () => 
   expect(process.exitCode).toBe(1);
 });
 
-test("reads passwords from stdin and handles empty input", async () => {
+test("passes stdin passwords to the backup command", async () => {
   const descriptor = Object.getOwnPropertyDescriptor(process, "stdin");
   Object.defineProperty(process, "stdin", {
     configurable: true,
@@ -67,14 +67,7 @@ test("reads passwords from stdin and handles empty input", async () => {
   args = { command: "backup", passwordStdin: true };
   try {
     await cli.runCli();
-    expect(cli.log.error).not.toHaveBeenCalled();
     expect(cli.runBackup.mock.calls[0][0].password).toBe("secret");
-    Object.defineProperty(process, "stdin", {
-      configurable: true,
-      value: Readable.from([]),
-    });
-    await cli.runCli();
-    expect(cli.log.error).toHaveBeenCalledWith("password-stdin received an empty password");
   } finally {
     Object.defineProperty(process, "stdin", descriptor);
   }

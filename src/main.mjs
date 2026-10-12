@@ -9,23 +9,16 @@ import { pushBack, repositorySnapshot, shouldSkip } from "./git.mjs";
 import { closeAll } from "./ssh.mjs";
 import { log, registerHandlers, registerSignals } from "@eliware/common";
 import { randomUUID } from "node:crypto";
-
-async function readPasswordStdin() {
-  const chunks = [];
-  for await (const chunk of process.stdin) chunks.push(chunk);
-  return Buffer.concat(chunks)
-    .toString("utf8")
-    .replace(/\r?\n$/, "");
-}
+import { readPasswordStdin } from "./cli/password.mjs";
+import { registerCliLifecycle } from "./cli/lifecycle.mjs";
 
 export async function runCli() {
-  const errors = registerHandlers({ log });
-  const signals = registerSignals({
+  const lifecycle = registerCliLifecycle({
     log,
-    shutdownHook: async () => {
-      await closeAll();
-      await cleanupActiveDeployments();
-    },
+    registerHandlers,
+    registerSignals,
+    closeAll,
+    cleanup: cleanupActiveDeployments,
   });
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -43,8 +36,7 @@ export async function runCli() {
       return;
     }
     if (args.passwordStdin) {
-      args.password = await readPasswordStdin();
-      if (!args.password) throw new Error("password-stdin received an empty password");
+      args.password = await readPasswordStdin(process.stdin);
     }
     if (args.command === "backup") {
       await runBackup(args, log);
@@ -82,8 +74,6 @@ export async function runCli() {
     log.error(error.message);
     process.exitCode = 1;
   } finally {
-    await closeAll();
-    signals.removeHandlers();
-    errors.removeHandlers();
+    await lifecycle.finish();
   }
 }

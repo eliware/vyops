@@ -1,3 +1,5 @@
+import { validateCommandOptions } from "./args-validation.mjs";
+
 export const usage = `Usage:
   vyops preflight [--debug] <config.boot>
   vyops release --yes [--force] [--debug] [--verify] [--verify-binaries] [--no-pushback] [--no-hooks requires --force] [--password-stdin] <config.boot>
@@ -14,26 +16,7 @@ export function parseArgs(argv) {
   const afterCommand = argv.slice(commandIndex + 1);
   const options = new Set(argv.filter((value) => value.startsWith("--")));
   const values = afterCommand.filter((value) => !value.startsWith("--"));
-  const allowed =
-    command === "release"
-      ? [
-          "--yes",
-          "--force",
-          "--debug",
-          "--verify",
-          "--verify-binaries",
-          "--no-pushback",
-          "--no-hooks",
-          "--password-stdin",
-        ]
-      : ["--debug", "--password-stdin"];
-  if (
-    [...options].some((option) => !allowed.includes(option)) ||
-    values.length !== (command === "backup" ? 2 : 1) ||
-    (command === "release" &&
-      (!options.has("--yes") || (options.has("--no-hooks") && !options.has("--force"))))
-  )
-    throw new Error(usage);
+  validateCommandOptions(command, options, values.length, usage);
   // codescope ignore: next option combinations are exercised by CLI integration.
   return {
     command,
