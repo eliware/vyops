@@ -13,6 +13,7 @@ test("accepts command option policies", () => {
 
 test.each([
   ["preflight", new Set(["--force"]), 1],
+  ["preflight", new Set(["--password-stdin"]), 1],
   ["backup", new Set(), 1],
   ["release", new Set(), 1],
   ["release", new Set(["--yes", "--no-hooks"]), 1],

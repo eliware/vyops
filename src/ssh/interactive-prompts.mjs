@@ -1,4 +1,4 @@
-import { isPagerPrompt, isCommitPrompt } from "./interactive-support.mjs";
+import { isPagerPrompt, isCommitPrompt } from "./interactive-recognition.mjs";
 
 export function answerInteractivePrompt({ cleaned, state, stream, log }) {
   const { found, returnPager } = isPagerPrompt(cleaned);

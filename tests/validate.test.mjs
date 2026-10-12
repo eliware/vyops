@@ -16,6 +16,8 @@ test.each([
   ["unexpected closing brace", "}"],
   ["unbalanced braces", "system {\n    host-name router"],
   ["brace with trailing content", "system { junk"],
+  ["misindented closing brace", "system {\n    host-name router\n  }"],
+  ["extra closing brace", "system {\n}\n}"],
 ])("rejects %s", (_, config) => {
   expect(() => validateConfig(config)).toThrow(/config validation failed/);
 });

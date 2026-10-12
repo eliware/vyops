@@ -1,8 +1,5 @@
-import {
-  cleanInteractiveText as clean,
-  isRouterPrompt as prompt,
-  isCommitPrompt,
-} from "./interactive-support.mjs";
+import { cleanInteractiveText as clean } from "./interactive-text.mjs";
+import { isRouterPrompt as prompt, isCommitPrompt } from "./interactive-recognition.mjs";
 import { answerInteractivePrompt } from "./interactive-prompts.mjs";
 import {
   completeInteractiveCommand,

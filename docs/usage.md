@@ -52,8 +52,7 @@ Use `--help` for the canonical command syntax.
 | `--no-pushback`     | Release           | Do not push confirmed router state to Git.       |
 | `--no-hooks`        | Release           | Do not sync scripts. Requires `--force`.         |
 
-The parser accepts `--password-stdin` with preflight, but preflight does not use a password.
-Do not set this option for preflight.
+Preflight does not accept `--password-stdin` because it does not use a password.
 
 `--force` also lets pushback remove a stale local lock.
 Use it only when no other VyOps pushback runs in the repository.

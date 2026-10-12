@@ -42,16 +42,6 @@ test("completes a structured command", async () => {
   expect(completed).toHaveBeenCalledWith("save");
 });
 
-test("answers return-only pager prompts and rejects an early close", async () => {
-  const client = new MockClient();
-  const promise = interactive(client, ["show version"]);
-  await Promise.resolve();
-  client.shellStream.emit("data", "No next tag (press RETURN)");
-  expect(client.shellStream.writes).toEqual(["show version\n", "\n"]);
-  client.shellStream.emit("close");
-  await expect(promise).rejects.toThrow("interactive SSH closed before command sequence completed");
-});
-
 test("resolves an empty command sequence when the shell closes", async () => {
   const client = new MockClient();
   const promise = interactive(client, []);

@@ -1,4 +1,4 @@
-import { cleanInteractiveText as clean } from "./interactive-support.mjs";
+import { cleanInteractiveText as clean } from "./interactive-text.mjs";
 import { attachInteractiveData } from "./interactive-data.mjs";
 import { rejectInteractiveCommand } from "./interactive-command-state.mjs";
 

@@ -122,19 +122,24 @@ test("rejects unsafe remote script paths and closes SSH", async () => {
 });
 
 test.each([
-  ["stderr", "find failed", ""],
-  ["stdout", "", "find output"],
-])("reports remote script listing failures from %s", async (_label, stderr, stdout) => {
+  ["listing", "stderr", "find failed", "", "could not list remote scripts"],
+  ["listing", "stdout", "", "find output", "could not list remote scripts"],
+  ["symlink inspection", "stderr", "inspection failed", "", "could not inspect remote scripts"],
+  ["symlink inspection", "stdout", "", "inspection output", "could not inspect remote scripts"],
+])("reports %s failures from %s", async (operation, _label, stderr, stdout, message) => {
   mocks.exec.mockReset();
-  mocks.exec.mockImplementation((_client, command) =>
-    Promise.resolve(
-      command.includes("type l")
-        ? { code: 0, stdout: "", stderr: "" }
-        : { code: 1, stdout, stderr },
-    ),
-  );
+  const inspection = operation === "symlink inspection";
+  mocks.exec.mockImplementation((_client, command) => {
+    const inspectCommand = command.includes("type l");
+    const fails = inspection === inspectCommand;
+    return Promise.resolve({
+      code: fails ? 1 : 0,
+      stdout: fails ? stdout : "",
+      stderr: fails ? stderr : "",
+    });
+  });
   await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
-    `could not list remote scripts: ${stderr || stdout}`,
+    `${message}: ${stderr || stdout}`,
   );
   expect(mocks.close).toHaveBeenCalled();
 });
@@ -151,23 +156,6 @@ test("validates scripts before it downloads the config", async () => {
   mocks.download.mockRejectedValueOnce(new Error("config download failed"));
   await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow();
   expect(mocks.exec).toHaveBeenCalledTimes(4);
-});
-
-test("rejects failure while inspecting remote symlinks", async () => {
-  mocks.exec.mockReset();
-  mocks.exec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "inspection failed" });
-  await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
-    "could not inspect remote scripts: inspection failed",
-  );
-  expect(mocks.close).toHaveBeenCalled();
-});
-
-test("reports stdout when symlink inspection has no stderr", async () => {
-  mocks.exec.mockReset();
-  mocks.exec.mockResolvedValueOnce({ code: 1, stdout: "inspection output", stderr: "" });
-  await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
-    "could not inspect remote scripts: inspection output",
-  );
 });
 
 test("rejects a discovered remote script symlink", async () => {

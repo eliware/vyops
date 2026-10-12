@@ -1,4 +1,4 @@
-import { interactiveFailureDetail } from "./interactive-support.mjs";
+import { interactiveFailureDetail } from "./interactive-text.mjs";
 
 export function rejectInteractiveCommand({ state, stream, timer, reject, cleaned }) {
   if (

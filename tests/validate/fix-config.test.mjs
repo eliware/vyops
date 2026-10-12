@@ -12,13 +12,6 @@ test("fixes ordering, whitespace, indentation, and line endings", async () => {
 `);
 });
 
-test.each([
-  ["misindented closing brace", "system {\n    host-name router\n  }"],
-  ["extra closing brace", "system {\n}\n}"],
-])("rejects %s", (_, config) => {
-  expect(() => validateConfig(config)).toThrow(/config validation failed/);
-});
-
 test("covers natural ordering comparisons and nested formatting", () => {
   expect(
     fixConfig(

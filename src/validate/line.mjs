@@ -1,25 +1,10 @@
-export function fail(line, message) {
-  throw new Error(`config validation failed at line ${line}: ${message}`);
-}
+import { fail } from "./error.mjs";
+import { scanConfigLine } from "./scan-config-line.mjs";
+
+export { fail } from "./error.mjs";
 
 export function validateConfigLine(lineText, depth, line) {
-  let code = "";
-  let quote = null;
-  let escaped = false;
-  for (const char of lineText) {
-    if (escaped) {
-      code += char;
-      escaped = false;
-    } else if (quote && char === "\\") {
-      code += char;
-      escaped = true;
-    } else if (char === '"' || char === "'") {
-      quote = quote === char ? null : quote || char;
-      code += char;
-    } else if (!quote && char === "#") break;
-    else code += char;
-  }
-  if (quote) fail(line, "unterminated quote");
+  const { code, opening, closing } = scanConfigLine(lineText, line);
   const trimmed = code.trim();
   if (!trimmed) return { depth, hasStatement: false };
   const expectedDepth = trimmed === "}" ? depth - 1 : depth;
@@ -27,23 +12,6 @@ export function validateConfigLine(lineText, depth, line) {
   const indent = "    ".repeat(expectedDepth);
   if (!lineText.startsWith(indent) || lineText.slice(indent.length).startsWith(" ")) {
     fail(line, `incorrect indentation; expected ${expectedDepth * 4} spaces`);
-  }
-  let opening = -1;
-  let closing = -1;
-  quote = null;
-  escaped = false;
-  for (let index = 0; index < code.length; index += 1) {
-    const char = code[index];
-    if (escaped) escaped = false;
-    else if (quote && char === "\\") escaped = true;
-    else if (char === '"' || char === "'") quote = quote === char ? null : quote || char;
-    else if (!quote && char === "{") {
-      if (opening >= 0) fail(line, "multiple opening braces on one line");
-      opening = index;
-    } else if (!quote && char === "}") {
-      if (closing >= 0) fail(line, "multiple closing braces on one line");
-      closing = index;
-    }
   }
   if (opening >= 0 && closing >= 0)
     fail(line, "opening and closing brace must be on separate lines");

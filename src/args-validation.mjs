@@ -10,7 +10,12 @@ const releaseOptions = [
 ];
 
 export function validateCommandOptions(command, options, valueCount, usage) {
-  const allowed = command === "release" ? releaseOptions : ["--debug", "--password-stdin"];
+  const allowed =
+    command === "release"
+      ? releaseOptions
+      : command === "backup"
+        ? ["--debug", "--password-stdin"]
+        : ["--debug"];
   const expectedValues = command === "backup" ? 2 : 1;
   const invalidOptions = [...options].some((option) => !allowed.includes(option));
   const invalidRelease =
