@@ -1,20 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { attachInteractiveListeners } from "./interactive-listeners.mjs";
-
-const timeout = (name, fallback) =>
-  Number.isFinite(Number(process.env[name])) && Number(process.env[name]) > 0
-    ? Number(process.env[name])
-    : fallback;
-
-function context(client) {
-  return `deployment=${client?.__vyopsDeploymentId || "unknown"} target=${client?.__vyopsTarget || "unknown"} phase=${client?.__vyopsPhase || "unknown"}`;
-}
-
-function timeoutError(message, _client) {
-  const error = new Error(message);
-  error.code = "VYOPS_TIMEOUT";
-  return error;
-}
+import { startInteractiveTimeout } from "./interactive-timeout.mjs";
 
 export function interactive(client, commands, log = () => {}, onCommandComplete = () => {}) {
   const operation = randomUUID();
@@ -32,29 +18,15 @@ export function interactive(client, commands, log = () => {}, onCommandComplete 
         currentItem: undefined,
       };
       log(`interactive sequence start (${commands.length} commands)`);
-      const timer = setTimeout(
-        () => {
-          log(
-            `timeout; next command: ${state.index + 1}/${commands.length}; waiting=${state.waiting}; answering=${state.answering}`,
-          );
-          log(`partial response: ${state.response.length} bytes`);
-          state.timedOut = true;
-          state.settled = true;
-          stream.close();
-          const command = state.currentItem
-            ? typeof state.currentItem === "string"
-              ? state.currentItem
-              : state.currentItem.command
-            : "none";
-          reject(
-            timeoutError(
-              `Interactive SSH timed out [${operation}] (${context(client)}): ${command}`,
-              client,
-            ),
-          );
-        },
-        timeout("VYOPS_INTERACTIVE_TIMEOUT", 60000),
-      );
+      const timer = startInteractiveTimeout({
+        operation,
+        commands,
+        state,
+        stream,
+        client,
+        log,
+        reject,
+      });
       const sendNext = () => {
         if (state.waiting || state.index >= commands.length) return;
         state.currentItem = commands[state.index++];

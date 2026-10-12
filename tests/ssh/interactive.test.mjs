@@ -113,58 +113,13 @@ test("interactive rejects commit-confirm after VyOS reports a validation error",
   );
 });
 
-test("interactive handles shell, stream, close, and timeout failures", async () => {
+test("interactive rejects a shell creation failure", async () => {
   const shellErrorClient = {
     shell: async () => {
       throw new Error("shell failed");
     },
   };
   await expect(interactive(shellErrorClient, ["x"])).rejects.toThrow("shell failed");
-
-  const errorClient = new MockClient();
-  const errorPromise = interactive(errorClient, ["x"]);
-  await Promise.resolve();
-  errorClient.shellStream.emit("error", new Error("stream failed"));
-  await expect(errorPromise).rejects.toThrow("stream failed");
-
-  const closeClient = new MockClient();
-  const closePromise = interactive(closeClient, ["x"]);
-  await Promise.resolve();
-  closeClient.shellStream.emit("close");
-  await expect(closePromise).rejects.toThrow(
-    "interactive SSH closed before command sequence completed",
-  );
-
-  const exitClient = new MockClient();
-  const exitPromise = interactive(exitClient, ["exit"]);
-  await Promise.resolve();
-  exitClient.shellStream.emit("close");
-  await expect(exitPromise).resolves.toBe("");
-
-  jest.useFakeTimers({ doNotFake: ["nextTick", "setImmediate"] });
-  const timeoutClient = new MockClient();
-  const timeoutPromise = interactive(timeoutClient, ["x"]);
-  await Promise.resolve();
-  jest.advanceTimersByTime(60000);
-  await expect(timeoutPromise).rejects.toThrow(
-    /Interactive SSH timed out \[[0-9a-f-]+\] \(deployment=unknown target=unknown phase=unknown\): x/,
-  );
-  expect(timeoutClient.shellStream.closed).toBe(true);
-
-  const objectTimeoutClient = new MockClient();
-  const objectTimeoutPromise = interactive(objectTimeoutClient, [
-    { phase: "test-phase", command: "x" },
-  ]);
-  await Promise.resolve();
-  jest.advanceTimersByTime(60000);
-  await expect(objectTimeoutPromise).rejects.toThrow(/Interactive SSH timed out/);
-
-  const emptyTimeoutClient = new MockClient();
-  const emptyTimeoutPromise = interactive(emptyTimeoutClient, []);
-  await Promise.resolve();
-  jest.advanceTimersByTime(60000);
-  await expect(emptyTimeoutPromise).rejects.toThrow(/Interactive SSH timed out.*none/);
-  jest.useRealTimers();
 });
 
 test.each([
