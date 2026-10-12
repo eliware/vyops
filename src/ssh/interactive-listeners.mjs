@@ -18,7 +18,7 @@ export function attachInteractiveListeners(options) {
     const text = data.toString();
     state.output += text;
     state.response += text;
-    log(`recv stderr (${text.length} bytes): ${JSON.stringify(text)}`);
+    log(`received ${text.length} interactive error bytes`);
     if (
       state.waiting &&
       typeof state.currentItem !== "string" &&

@@ -14,7 +14,7 @@ export function attachInteractiveData(options) {
     const text = data.toString();
     state.output += text;
     state.response += text;
-    log(`recv (${text.length} bytes): ${JSON.stringify(text)}`);
+    log(`received ${text.length} interactive output bytes`);
     const cleaned = clean(state.response);
     if (
       state.waiting &&
@@ -59,7 +59,7 @@ export function attachInteractiveData(options) {
       );
       state.answering = false;
       state.waiting = false;
-      log(`response [${state.index}]:\n${cleaned}`);
+      log(`command ${state.index} completed; response=${cleaned.length} bytes`);
       if (state.index >= commands.length) {
         state.settled = true;
         clearTimeout(timer);

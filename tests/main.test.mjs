@@ -13,12 +13,19 @@ beforeAll(async () => {
 beforeEach(() => {
   jest.clearAllMocks();
   process.exitCode = 0;
+  cli.log.level = "info";
   args = { command: "preflight", config: "config.boot", noPushback: true };
   cli.parseArgs.mockImplementation(() => ({ ...args }));
   cli.runPreflight.mockResolvedValue({ target: "vyos@router", scripts: [] });
   cli.shouldSkip.mockResolvedValue(false);
   cli.repositorySnapshot.mockResolvedValue("snapshot");
   cli.pushBack.mockResolvedValue(false);
+});
+
+test("enables debug logging when the debug option is set", async () => {
+  args = { command: "backup", target: "vyos@router", config: "/tmp/backup", debug: true };
+  await cli.runCli();
+  expect(cli.log.level).toBe("debug");
 });
 
 test("covers help, version, backup, and preflight branches", async () => {

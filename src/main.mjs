@@ -29,9 +29,10 @@ export async function runCli() {
   });
   try {
     const args = parseArgs(process.argv.slice(2));
+    if (args.debug) log.level = "debug";
     args.operationId = randomUUID();
     log.debug(
-      `[vyops] [deployment ${args.operationId}] arguments parsed: target=${args.target || "-"} config=${args.config || "-"}`,
+      `[vyops] [${args.command || "cli"} ${args.operationId}] arguments parsed: target=${args.command === "backup" ? args.target : "-"} config=${args.config || "-"}`,
     );
     if (args.help) {
       log.info(usage);

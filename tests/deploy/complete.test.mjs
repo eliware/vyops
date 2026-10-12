@@ -50,7 +50,9 @@ test("downloads the confirmed config and finalizes hooks", async () => {
     "new_mode\tnew_sha256\tnew_type",
   );
   expect(finalizeHooks).toHaveBeenCalledWith(true, client);
-  await expect(runPreflight({ config }, { info: jest.fn() })).resolves.toMatchObject({
+  await expect(
+    runPreflight({ config }, { debug: jest.fn(), info: jest.fn() }),
+  ).resolves.toMatchObject({
     target: "vyos@test-router",
     scripts: [],
   });

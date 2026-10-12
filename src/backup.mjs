@@ -1,4 +1,4 @@
-import { fs, path, log } from "@eliware/common";
+import { fs, path, log as defaultLog } from "@eliware/common";
 import { randomUUID } from "node:crypto";
 import { parse, resolve } from "node:path";
 import { close, connect, parseTarget } from "./ssh.mjs";
@@ -12,7 +12,7 @@ import {
 } from "./backup/remote-script.mjs";
 import { publishBackup } from "./backup/publish-backup.mjs";
 
-export async function backup({ target, config, password }) {
+export async function backup({ target, config, password, log = defaultLog }) {
   parseTarget(target);
   const destination = resolve(config);
   if (destination === parse(destination).root)
@@ -20,6 +20,7 @@ export async function backup({ target, config, password }) {
   const client =
     password === undefined ? await connect(target) : await connect(target, { password });
   try {
+    log.debug("[vyops] backup: inspecting remote script links");
     const links = await exec(client, "find -P /config/scripts -type l -print0 2>/dev/null");
     // codescope ignore: next remote inspection failure requires a live router.
     if (links.code !== 0)
@@ -35,6 +36,7 @@ export async function backup({ target, config, password }) {
       throw new Error(`could not list remote scripts: ${result.stderr || result.stdout}`.trim());
     // NUL records preserve valid embedded whitespace in remote filenames.
     const files = result.stdout.split("\0").filter(Boolean).map(remoteScriptPath);
+    log.debug(`[vyops] backup: found ${files.length} remote script files`);
     for (const name of files) await validateRemoteScript(exec, client, `/config/scripts/${name}`);
     const stagedBackup = path(config, "..", `.vyops-backup-${randomUUID()}`);
     const previousBackup = path(config, "..", `.vyops-backup-old-${randomUUID()}`);
@@ -44,6 +46,7 @@ export async function backup({ target, config, password }) {
     await fs.promises.mkdir(stagedScripts, { mode: 0o700 });
     try {
       const stagedConfig = path(stagedBackup, "config.boot");
+      log.debug("[vyops] backup: downloading active configuration");
       await download(client, "/config/config.boot", stagedConfig);
       await fs.promises.chmod(stagedConfig, 0o600);
       for (const name of files) {
@@ -67,11 +70,13 @@ export async function backup({ target, config, password }) {
         mode: 0o600,
       });
       await publishBackup(fs.promises, stagedBackup, config, previousBackup);
+      log.debug("[vyops] backup: published configuration, scripts, and manifest");
     } finally {
       await fs.promises.rm(stagedBackup, { recursive: true, force: true });
     }
     return 0;
   } finally {
+    log.debug("[vyops] backup: closing SSH connection");
     await close(client);
   }
 }

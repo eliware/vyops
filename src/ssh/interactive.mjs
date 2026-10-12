@@ -37,7 +37,7 @@ export function interactive(client, commands, log = () => {}, onCommandComplete 
           log(
             `timeout; next command: ${state.index + 1}/${commands.length}; waiting=${state.waiting}; answering=${state.answering}`,
           );
-          log(`partial response:\n${state.response}`);
+          log(`partial response: ${state.response.length} bytes`);
           state.timedOut = true;
           state.settled = true;
           stream.close();
@@ -66,7 +66,7 @@ export function interactive(client, commands, log = () => {}, onCommandComplete 
         const command = typeof item === "string" ? item : item.command;
         state.response = "";
         state.waiting = true;
-        log(`send [${state.index}/${commands.length}]: ${command}`);
+        log(`send command [${state.index}/${commands.length}] (${command.length} characters)`);
         log(
           `state before send: index=${state.index}, waiting=${state.waiting}, answering=${state.answering}`,
         );

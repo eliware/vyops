@@ -9,7 +9,7 @@ jest.unstable_mockModule("../../src/bundle.mjs", () => ({
 }));
 const { runPreflight } = await import("../../src/commands/preflight.mjs");
 test("validates and reports bundle details", async () => {
-  const log = { info: jest.fn() };
+  const log = { debug: jest.fn(), info: jest.fn() };
   const args = { config: "/tmp/config.boot" };
   await runPreflight(args, log);
   expect(validateBundle).toHaveBeenCalledWith(args.config, "config");
