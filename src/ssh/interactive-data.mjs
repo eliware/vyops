@@ -1,10 +1,13 @@
 import {
   cleanInteractiveText as clean,
-  interactiveFailureDetail as failureDetail,
   isRouterPrompt as prompt,
   isPagerPrompt,
   isCommitPrompt,
 } from "./interactive-support.mjs";
+import {
+  completeInteractiveCommand,
+  rejectInteractiveCommand,
+} from "./interactive-command-state.mjs";
 
 export function attachInteractiveData(options) {
   const { stream, commands, log, state, timer, sendNext, resolve, reject, onCommandComplete } =
@@ -16,22 +19,7 @@ export function attachInteractiveData(options) {
     state.response += text;
     log(`received ${text.length} interactive output bytes`);
     const cleaned = clean(state.response);
-    if (
-      state.waiting &&
-      typeof state.currentItem !== "string" &&
-      state.currentItem.reject?.test(cleaned)
-    ) {
-      state.settled = true;
-      clearTimeout(timer);
-      stream.close();
-      const detail = failureDetail(cleaned);
-      reject(
-        new Error(
-          `interactive command failed: ${state.currentItem.command}${detail ? ` (${detail})` : ""}`,
-        ),
-      );
-      return;
-    }
+    if (rejectInteractiveCommand({ state, stream, timer, reject, cleaned })) return;
     const { found: pager, returnPager: pagerReturn } = isPagerPrompt(cleaned);
     log(
       `state after data: index=${state.index}, waiting=${state.waiting}, answering=${state.answering}, prompt=${prompt(cleaned)}, pager=${pager}, bytes=${text.length}`,
@@ -54,18 +42,16 @@ export function attachInteractiveData(options) {
     const commandComplete = state.waiting && prompt(cleaned) && !isCommitPrompt(cleaned);
     log(`command completion check: complete=${commandComplete}`);
     if (commandComplete) {
-      onCommandComplete(
-        typeof state.currentItem === "string" ? state.currentItem : state.currentItem.command,
-      );
-      state.answering = false;
-      state.waiting = false;
       log(`command ${state.index} completed; response=${cleaned.length} bytes`);
-      if (state.index >= commands.length) {
-        state.settled = true;
-        clearTimeout(timer);
-        stream.end();
-        resolve(state.output);
-      } else sendNext();
+      completeInteractiveCommand({
+        state,
+        commands,
+        stream,
+        timer,
+        sendNext,
+        resolve,
+        onCommandComplete,
+      });
     }
   });
 }

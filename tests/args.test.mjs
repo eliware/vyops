@@ -12,26 +12,6 @@ test("parses preflight with global switches", () =>
     debug: true,
   }));
 
-test("parses release switches", () =>
-  expect(
-    parseArgs([
-      "release",
-      "--yes",
-      "--force",
-      "--debug",
-      "--verify-binaries",
-      "--password-stdin",
-      "config.boot",
-    ]),
-  ).toEqual({
-    command: "release",
-    config: "config.boot",
-    yes: true,
-    force: true,
-    debug: true,
-    verifyBinaries: true,
-    passwordStdin: true,
-  }));
 test("parses every release switch", () =>
   expect(
     parseArgs([

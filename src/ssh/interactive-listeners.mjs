@@ -1,8 +1,6 @@
-import {
-  cleanInteractiveText as clean,
-  interactiveFailureDetail as failureDetail,
-} from "./interactive-support.mjs";
+import { cleanInteractiveText as clean } from "./interactive-support.mjs";
 import { attachInteractiveData } from "./interactive-data.mjs";
+import { rejectInteractiveCommand } from "./interactive-command-state.mjs";
 
 export function attachInteractiveListeners(options) {
   const { stream, commands, log, state, timer, resolve, reject } = options;
@@ -19,21 +17,7 @@ export function attachInteractiveListeners(options) {
     state.output += text;
     state.response += text;
     log(`received ${text.length} interactive error bytes`);
-    if (
-      state.waiting &&
-      typeof state.currentItem !== "string" &&
-      state.currentItem.reject?.test(clean(state.response))
-    ) {
-      state.settled = true;
-      clearTimeout(timer);
-      stream.close();
-      const detail = failureDetail(clean(state.response));
-      reject(
-        new Error(
-          `interactive command failed: ${state.currentItem.command}${detail ? ` (${detail})` : ""}`,
-        ),
-      );
-    }
+    rejectInteractiveCommand({ state, stream, timer, reject, cleaned: clean(state.response) });
   });
   stream.on("close", () => {
     log(

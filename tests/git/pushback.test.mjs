@@ -9,6 +9,10 @@ import {
   removeGitWorkspace,
 } from "../../test-fixtures/git-harness.mjs";
 
+function lockPath(directory) {
+  return join(directory, ".git", "vyops-pushback.lock");
+}
+
 test("pushBack returns false when config has no diff", async () => {
   const { directory, config } = await createGitWorkspace();
   const git = createGitMock(jest, directory);
@@ -96,6 +100,19 @@ test("pushBack preserves staged content when the worktree also changed", async (
   try {
     await expect(pushBack(config, { runGit: git })).rejects.toThrow(
       "configuration or manifest has staged and unstaged changes; refusing to overwrite staged content",
+    );
+  } finally {
+    await removeGitWorkspace(directory);
+  }
+});
+
+test("does not reclaim a lock with missing owner metadata", async () => {
+  const { directory, config } = await createGitWorkspace();
+  const git = createGitMock(jest, directory);
+  try {
+    await mkdir(lockPath(directory));
+    await expect(pushBack(config, { runGit: git })).rejects.toThrow(
+      "another pushback is already running",
     );
   } finally {
     await removeGitWorkspace(directory);

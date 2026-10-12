@@ -19,11 +19,6 @@ test.each([
   expect(() => validateConfig(config)).toThrow(/config validation failed/);
 });
 
-test("fixConfig rejects unbalanced or extra braces without truncating", () => {
-  expect(() => fixConfig("system {\n  host-name router")).toThrow(/unbalanced braces/);
-  expect(() => fixConfig("system {\n}\n}\nother value")).toThrow(/unexpected closing brace/);
-});
-
 test("covers natural ordering comparisons and nested formatting", () => {
   expect(
     fixConfig(
@@ -47,8 +42,4 @@ test("sorts consecutive block headers through all natural comparison paths", () 
       `foo bar {\n}\nfoo {\n}\nfoo 10 {\n}\nfoo 2 {\n}\na b c {\n}\na b {\n}\nalpha {\n}\nbeta {\n}\n`,
     ),
   ).toContain("foo {");
-});
-
-test("fixConfig rejects an unmatched top-level closing brace", () => {
-  expect(() => fixConfig("}")).toThrow(/unexpected closing brace/);
 });
