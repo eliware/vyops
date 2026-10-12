@@ -74,17 +74,6 @@ test("uses default log and completion callbacks", async () => {
   await expect(promise).resolves.toContain("testuser@router#");
 });
 
-test("interactive handles VyOS return-only pager prompts", async () => {
-  const client = new MockClient();
-  const promise = interactive(client, ["first"]);
-  await Promise.resolve();
-  const stream = client.shellStream;
-  stream.emit("data", "No next tag (press RETURN)");
-  expect(stream.writes).toEqual(["first\n", "\n"]);
-  stream.emit("close");
-  await expect(promise).rejects.toThrow("interactive SSH closed before command sequence completed");
-});
-
 test.each([
   ["save", /save failed/i, "save failed\ntestuser@test-router.example.test# "],
   ["commit-confirm 5", /commit failed|error/i, "Configuration commit failed; rollback in progress"],

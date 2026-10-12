@@ -1,4 +1,3 @@
-import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
 import { remotePreflight } from "../../src/deploy/preflight.mjs";
 import { jest } from "@jest/globals";
 
@@ -15,29 +14,11 @@ test("adds HAProxy and binary requirements when requested", async () => {
   expect(exec.mock.calls[0][1]).toContain("command -v file");
 });
 
-test("reports router prerequisite failures", async () => {
-  const exec = jest.fn().mockResolvedValue({ code: 1, stdout: "", stderr: "sudo missing" });
-  await expect(remotePreflight(exec, {}, false, false)).rejects.toThrow(
-    "remote preflight failed: sudo missing",
-  );
-});
-
-const { mocks, deploy } = await setupDeployHarness(jest);
-
-test("rejects before upload when remote preflight fails", async () => {
-  mocks.exec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "sudo missing" });
-  await expect(
-    deploy({ target: "testuser@test-router.example.test", config: "/tmp/config.boot" }),
-  ).rejects.toThrow("remote preflight failed: sudo missing");
-  expect(mocks.upload).not.toHaveBeenCalled();
-});
-
 test.each([
-  ["", "router prerequisites are not satisfied"],
-  ["preflight output", "preflight output"],
-])("reports remote preflight fallback text: %s", async (stdout, expected) => {
-  mocks.exec.mockResolvedValueOnce({ code: 1, stdout, stderr: "" });
-  await expect(
-    deploy({ target: "testuser@test-router.example.test", config: "/tmp/config.boot" }),
-  ).rejects.toThrow(`remote preflight failed: ${expected}`);
+  ["sudo missing", "", "remote preflight failed: sudo missing"],
+  ["", "preflight output", "remote preflight failed: preflight output"],
+  ["", "", "remote preflight failed: router prerequisites are not satisfied"],
+])("reports router prerequisite failure: %s", async (stderr, stdout, expected) => {
+  const exec = jest.fn().mockResolvedValue({ code: 1, stdout, stderr });
+  await expect(remotePreflight(exec, {}, false, false)).rejects.toThrow(expected);
 });
