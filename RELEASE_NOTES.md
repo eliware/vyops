@@ -5,13 +5,19 @@
 ### Breaking changes
 
 - Require Node.js 26 or later.
+- Remove legacy deploy and dry-run commands.
 - Require `--yes` before release.
+- Get the release target from the VyOS config.
 
 ### Added
 
 - Add full user guides for install, commands, bundles, settings, release, backup, and errors.
 - Add modular behavior specifications and package checks.
 - Add safe debug details to preflight, release, and backup.
+- Add backup manifests for the active config and script paths.
+- Add host certificate checks and SSH key setup through standard input.
+- Add Windows and Ubuntu CI workflows and the Knit release workflow.
+- Add opt-in tests for disposable VyOS routers.
 
 ### Changed
 
@@ -21,16 +27,28 @@
 - Push confirmed config and manifest changes to Git after release.
 - Skip an unchanged pushback release unless the user sets `--force`.
 - Align package metadata, workflows, and tests with Eliware Test 12.
+- Validate nested script bundles and sync the complete `scripts/` tree.
+- Use `commit-confirm`, show `compare`, and save only after confirmation.
+- Replace deploy, CLI, validation, backup, and SSH modules with focused modules.
+- Split tests by workflow and mock Git and SSH commands.
+- Use the standard package, documentation, and repository metadata.
 
 ### Fixed
 
 - Accept `@` in safe script paths.
 - Reject malformed, duplicate, and unsafe script manifest paths.
+- Reject unsafe live script paths and recheck remote script links before backup.
+- Parse config blocks and deployment manifest headers correctly.
 - Preserve prior backup files when backup publication fails.
 - Restore script files after a failed release and remove temporary router files.
 - Preserve manifest updates during Git pushback.
+- Protect Git pushback locks during live verification.
+- Preserve successful releases when cleanup fails.
+- Retry failed hook finalization and report remote cleanup failures.
+- Handle router prompts with trailing spaces.
+- Handle backup staging, remote scans, and snapshot cleanup failures.
+- Close SSH sessions after success and failure.
 - Hide raw interactive router output from debug logs.
-- Mock Git and SSH operations in automated tests.
 
 ## 2.1.1 — 2026-08-25
 
