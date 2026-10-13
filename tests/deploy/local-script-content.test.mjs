@@ -9,11 +9,11 @@ test("reads local script content", async () => {
   expect(readFile).toHaveBeenCalledWith("/bundle/scripts/hook.sh");
 });
 
-test("uses empty content when a local script is absent", async () => {
+test("rejects when a discovered local script is absent", async () => {
   const error = Object.assign(new Error("missing"), { code: "ENOENT" });
-  await expect(
-    readLocalScriptContent(jest.fn().mockRejectedValue(error), "/missing"),
-  ).resolves.toEqual(Buffer.alloc(0));
+  await expect(readLocalScriptContent(jest.fn().mockRejectedValue(error), "/missing")).rejects.toBe(
+    error,
+  );
 });
 
 test("propagates local read failures other than missing files", async () => {

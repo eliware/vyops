@@ -5,6 +5,11 @@ test("parses preflight", () =>
     command: "preflight",
     config: "config.boot",
   }));
+test("accepts a config path that starts with a dash after the option marker", () =>
+  expect(parseArgs(["preflight", "--", "--config.boot"])).toEqual({
+    command: "preflight",
+    config: "--config.boot",
+  }));
 test("parses preflight with global switches", () =>
   expect(parseArgs(["--debug", "preflight", "config.boot"])).toEqual({
     command: "preflight",

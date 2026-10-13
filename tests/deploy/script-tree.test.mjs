@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
 import { jest } from "@jest/globals";
 import { listScripts } from "../../src/deploy/script-tree.mjs";
@@ -57,6 +57,7 @@ test("recursively installs the complete scripts tree", async () => {
   const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
   const scripts = join(root, "scripts");
   await mkdir(join(scripts, "commit", "post-hooks.d"), { recursive: true });
+  await writeFile(join(scripts, "commit", "post-hooks.d", "95-reconcile"), "#!/bin/sh\n");
   try {
     fsMocks.readdir
       .mockResolvedValueOnce([{ name: "commit", isDirectory: () => true }])
@@ -107,6 +108,7 @@ test.each([
     const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
     const scripts = join(root, "scripts");
     await mkdir(join(scripts, "commit"), { recursive: true });
+    await writeFile(join(scripts, "commit", "hook.sh"), "#!/bin/sh\n");
     try {
       fsMocks.readdir
         .mockResolvedValueOnce([{ name: "commit", isDirectory: () => true }])

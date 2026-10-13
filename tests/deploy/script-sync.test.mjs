@@ -13,6 +13,7 @@ jest.unstable_mockModule("@eliware/common", () => ({
   path: (...parts) => join(...parts),
   log: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
+jest.unstable_mockModule("node:fs/promises", () => ({ readFile }));
 jest.unstable_mockModule("../../src/ssh.mjs", () => ({ exec, upload }));
 jest.unstable_mockModule("../../src/ssh/exec.mjs", () => ({ exec }));
 jest.unstable_mockModule("../../src/ssh/upload.mjs", () => ({ upload }));
@@ -37,7 +38,11 @@ test("propagates local script tree errors other than missing directories", async
 
 beforeEach(() => {
   jest.clearAllMocks();
-  readFile.mockResolvedValue(Buffer.from("#!/bin/sh\necho ok\n"));
+  readFile.mockImplementation(async (file) => {
+    if (file.endsWith(".deployment.tsv"))
+      throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    return Buffer.from("#!/bin/sh\necho ok\n");
+  });
   stat.mockResolvedValue({ mode: 0o100755 });
   exec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
   upload.mockResolvedValue(undefined);

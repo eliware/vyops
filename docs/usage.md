@@ -69,6 +69,7 @@ Use a user name with letters, digits, period, underscore, or hyphen.
 
 `<directory>` names the local backup folder.
 Do not use a filesystem root as the backup destination.
+Put `--` before a path that starts with a hyphen.
 
 ## Password input
 

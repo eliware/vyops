@@ -151,6 +151,8 @@ test("reports matching scripts that release saves for rollback", async () => {
   const root = await mkdtemp(join(tmpdir(), "vyops-managed-"));
   try {
     await writeFile(join(root, "config.boot"), "system {}\n");
+    await mkdir(join(root, "scripts"));
+    await writeFile(join(root, "scripts", "managed.sh"), "#!/bin/sh\n");
     await writeFile(
       `${join(root, "config.boot")}.deployment.tsv`,
       "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\tmanaged.sh\tfalse\t-\t-\t-\t755\thash\tregular file\n",

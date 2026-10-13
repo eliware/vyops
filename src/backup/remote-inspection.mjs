@@ -5,7 +5,7 @@ export async function inspectRemoteScripts(exec, client, log) {
   log.debug("[vyops] backup: inspecting remote script links");
   const links = await exec(
     client,
-    "if [ ! -e /config/scripts ] && [ ! -L /config/scripts ]; then exit 0; fi; find -P /config/scripts -type l -print0",
+    "if [ -L /config/scripts ]; then printf '/config/scripts\\0'; exit 0; fi; if [ ! -e /config/scripts ]; then exit 0; fi; find -P /config/scripts -type l -print0",
   );
   if (links.code !== 0)
     throw new Error(`could not inspect remote scripts: ${links.stderr || links.stdout}`.trim());

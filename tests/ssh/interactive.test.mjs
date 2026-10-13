@@ -135,6 +135,40 @@ test("interactive rejects a shell creation failure", async () => {
   await expect(interactive(shellErrorClient, ["x"])).rejects.toThrow("shell failed");
 });
 
+test("interactive rejects a synchronous shell creation failure", async () => {
+  const shellErrorClient = {
+    shell() {
+      throw new Error("shell failed");
+    },
+  };
+  await expect(interactive(shellErrorClient, ["x"])).rejects.toThrow("shell failed");
+});
+
+test("times out while the shell request remains pending", async () => {
+  process.env.VYOPS_INTERACTIVE_TIMEOUT = "10";
+  let openShell;
+  const client = { shell: () => new Promise((resolve) => (openShell = resolve)) };
+  const promise = interactive(client, ["show version"]);
+  await Promise.resolve();
+  await expect(promise).rejects.toMatchObject({ code: "VYOPS_TIMEOUT" });
+  const stream = new MockStream();
+  openShell(stream);
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(stream.closed).toBe(true);
+});
+
+test("ignores a shell failure after the timeout", async () => {
+  process.env.VYOPS_INTERACTIVE_TIMEOUT = "10";
+  let failShell;
+  const client = { shell: () => new Promise((_resolve, reject) => (failShell = reject)) };
+  const promise = interactive(client, ["show version"]);
+  await Promise.resolve();
+  await expect(promise).rejects.toMatchObject({ code: "VYOPS_TIMEOUT" });
+  failShell(new Error("late shell failure"));
+  await Promise.resolve();
+});
+
 test.each([
   ["boom\n", /boom/],
   ["save failed", /save failed/i],

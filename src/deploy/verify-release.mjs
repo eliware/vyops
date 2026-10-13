@@ -9,7 +9,11 @@ export async function verifyRelease(client, exec, log, redact) {
     "show haproxy",
   ]) {
     const result = await exec(client, `vbash -ic ${JSON.stringify(command)}`);
-    const optional = optionalVerificationStatus(command, `${result.stdout}\n${result.stderr}`);
+    const optional = optionalVerificationStatus(
+      command,
+      `${result.stdout}\n${result.stderr}`.trim(),
+      result.code,
+    );
     // codescope ignore: next router command failures require live-router integration.
     if (result.code !== 0 && !optional) {
       throw new Error(

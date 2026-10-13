@@ -11,6 +11,7 @@ directives:
       - Print package.json version and return success for standalone --version.
       - Accept one config path for preflight and release.
       - Accept one target and one destination path for backup.
+      - Accept positional values that start with a hyphen after --.
       - Allow --debug and --password-stdin for preflight and backup.
       - Allow --yes, --force, --debug, --verify, --verify-binaries, --no-pushback, --no-hooks, and --password-stdin for release.
       - Require --yes for release.

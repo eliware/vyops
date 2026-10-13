@@ -10,6 +10,14 @@ test("collects options from both sides of a command", () => {
   });
 });
 
+test("accepts positional values that start with a dash after the option marker", () => {
+  expect(readCommandTokens(["preflight", "--", "--config.boot"], "Usage")).toEqual({
+    command: "preflight",
+    options: new Set(),
+    values: ["--config.boot"],
+  });
+});
+
 test("rejects input that has no command token", () => {
   expect(() => readCommandTokens(["--debug"], "Usage")).toThrow("Usage");
 });

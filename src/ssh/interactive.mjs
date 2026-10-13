@@ -5,28 +5,47 @@ import { startInteractiveTimeout } from "./interactive-timeout.mjs";
 export function interactive(client, commands, log = () => {}, onCommandComplete = () => {}) {
   const operation = randomUUID();
   return new Promise((resolve, reject) => {
-    client.shell({ term: "xterm", cols: 160, rows: 48 }).then((stream) => {
+    const state = {
+      output: "",
+      response: "",
+      index: 0,
+      waiting: false,
+      answering: false,
+      settled: false,
+      timedOut: false,
+      currentItem: undefined,
+    };
+    let stream;
+    const timer = startInteractiveTimeout({
+      operation,
+      commands,
+      state,
+      stream: { close: () => stream?.close?.() },
+      client,
+      log,
+      reject,
+    });
+    const handleShellError = (error) => {
+      if (state.settled) return;
+      state.settled = true;
+      clearTimeout(timer);
+      reject(error);
+    };
+    let shellRequest;
+    try {
+      shellRequest = client.shell({ term: "xterm", cols: 160, rows: 48 });
+    } catch (error) {
+      handleShellError(error);
+      return;
+    }
+    Promise.resolve(shellRequest).then((openedStream) => {
+      if (state.settled) {
+        openedStream.close?.();
+        return;
+      }
+      stream = openedStream;
       log("VyOS interactive shell opened");
-      const state = {
-        output: "",
-        response: "",
-        index: 0,
-        waiting: false,
-        answering: false,
-        settled: false,
-        timedOut: false,
-        currentItem: undefined,
-      };
       log(`interactive sequence start (${commands.length} commands)`);
-      const timer = startInteractiveTimeout({
-        operation,
-        commands,
-        state,
-        stream,
-        client,
-        log,
-        reject,
-      });
       const sendNext = () => {
         if (state.waiting || state.index >= commands.length) return;
         state.currentItem = commands[state.index++];
@@ -58,6 +77,6 @@ export function interactive(client, commands, log = () => {}, onCommandComplete 
         onCommandComplete,
       });
       sendNext();
-    }, reject);
+    }, handleShellError);
   });
 }

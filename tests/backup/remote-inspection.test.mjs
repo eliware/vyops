@@ -68,6 +68,11 @@ test.each([
 });
 
 test("rejects remote links and unsafe script paths", async () => {
+  const linkedRoot = jest.fn().mockResolvedValue({ code: 0, stdout: "/config/scripts\0" });
+  await expect(inspectRemoteScripts(linkedRoot, {}, log)).rejects.toThrow(
+    "remote script symlink rejected: /config/scripts",
+  );
+  expect(linkedRoot.mock.calls[0][1]).toContain("[ -L /config/scripts ]");
   const links = jest.fn().mockResolvedValue({ code: 0, stdout: "/config/scripts/link\0" });
   await expect(inspectRemoteScripts(links, {}, log)).rejects.toThrow(
     "remote script symlink rejected",

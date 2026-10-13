@@ -17,6 +17,17 @@ test("rejects failed required checks", async () => {
   );
 });
 
+test("rejects unavailable text when a verification command also reports an error", async () => {
+  const exec = jest.fn().mockResolvedValue({
+    code: 1,
+    stdout: "VRRP data is not available (process not running or no active groups)",
+    stderr: "permission denied",
+  });
+  await expect(verifyRelease({}, exec, { info: jest.fn() }, (value) => value)).rejects.toThrow(
+    "verification phase failed (show vrrp)",
+  );
+});
+
 const { logMock, mocks, deploy } = await setupDeployHarness(jest);
 
 test("runs optional post-deployment verification commands", async () => {
