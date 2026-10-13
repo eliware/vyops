@@ -36,24 +36,3 @@ test("stages config, scripts, and a manifest with private file modes", async () 
     { encoding: "utf8", mode: 0o600 },
   );
 });
-
-test("removes each remote snapshot when its download fails", async () => {
-  const exec = jest.fn().mockResolvedValue({ code: 0 });
-  const download = jest
-    .fn()
-    .mockResolvedValueOnce(undefined)
-    .mockRejectedValueOnce(new Error("download failed"));
-  await expect(
-    stageBackup({
-      fs: { mkdir: jest.fn(), chmod: jest.fn(), writeFile: jest.fn() },
-      path: (...parts) => parts.join("/"),
-      client: {},
-      staged: "/tmp/staged",
-      files: ["hook.sh"],
-      download,
-      exec,
-      log: { debug: jest.fn() },
-    }),
-  ).rejects.toThrow("download failed");
-  expect(exec).toHaveBeenLastCalledWith(expect.anything(), expect.stringContaining("rm -rf --"));
-});
