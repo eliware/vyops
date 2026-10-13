@@ -16,7 +16,7 @@ test("removes new files, restores saved files, and removes the recovery director
     force: true,
   });
   expect(fs.rename).toHaveBeenCalledWith("previous/config.boot", "output/config.boot");
-  expect(fs.rm).toHaveBeenNthCalledWith(2, "previous", { recursive: true, force: true });
+  expect(fs.rm).toHaveBeenNthCalledWith(3, "previous", { recursive: true, force: true });
 });
 
 test("reports a restore failure and keeps the original cause", async () => {

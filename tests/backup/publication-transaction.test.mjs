@@ -17,3 +17,20 @@ test("restores prior entries when staged publication fails", async () => {
   );
   expect(fs.rename).toHaveBeenLastCalledWith("previous/config.boot", "output/config.boot");
 });
+
+test("removes a partial destination entry before restoring the prior entry", async () => {
+  const fs = {
+    rename: jest
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(Object.assign(new Error("destination exists"), { code: "EEXIST" }))
+      .mockResolvedValueOnce(undefined),
+    rm: jest.fn(),
+  };
+  await expect(
+    publishBackupEntries(fs, ["config.boot", "scripts"], "staged", "output", "previous"),
+  ).rejects.toThrow("destination exists");
+  expect(fs.rm).toHaveBeenCalledWith("output/scripts", { recursive: true, force: true });
+  expect(fs.rename).toHaveBeenCalledWith("previous/scripts", "output/scripts");
+});
