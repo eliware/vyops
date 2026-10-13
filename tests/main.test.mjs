@@ -73,35 +73,23 @@ test("passes stdin passwords to the backup command", async () => {
   }
 });
 
-test("runs release and pushback after preflight", async () => {
+test("dispatches release workflow", async () => {
   args = { command: "release", config: "config.boot", noPushback: false };
-  cli.pushBack.mockResolvedValue(true);
   await cli.runCli();
-  expect(cli.prepareRelease).toHaveBeenCalled();
-  expect(cli.repositorySnapshot).toHaveBeenCalledWith("config.boot");
-  expect(cli.deploy).toHaveBeenCalled();
-  expect(cli.log.info).toHaveBeenCalledWith(
-    expect.stringContaining("Pushback committed and pushed"),
-  );
+  expect(cli.runRelease).toHaveBeenCalledWith(expect.objectContaining(args), cli.log);
+  expect(cli.runRelease).toHaveBeenCalledTimes(1);
 });
 
-test("skips unchanged releases and deploys other commands", async () => {
-  args = { command: "release", config: "config.boot", noPushback: false };
-  cli.shouldSkip.mockResolvedValue(true);
+test("does not run a release workflow for other commands", async () => {
+  args = { command: "other", config: "config.boot" };
   await cli.runCli();
-  expect(cli.deploy).not.toHaveBeenCalled();
-  args = { command: "other", config: "config.boot", noPushback: true };
-  await cli.runCli();
-  expect(cli.readAndValidateConfig).toHaveBeenCalledWith("config.boot");
-  expect(cli.deploy).toHaveBeenCalled();
+  expect(cli.runRelease).not.toHaveBeenCalled();
 });
 
 test("forces a release when unchanged files would normally skip deployment", async () => {
   args = { command: "release", config: "config.boot", noPushback: false, force: true };
-  cli.shouldSkip.mockResolvedValue(true);
   await cli.runCli();
-  expect(cli.shouldSkip).not.toHaveBeenCalled();
-  expect(cli.deploy).toHaveBeenCalled();
+  expect(cli.runRelease).toHaveBeenCalled();
   expect(cli.closeAll).toHaveBeenCalled();
 });
 

@@ -3,10 +3,9 @@ export async function setupMainHarness(jest) {
   const usage = "Usage: vyops";
   const deploy = jest.fn();
   const cleanupActiveDeployments = jest.fn();
-  const readAndValidateConfig = jest.fn();
   const runBackup = jest.fn();
   const runPreflight = jest.fn();
-  const prepareRelease = jest.fn();
+  const runRelease = jest.fn();
   const pushBack = jest.fn();
   const repositorySnapshot = jest.fn();
   const shouldSkip = jest.fn();
@@ -17,15 +16,9 @@ export async function setupMainHarness(jest) {
   await jest.isolateModulesAsync(async () => {
     jest.unstable_mockModule("../src/args.mjs", () => ({ parseArgs, usage }));
     jest.unstable_mockModule("../src/deploy.mjs", () => ({ deploy, cleanupActiveDeployments }));
-    jest.unstable_mockModule("../src/validate.mjs", () => ({ readAndValidateConfig }));
     jest.unstable_mockModule("../src/commands/backup.mjs", () => ({ runBackup }));
     jest.unstable_mockModule("../src/commands/preflight.mjs", () => ({ runPreflight }));
-    jest.unstable_mockModule("../src/commands/release.mjs", () => ({ prepareRelease }));
-    jest.unstable_mockModule("../src/git.mjs", () => ({
-      pushBack,
-      repositorySnapshot,
-      shouldSkip,
-    }));
+    jest.unstable_mockModule("../src/commands/run-release.mjs", () => ({ runRelease }));
     jest.unstable_mockModule("../src/ssh.mjs", () => ({ closeAll }));
     jest.unstable_mockModule("@eliware/common", () => ({
       log,
@@ -47,9 +40,8 @@ export async function setupMainHarness(jest) {
     errors,
     log,
     parseArgs,
-    prepareRelease,
+    runRelease,
     pushBack,
-    readAndValidateConfig,
     repositorySnapshot,
     runBackup,
     runCli,

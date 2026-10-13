@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 const readAndValidateConfig = jest.fn().mockResolvedValue("config");
 const validateBundle = jest.fn().mockResolvedValue({ target: "vyos@router", scripts: ["hook.sh"] });
 const validateScriptManifest = jest.fn().mockResolvedValue(undefined);
-jest.unstable_mockModule("../../src/validate.mjs", () => ({ readAndValidateConfig }));
+jest.unstable_mockModule("../../src/validate/config-file.mjs", () => ({ readAndValidateConfig }));
 jest.unstable_mockModule("../../src/bundle.mjs", () => ({
   validateBundle,
   validateScriptManifest,

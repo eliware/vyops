@@ -1,4 +1,4 @@
-import { readAndValidateConfig } from "../validate.mjs";
+import { readAndValidateConfig } from "../validate/config-file.mjs";
 import { validateBundle, validateScriptManifest } from "../bundle.mjs";
 
 export async function runPreflight(args, log) {

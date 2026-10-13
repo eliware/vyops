@@ -1,5 +1,4 @@
-import { fs } from "@eliware/common";
-import { fail, validateConfigLine } from "./validate/line.mjs";
+import { fail, validateConfigLine } from "./line.mjs";
 
 export function validateConfig(text) {
   if (!text.trim()) throw new Error("config validation failed: file is empty");
@@ -24,9 +23,4 @@ export function validateConfig(text) {
   if (depth !== 0) fail(line, "unbalanced braces");
   if (!hasStatement) throw new Error("config validation failed: no configuration statements");
   return text;
-}
-
-export async function readAndValidateConfig(path) {
-  const text = await fs.promises.readFile(path, "utf8");
-  return validateConfig(text);
 }
