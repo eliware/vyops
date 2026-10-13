@@ -8,6 +8,7 @@ export async function cleanupRemoteStaging({
   remotePaths,
   log,
   debugLog,
+  preserveScriptsBackup = false,
 }) {
   debugLog("cleaning up remote file");
   let cleanupClient = client;
@@ -17,7 +18,10 @@ export async function cleanupRemoteStaging({
       cleanupClient = null;
     }
     if (!cleanupClient) cleanupClient = await connectClient();
-    await removeRemoteStaging(exec, cleanupClient, remotePaths);
+    await removeRemoteStaging(exec, cleanupClient, {
+      ...remotePaths,
+      scriptsBackup: preserveScriptsBackup ? undefined : remotePaths.scriptsBackup,
+    });
   } catch (error) {
     log.warn(
       `VyOps cleanup warning: remote staging cleanup could not be completed: ${error.message}`,

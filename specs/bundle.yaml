@@ -13,6 +13,7 @@ directives:
       - Read the local bundle manifest from config.boot.manifest.tsv beside the config.
       - Accept the header kind and path, with an optional preexisting column.
       - Require each record to name one file and one safe path.
+      - Require each manifest path to match a file in the local script tree.
       - Reject duplicate paths and malformed records.
       - Treat a missing local bundle manifest as empty.
       - Keep router deployment state in config.boot.deployment.tsv.

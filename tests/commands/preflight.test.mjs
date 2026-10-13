@@ -1,6 +1,8 @@
 import { jest } from "@jest/globals";
 const readAndValidateConfig = jest.fn().mockResolvedValue("config");
-const validateBundle = jest.fn().mockResolvedValue({ target: "vyos@router", scripts: ["hook.sh"] });
+const validateBundle = jest
+  .fn()
+  .mockResolvedValue({ target: "vyos@router", scripts: [{ name: "hook.sh" }] });
 const validateScriptManifest = jest.fn().mockResolvedValue(undefined);
 jest.unstable_mockModule("../../src/validate/config-file.mjs", () => ({ readAndValidateConfig }));
 jest.unstable_mockModule("../../src/bundle.mjs", () => ({
@@ -13,6 +15,6 @@ test("validates and reports bundle details", async () => {
   const args = { config: "/tmp/config.boot" };
   await runPreflight(args, log);
   expect(validateBundle).toHaveBeenCalledWith(args.config, "config");
-  expect(validateScriptManifest).toHaveBeenCalledWith(args.config);
+  expect(validateScriptManifest).toHaveBeenCalledWith(args.config, undefined, ["hook.sh"]);
   expect(log.info).toHaveBeenCalledWith("Preflight successful: vyos@router (1 script files)");
 });

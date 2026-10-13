@@ -24,7 +24,8 @@ export async function recoverDeployment(options) {
   if (finalizeHooks && !hooksFinalized) {
     let cleanupClient = recoveryClient;
     if (!cleanupClient) cleanupClient = await connectClient();
-    await finalizeHooks(deploymentCommitted, cleanupClient);
+    const restored = await finalizeHooks(deploymentCommitted, cleanupClient);
+    if (restored === false) error.preserveScriptsBackup = true;
     if (cleanupClient && cleanupClient !== recoveryClient) await close(cleanupClient);
   }
   return recoveryClient;

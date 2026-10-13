@@ -40,9 +40,14 @@ export async function runDeployment(options) {
     return 0;
   } catch (error) {
     await recoverRun(state, { error, ...deploymentState.recovery(finalizeHooks) });
+    state.preserveScriptsBackup = error.preserveScriptsBackup === true;
     throw error;
   } finally {
     state.unregisterCleanup();
-    await cleanupRemoteStaging({ ...state, client: state.client });
+    await cleanupRemoteStaging({
+      ...state,
+      client: state.client,
+      preserveScriptsBackup: state.preserveScriptsBackup,
+    });
   }
 }

@@ -1,7 +1,7 @@
 import { readFile as defaultReadFile } from "node:fs/promises";
 import { isSafeScriptPath } from "./script-path-rules.mjs";
 
-export async function validateScriptManifest(config, readFile = defaultReadFile) {
+export async function validateScriptManifest(config, readFile = defaultReadFile, availablePaths) {
   const manifestPath = `${config}.manifest.tsv`;
   let content;
   try {
@@ -31,5 +31,8 @@ export async function validateScriptManifest(config, readFile = defaultReadFile)
   if ([...names].some((name) => !isSafeScriptPath(name))) {
     throw new Error("preflight failed: deployment manifest contains an unsafe script path");
   }
+  const available = availablePaths && new Set(availablePaths);
+  if (available && [...names].some((name) => !available.has(name)))
+    throw new Error("preflight failed: deployment manifest names a missing script file");
   return new Set(names);
 }

@@ -25,6 +25,9 @@ directives:
       - Save the confirmed config before the program reports success.
       - Download the active config after the router accepts the release.
       - Download router script state to config.boot.deployment.tsv.
+      - Download the config and deployment manifest before local replacement.
+      - Replace the config and deployment manifest as one local update.
+      - Restore both local files when either replacement fails.
       - Keep router script state separate from config.boot.manifest.tsv.
       - Write a nine-column tab-separated header to config.boot.deployment.tsv.
       - "Use these columns in order: kind, path, preexisting, old_mode, old_sha256, old_type, new_mode, new_sha256, new_type."

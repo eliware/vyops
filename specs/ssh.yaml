@@ -5,6 +5,7 @@ directives:
     dos:
       - Accept one user and one host in the form user@host.
       - Accept a valid DNS-style host, IPv4 address, or IPv6 address.
+      - Require brackets around IPv6 addresses in SSH targets.
       - Use the configured private key when no password is set.
       - Use the SSH agent when SSH_AUTH_SOCK is set.
       - Use ~/.ssh/known_hosts when SSH_KNOWN_HOSTS is not set.

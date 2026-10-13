@@ -8,5 +8,5 @@ export async function finalizeScripts(exec, log, paths) {
     ).catch((error) => log.warn(`VyOps cleanup warning: hook cleanup failed: ${error.message}`));
     return;
   }
-  await rollbackScripts(exec, log, paths);
+  return rollbackScripts(exec, log, paths);
 }

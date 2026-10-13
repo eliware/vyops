@@ -60,7 +60,14 @@ export async function runScriptSyncTransaction(options, dependencies) {
       debugLog,
     });
   } catch (error) {
-    await rollbackScripts(exec, log, { client, manifest, installDir, backupDir, remoteDir });
+    const restored = await rollbackScripts(exec, log, {
+      client,
+      manifest,
+      installDir,
+      backupDir,
+      remoteDir,
+    });
+    if (!restored) error.preserveScriptsBackup = true;
     throw error;
   }
 }

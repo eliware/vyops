@@ -12,6 +12,7 @@ directives:
       - Parse command arguments before each command starts.
       - Create one operation ID for each command run.
       - Close active SSH clients during normal shutdown.
+      - Reconnect for cleanup when the interrupted SSH client close fails.
       - Run remote cleanup when a release stops or fails.
     donts:
       - Do not load .env files.

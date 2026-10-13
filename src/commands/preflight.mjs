@@ -8,7 +8,11 @@ export async function runPreflight(args, log) {
   log.debug("[vyops] preflight: validating scripts and target");
   const { target, scripts } = await validateBundle(args.config, text);
   log.debug(`[vyops] preflight: found ${scripts.length} script files`);
-  await validateScriptManifest(args.config);
+  await validateScriptManifest(
+    args.config,
+    undefined,
+    scripts.map(({ name }) => name),
+  );
   log.debug("[vyops] preflight: script manifest validation complete");
   log.info(`Preflight successful: ${target} (${scripts.length} script files)`);
   return { target, scripts };

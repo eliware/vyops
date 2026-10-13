@@ -18,6 +18,7 @@ test.each([
   "admin@",
   "vyos@",
   "vyos@router@other",
+  "vyos@2001:db8::1",
   "vy os@router",
   "vyos@bad/host",
   "vyos@[bad]",

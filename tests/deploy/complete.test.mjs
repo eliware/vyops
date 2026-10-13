@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import { completeDeployment } from "../../src/deploy/complete.mjs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { runPreflight } from "../../src/commands/preflight.mjs";
@@ -11,6 +11,8 @@ test("downloads the confirmed config and finalizes hooks", async () => {
   const configText =
     "system {\n    host-name test-router\n    login {\n        user vyos {\n        }\n    }\n}\n";
   await writeFile(config, configText);
+  await mkdir(join(root, "scripts"));
+  await writeFile(join(root, "scripts", "bundle.sh"), "#!/bin/sh\n");
   await writeFile(`${config}.manifest.tsv`, "kind\tpath\nfile\tbundle.sh\n");
   let client = {};
   const download = jest.fn(async (_client, remote, local) =>
@@ -54,7 +56,7 @@ test("downloads the confirmed config and finalizes hooks", async () => {
     runPreflight({ config }, { debug: jest.fn(), info: jest.fn() }),
   ).resolves.toMatchObject({
     target: "vyos@test-router",
-    scripts: [],
+    scripts: [{ name: "bundle.sh" }],
   });
   await rm(root, { recursive: true, force: true });
 });
@@ -83,5 +85,39 @@ test("preserves the local config when the download fails", async () => {
     }),
   ).rejects.toThrow("download failed");
   await expect(readFile(config, "utf8")).resolves.toBe("old config");
+  await rm(root, { recursive: true, force: true });
+});
+
+test("preserves both local files when the manifest download fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-complete-"));
+  const config = join(root, "config.boot");
+  const deployment = `${config}.deployment.tsv`;
+  await writeFile(config, "old config");
+  await writeFile(deployment, "old deployment state");
+  const download = jest.fn(async (_client, remote, local) => {
+    if (remote === "/config/config.boot") await writeFile(local, "new config");
+    else throw new Error("manifest download failed");
+  });
+  await expect(
+    completeDeployment({
+      getClient: () => ({}),
+      setClient: () => {},
+      connectClient: async () => ({}),
+      close: async () => {},
+      download,
+      manifest: "manifest",
+      config,
+      finalizeHooks: jest.fn(),
+      verify: false,
+      exec: async () => {},
+      log: { info: jest.fn() },
+      redact: (value) => value,
+      phase: () => {},
+      debugLog: () => {},
+      setHooksFinalized: jest.fn(),
+    }),
+  ).rejects.toThrow("manifest download failed");
+  await expect(readFile(config, "utf8")).resolves.toBe("old config");
+  await expect(readFile(deployment, "utf8")).resolves.toBe("old deployment state");
   await rm(root, { recursive: true, force: true });
 });

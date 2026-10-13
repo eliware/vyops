@@ -53,6 +53,12 @@ test("rejects unsafe manifest paths", async () => {
   );
 });
 
+test("rejects manifest paths that are absent from the script tree", async () => {
+  await expect(
+    validateScriptManifest("config.boot", async () => "kind\tpath\nfile\tstale.sh\n", ["live.sh"]),
+  ).rejects.toThrow("manifest names a missing script file");
+});
+
 test.each([
   ["missing header", "file\thook.sh\n"],
   ["malformed record", "kind\tpath\nfile\n"],

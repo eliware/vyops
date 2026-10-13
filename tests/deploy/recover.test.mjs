@@ -20,3 +20,19 @@ test("reconnects and finalizes hooks during recovery", async () => {
   expect(close).toHaveBeenCalledTimes(1);
   expect(finalizeHooks).toHaveBeenCalledWith(false, client);
 });
+
+test("marks the script backup for retention when hook rollback fails", async () => {
+  const error = new Error("release failed");
+  await recoverDeployment({
+    error,
+    target: "router",
+    client: {},
+    close: jest.fn(),
+    connectClient: jest.fn().mockResolvedValue({}),
+    debugLog: jest.fn(),
+    finalizeHooks: jest.fn().mockResolvedValue(false),
+    hooksFinalized: false,
+    deploymentCommitted: false,
+  });
+  expect(error.preserveScriptsBackup).toBe(true);
+});

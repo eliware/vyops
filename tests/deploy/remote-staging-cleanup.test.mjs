@@ -54,3 +54,19 @@ test("warns when staging cleanup fails", async () => {
   expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("transport lost"));
   expect(close).toHaveBeenCalledWith(client);
 });
+
+test("keeps the script backup when rollback fails", async () => {
+  const exec = jest.fn().mockResolvedValue({ code: 0 });
+  await cleanupRemoteStaging({
+    exec,
+    close: jest.fn(),
+    connectClient: jest.fn(),
+    client: { state: "open" },
+    remotePaths: { config: "c", scripts: "s", scriptsBackup: "b" },
+    log: { warn: jest.fn() },
+    debugLog: jest.fn(),
+    preserveScriptsBackup: true,
+  });
+  expect(exec.mock.calls[0][1]).toContain('rm -rf -- "s"');
+  expect(exec.mock.calls[0][1]).not.toContain('"b"');
+});

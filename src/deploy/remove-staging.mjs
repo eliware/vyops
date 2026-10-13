@@ -1,4 +1,8 @@
 export function removeRemoteStaging(exec, client, paths) {
-  const command = `rm -f -- ${JSON.stringify(paths.config)}; rm -rf -- ${JSON.stringify(paths.scripts)} ${JSON.stringify(paths.scriptsBackup)}`;
+  const temporary = [paths.scripts, paths.scriptsBackup]
+    .filter(Boolean)
+    .map((path) => JSON.stringify(path))
+    .join(" ");
+  const command = `rm -f -- ${JSON.stringify(paths.config)}; rm -rf -- ${temporary}`;
   return exec(client, command);
 }

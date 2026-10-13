@@ -14,6 +14,10 @@ export function createInterruptionCleanup({
     let recoveryClient;
     try {
       await close(interruptedClient);
+    } catch (error) {
+      log.warn(`VyOps cleanup warning: interrupted SSH close failed: ${error.message}`);
+    }
+    try {
       recoveryClient = await connectClient();
       await removeRemoteStaging(exec, recoveryClient, remotePaths);
     } catch (error) {
@@ -21,7 +25,13 @@ export function createInterruptionCleanup({
         `VyOps cleanup warning: interruption cleanup failed for ${target}: ${error.message}`,
       );
     } finally {
-      await close(recoveryClient);
+      if (recoveryClient) {
+        try {
+          await close(recoveryClient);
+        } catch (error) {
+          log.warn(`VyOps cleanup warning: recovery SSH close failed: ${error.message}`);
+        }
+      }
     }
   };
 }
