@@ -30,6 +30,7 @@ directives:
       - Use only file records as managed script paths.
       - Restore prior managed and unmanaged files when an install fails.
       - Keep the remote backup folder when script rollback fails.
+      - Keep the remote script backup when hook cleanup fails.
       - Remove files and empty folders that did not exist before an install when it fails.
       - Keep installed scripts after config confirmation.
       - Restore prior scripts if the release does not confirm.

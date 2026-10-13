@@ -36,7 +36,8 @@ export async function completeDeployment(options) {
   if (verify) await verifyRelease(getClient(), exec, log, redact);
   phase("run hooks");
   if (finalizeHooks) {
+    const finalized = await finalizeHooks(true, getClient());
+    if (finalized === false) throw new Error("hook finalization failed");
     setHooksFinalized();
-    await finalizeHooks(true, getClient());
   }
 }

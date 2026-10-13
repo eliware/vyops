@@ -65,6 +65,19 @@ test("interactive runs commands, handles pager and commit confirmation", async (
   expect(stream.ended).toBe(true);
 });
 
+test("handles a commit confirmation split across output events", async () => {
+  const client = new MockClient();
+  const promise = interactive(client, ["commit-confirm 5"]);
+  await Promise.resolve();
+  const stream = client.shellStream;
+  stream.emit("data", "Proceed? [Y");
+  expect(stream.writes).toEqual(["commit-confirm 5\n"]);
+  stream.emit("data", "/n] ");
+  expect(stream.writes).toEqual(["commit-confirm 5\n", "yes\n"]);
+  stream.emit("data", "\ntestuser@test-router.example.test# ");
+  await expect(promise).resolves.toContain("Proceed? [Y/n]");
+});
+
 test("uses default log and completion callbacks", async () => {
   process.env.VYOPS_INTERACTIVE_TIMEOUT = "321";
   const client = new MockClient();

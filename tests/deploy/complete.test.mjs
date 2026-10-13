@@ -121,3 +121,33 @@ test("preserves both local files when the manifest download fails", async () => 
   await expect(readFile(deployment, "utf8")).resolves.toBe("old deployment state");
   await rm(root, { recursive: true, force: true });
 });
+
+test("does not mark hooks finalized when cleanup fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-complete-"));
+  const config = join(root, "config.boot");
+  const setHooksFinalized = jest.fn();
+  try {
+    await expect(
+      completeDeployment({
+        getClient: () => ({}),
+        setClient: () => {},
+        connectClient: async () => ({}),
+        close: async () => {},
+        download: async (_client, _remote, local) => writeFile(local, "new config"),
+        manifest: "manifest",
+        config,
+        finalizeHooks: jest.fn().mockResolvedValue(false),
+        verify: false,
+        exec: async () => {},
+        log: { info: jest.fn() },
+        redact: (value) => value,
+        phase: () => {},
+        debugLog: () => {},
+        setHooksFinalized,
+      }),
+    ).rejects.toThrow("hook finalization failed");
+    expect(setHooksFinalized).not.toHaveBeenCalled();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

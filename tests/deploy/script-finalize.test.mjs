@@ -3,22 +3,30 @@ import { finalizeScripts } from "../../src/deploy/script-finalize.mjs";
 
 test("removes backup state after committed deployment", async () => {
   const exec = jest.fn().mockResolvedValue({ code: 0 });
-  await finalizeScripts(
-    exec,
-    { warn: jest.fn() },
-    {
-      client: {},
-      committed: true,
-      backupDir: "/tmp/b",
-      remoteDir: "/tmp/r",
-    },
-  );
-  expect(exec.mock.calls[0][1]).toContain("rm -rf");
+  await expect(
+    finalizeScripts(
+      exec,
+      { warn: jest.fn() },
+      {
+        client: {},
+        committed: true,
+        backupDir: "/tmp/b",
+        remoteDir: "/tmp/r",
+      },
+    ),
+  ).resolves.toBe(true);
+  expect(exec.mock.calls[0][1]).toContain('rm -rf -- "/tmp/r" && sudo rm -rf -- "/tmp/b"');
 });
 
-test("warns when committed cleanup fails", async () => {
-  const exec = jest.fn().mockRejectedValue(new Error("cleanup failed"));
+test.each([
+  jest.fn().mockRejectedValue(new Error("cleanup failed")),
+  jest.fn().mockResolvedValue({ code: 1, stderr: "cleanup failed" }),
+  jest.fn().mockResolvedValue({ code: 1, stderr: "", stdout: "cleanup output" }),
+])("retains backup state when committed cleanup fails", async (exec) => {
   const log = { warn: jest.fn() };
-  await finalizeScripts(exec, log, { committed: true, backupDir: "/tmp/b", remoteDir: "/tmp/r" });
+  await expect(
+    finalizeScripts(exec, log, { committed: true, backupDir: "/tmp/b", remoteDir: "/tmp/r" }),
+  ).resolves.toBe(false);
   expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("hook cleanup failed"));
+  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("backup remains at /tmp/b"));
 });
