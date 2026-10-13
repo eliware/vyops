@@ -64,3 +64,14 @@ test("records stderr failures and resolves an expected exit", () => {
   exited.stream.emit("close");
   expect(exited.resolve).toHaveBeenCalledWith("output");
 });
+
+test("rejects shell closure when exit is queued but not sent", () => {
+  const closed = options({ commands: ["save", "exit"], index: 1 });
+  closed.stream.emit("close");
+  expect(closed.reject).toHaveBeenCalledWith(
+    expect.objectContaining({
+      message: "interactive SSH closed before command sequence completed",
+    }),
+  );
+  expect(closed.resolve).not.toHaveBeenCalled();
+});

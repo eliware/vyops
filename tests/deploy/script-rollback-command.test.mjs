@@ -13,6 +13,12 @@ test("checks manifest paths before rollback removes files", () => {
   expect(command).toContain("2>/dev/null || exit 1");
   expect(command).toContain('> "/tmp/r/rollback-files.tsv" || exit 1');
   expect(command).toContain('> "/tmp/r/rollback-directories.tsv" || exit 1');
+  expect(command).toContain('sudo cp -a "/tmp/b/." "/config/scripts/" 2>/dev/null || exit 1');
+  expect(command).toContain('$1 == "file" && $3 == "false"');
+  expect(command.indexOf('sudo rm -f -- "/config/scripts"/"$name"')).toBeLessThan(
+    command.indexOf("sudo cp -a"),
+  );
+  expect(command).toContain('sudo rmdir -- "/config/scripts"/"$name" 2>/dev/null || exit 1');
   expect(command).toContain('rmdir -- "/config/scripts"/"$name" 2>/dev/null || exit 1');
   expect(command).not.toContain("| while IFS= read -r name");
   expect(command).not.toContain("|| true");
