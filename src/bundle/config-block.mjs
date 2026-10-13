@@ -1,3 +1,9 @@
+function isEscaped(source, index) {
+  let slashes = 0;
+  for (let cursor = index - 1; cursor >= 0 && source[cursor] === "\\"; cursor -= 1) slashes += 1;
+  return slashes % 2 === 1;
+}
+
 export function configBlock(source, name) {
   let quote = "";
   let comment = false;
@@ -11,7 +17,7 @@ export function configBlock(source, name) {
       continue;
     }
     if (quote) {
-      if (character === quote && source[index - 1] !== "\\") quote = "";
+      if (character === quote && !isEscaped(source, index)) quote = "";
       continue;
     }
     if (character === "#") {
@@ -40,7 +46,7 @@ export function configBlock(source, name) {
       continue;
     }
     if (quote) {
-      if (character === quote && source[index - 1] !== "\\") quote = "";
+      if (character === quote && !isEscaped(source, index)) quote = "";
       continue;
     }
     if (character === "#") {

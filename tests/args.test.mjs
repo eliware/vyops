@@ -12,6 +12,13 @@ test("parses preflight with global switches", () =>
     debug: true,
   }));
 
+test("parses switches between the command and its values", () =>
+  expect(parseArgs(["preflight", "--debug", "config.boot"])).toEqual({
+    command: "preflight",
+    config: "config.boot",
+    debug: true,
+  }));
+
 test("parses every release switch", () =>
   expect(
     parseArgs([
