@@ -10,61 +10,132 @@ test("does not run installation commands for an empty stage", async () => {
   expect(exec).not.toHaveBeenCalled();
 });
 
-const { fsMocks, mocks, deploy } = await setupDeployHarness(jest);
+const { fsMocks, logMock, mocks, deploy } = await setupDeployHarness(jest);
 const { installStagedScripts } = await import("../../src/deploy/script-install.mjs");
 
-test("installs shell scripts as executable regardless of local mode", async () => {
+test("hook setup and install failures", async () => {
   const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
-  const scripts = join(root, "scripts");
-  await mkdir(scripts, { recursive: true });
-  await writeFile(join(root, "config.boot"), "system {}\n");
-  await writeFile(join(scripts, "hook.sh"), "#!/bin/sh\n");
-  await writeFile(join(scripts, "helper.exe"), Buffer.from([0, 1, 2]));
-  await writeFile(join(scripts, "settings.env"), "KEY=value\n");
-  fsMocks.readdir.mockResolvedValue([
-    { name: "hook.sh", isFile: () => true },
-    { name: "helper.exe", isFile: () => true },
-    { name: "settings.env", isFile: () => true },
-  ]);
-  fsMocks.stat.mockResolvedValue({ mode: 0o100666 });
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, "hook.sh"), "#!/bin/sh\n");
   try {
+    fsMocks.readdir.mockResolvedValue([{ name: "hook.sh", isFile: () => true }]);
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "setup out", stderr: "" });
     await expect(
-      deploy({
-        target: "testuser@test-router.example.test",
-        config: join(root, "config.boot"),
-        hasBinaryScripts: true,
-        verifyBinaries: true,
-      }),
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script directory setup failed: setup out");
+    mocks.exec.mockReset();
+    fsMocks.readdir.mockResolvedValueOnce([{ name: "hook.sh", isFile: () => true }]);
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "install err" })
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script install failed (hook.sh): install err");
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) => command.includes("manifest.tsv") && command.includes("backup"),
+      ),
+    ).toBe(true);
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) => command.includes("while IFS= read -r name") && command.includes("false"),
+      ),
+    ).toBe(true);
+    mocks.exec.mockReset();
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "install out", stderr: "" })
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    fsMocks.readdir.mockResolvedValueOnce([{ name: "hook.sh", isFile: () => true }]);
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script install failed (hook.sh): install out");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("handles non-missing hook directory errors and hook cleanup errors", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, "hook.sh"), "#!/bin/sh\n");
+  try {
+    fsMocks.readdir.mockRejectedValueOnce(new Error("permission denied"));
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("permission denied");
+    fsMocks.readdir.mockResolvedValueOnce([{ name: "hook.sh", isFile: () => true }]);
+    mocks.exec.mockImplementation(async (_client, command) =>
+      command.includes("sudo rm -rf") && command.includes("scripts-backup")
+        ? Promise.reject(new Error("hook cleanup failed"))
+        : { code: 0, stdout: "", stderr: "" },
+    );
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
     ).resolves.toBe(0);
-    expect(mocks.exec.mock.calls.some(([, command]) => command.includes("install -m 755"))).toBe(
-      true,
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("reports hook backup failures and tolerates install rollback failures", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, "hook.sh"), "#!/bin/sh\n");
+  try {
+    fsMocks.readdir.mockResolvedValue([{ name: "hook.sh", isFile: () => true }]);
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "backup err" })
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script backup failed (hook.sh): backup err");
+
+    mocks.exec.mockReset();
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "backup out", stderr: "" })
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script backup failed (hook.sh): backup out");
+
+    mocks.exec.mockReset();
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "install out", stderr: "" })
+      .mockRejectedValueOnce(new Error("install rollback failed"))
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script install failed (hook.sh): install out");
+    expect(logMock.warn).toHaveBeenCalledWith(
+      expect.stringMatching(/cleanup warning: script rollback failed: install rollback failed/i),
     );
-    expect(mocks.exec.mock.calls.some(([, command]) => command.includes("install -m 666"))).toBe(
-      true,
-    );
-    expect(mocks.exec.mock.calls.some(([, command]) => command.includes("test -x"))).toBe(true);
-    expect(mocks.exec.mock.calls.some(([, command]) => command.includes("printf '\\r'"))).toBe(
-      true,
-    );
-    expect(
-      mocks.exec.mock.calls.some(
-        ([, command]) => command.includes("file -b") && command.includes("uname -m"),
-      ),
-    ).toBe(true);
-    expect(
-      mocks.exec.mock.calls.some(
-        ([, command]) => command.includes("sha256sum") && command.includes("helper.exe"),
-      ),
-    ).toBe(true);
-    expect(
-      mocks.exec.mock.calls.some(
-        ([, command]) =>
-          command.includes("file_mode=$(sudo stat") &&
-          command.includes("file_hash_output=$(sudo sha256sum") &&
-          command.includes("&& printf 'file\\t%s") &&
-          command.includes(">> "),
-      ),
-    ).toBe(true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

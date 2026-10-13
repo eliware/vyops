@@ -1,7 +1,4 @@
-import { isSafeScriptPath } from "./manifest.mjs";
-
-export function validateScript(name, data, mode) {
-  validateScriptPath(name);
+export function validateScriptContent(name, data, mode) {
   const firstLine = data.toString("utf8").split(/\n/, 1)[0].replace(/\r$/, "");
   const binary = /\.exe$/i.test(name);
   if (!binary && data.includes(13)) scriptError(name, "contains CR bytes; convert to LF");
@@ -17,10 +14,6 @@ export function validateScript(name, data, mode) {
   if (!["/bin/sh", "/bin/bash", "/bin/vbash", "/usr/bin/env"].includes(interpreter)) {
     scriptError(name, `uses unsupported interpreter ${interpreter}`);
   }
-}
-
-export function validateScriptPath(name) {
-  if (!isSafeScriptPath(name)) scriptError(name, "path is invalid");
 }
 
 function scriptError(name, message) {

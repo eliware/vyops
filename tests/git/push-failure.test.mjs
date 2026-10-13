@@ -7,24 +7,34 @@ import {
   removeGitWorkspace,
 } from "../../test-fixtures/git-harness.mjs";
 
-test("reports available push recovery metadata", async () => {
-  const git = async ([command]) => ({ stdout: command === "rev-parse" ? "abc123\n" : "main\n" });
+test.each([
+  [
+    "available",
+    async ([command]) => ({ stdout: command === "rev-parse" ? "abc123\n" : "main\n" }),
+    "commit abc123; branch: main",
+    "remote rejected",
+    "push failed",
+  ],
+  [
+    "fallback",
+    async () => {
+      throw new Error("metadata unavailable");
+    },
+    "commit unknown; branch: DETACHED; upstream: (none)",
+    undefined,
+    "push failed",
+  ],
+  [
+    "message fallback",
+    async ([command]) => ({ stdout: command === "rev-parse" ? "abc\n" : "main\n" }),
+    "commit abc; branch: main",
+    undefined,
+    "push failed",
+  ],
+])("reports %s push recovery metadata", async (_name, git, expected, stderr, message) => {
   await expect(
-    pushFailure(
-      git,
-      "repo",
-      Object.assign(new Error("push failed"), { stderr: "remote rejected" }),
-    ),
-  ).resolves.toMatchObject({ message: expect.stringContaining("commit abc123; branch: main") });
-});
-
-test("uses safe fallbacks when push recovery metadata is unavailable", async () => {
-  const git = async () => {
-    throw new Error("metadata unavailable");
-  };
-  await expect(pushFailure(git, "repo", new Error("push failed"))).resolves.toMatchObject({
-    message: expect.stringContaining("commit unknown; branch: DETACHED; upstream: (none)"),
-  });
+    pushFailure(git, "repo", Object.assign(new Error(message), stderr ? { stderr } : {})),
+  ).resolves.toMatchObject({ message: expect.stringContaining(expected) });
 });
 
 test("push failure remains clear when repository metadata cannot be read", async () => {

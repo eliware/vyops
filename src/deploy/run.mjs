@@ -1,14 +1,14 @@
 import { prepareDeployment } from "./prepare.mjs";
 import { completeDeployment } from "./complete.mjs";
-import { cleanupRemoteStaging } from "./remote-cleanup.mjs";
-import { recoverDeployment } from "./recover.mjs";
+import { cleanupRemoteStaging } from "./remote-staging-cleanup.mjs";
+import { recoverRun } from "./recover-run.mjs";
 import { runReleaseCommands } from "./release-commands.mjs";
+import { createDeploymentState } from "./deployment-state.mjs";
 
 export async function runDeployment(options) {
   const state = options;
   let finalizeHooks;
-  let hooksFinalized = false;
-  let deploymentCommitted = false;
+  const deploymentState = createDeploymentState();
   const remote = state.remotePaths.config;
   try {
     finalizeHooks = await prepareDeployment({ ...state, remote });
@@ -24,7 +24,7 @@ export async function runDeployment(options) {
       remote,
       state.debugLog,
       () => {
-        deploymentCommitted = true;
+        deploymentState.markDeploymentCommitted();
       },
     );
     state.debugLog(`interactive sequence returned (${result.output.length} bytes)`);
@@ -34,28 +34,12 @@ export async function runDeployment(options) {
       manifest: state.remotePaths.manifest,
       finalizeHooks,
       setHooksFinalized: () => {
-        hooksFinalized = true;
+        deploymentState.markHooksFinalized();
       },
     });
     return 0;
   } catch (error) {
-    try {
-      state.client = await recoverDeployment({
-        error,
-        target: state.target,
-        client: state.client,
-        close: state.close,
-        connectClient: state.connectClient,
-        debugLog: state.debugLog,
-        finalizeHooks,
-        hooksFinalized,
-        deploymentCommitted,
-      });
-    } catch (recoveryError) {
-      state.debugLog(`recovery failed: ${recoveryError.message}`);
-      state.client = null;
-    }
-    state.setClient(state.client);
+    await recoverRun(state, { error, ...deploymentState.recovery(finalizeHooks) });
     throw error;
   } finally {
     state.unregisterCleanup();

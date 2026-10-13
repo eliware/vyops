@@ -1,8 +1,9 @@
 import { promises as fs } from "node:fs";
 import { join, relative } from "node:path";
 import { targetFromConfig } from "./bundle/target.mjs";
-import { isSafeScriptPath, validateScriptManifest } from "./bundle/manifest.mjs";
-import { validateScript, validateScriptPath } from "./bundle/script-validation.mjs";
+import { validateScriptManifest } from "./bundle/manifest.mjs";
+import { isSafeScriptPath, validateScriptPath } from "./bundle/script-path-rules.mjs";
+import { validateScriptContent } from "./bundle/script-content-validation.mjs";
 
 export { targetFromConfig, isSafeScriptPath, validateScriptManifest };
 
@@ -36,7 +37,7 @@ export async function validateBundle(config, text, { extractTarget = true, fsApi
     validateScriptPath(name);
     const data = await fsApi.readFile(file);
     const mode = (await fsApi.stat(file)).mode & 0o777;
-    validateScript(name, data, mode);
+    validateScriptContent(name, data, mode);
   }
   return { ...(extractTarget ? { target: targetFromConfig(text) } : {}), scripts };
 }

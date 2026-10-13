@@ -1,4 +1,9 @@
 import { interactiveFailureDetail } from "./interactive-text.mjs";
+import { isRouterPrompt, isCommitPrompt } from "./interactive-recognition.mjs";
+
+export function shouldCompleteInteractiveCommand(state, cleaned) {
+  return state.waiting && isRouterPrompt(cleaned) && !isCommitPrompt(cleaned);
+}
 
 export function rejectInteractiveCommand({ state, stream, timer, reject, cleaned }) {
   if (

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { shellQuote, snapshotRemoteScript } from "./remote-script.mjs";
+import { shellQuote } from "./shell-quote.mjs";
+import { snapshotRemoteScript } from "./remote-script-snapshot.mjs";
 
 export async function stageBackupScript({ fs, path, client, scripts, name, download, exec, log }) {
   const remote = `/config/scripts/${name}`;

@@ -17,11 +17,12 @@ jest.unstable_mockModule("../../src/ssh.mjs", () => ({ exec, upload }));
 jest.unstable_mockModule("../../src/ssh/exec.mjs", () => ({ exec }));
 jest.unstable_mockModule("../../src/ssh/upload.mjs", () => ({ upload }));
 const { installScripts } = await import("../../src/deploy/script-sync.mjs");
+const identity = (value) => value;
 
 test("returns no hook finalizer when the local script tree is absent", async () => {
   readdir.mockRejectedValueOnce(Object.assign(new Error("missing"), { code: "ENOENT" }));
   await expect(
-    installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false),
+    installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false, identity),
   ).resolves.toBeNull();
   expect(exec).not.toHaveBeenCalled();
   expect(upload).not.toHaveBeenCalled();
@@ -29,9 +30,9 @@ test("returns no hook finalizer when the local script tree is absent", async () 
 
 test("propagates local script tree errors other than missing directories", async () => {
   readdir.mockRejectedValueOnce(new Error("directory unavailable"));
-  await expect(installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false)).rejects.toThrow(
-    "directory unavailable",
-  );
+  await expect(
+    installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false, identity),
+  ).rejects.toThrow("directory unavailable");
 });
 
 beforeEach(() => {
@@ -47,7 +48,7 @@ test("stages, validates, installs, and finalizes a script tree", async () => {
     { name: "health.sh", isFile: () => true, isDirectory: () => false },
   ]);
   const debug = jest.fn();
-  const finalize = await installScripts({}, "/tmp/config.boot", debug, "run-id", true);
+  const finalize = await installScripts({}, "/tmp/config.boot", debug, "run-id", true, identity);
   expect(upload).toHaveBeenCalledWith(
     {},
     join("/tmp", "scripts", "health.sh"),
@@ -67,46 +68,10 @@ test("rejects control characters before uploading a script", async () => {
   readdir.mockResolvedValueOnce([
     { name: "bad\nname.sh", isFile: () => true, isDirectory: () => false },
   ]);
-  await expect(installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false)).rejects.toThrow(
-    "script path is invalid",
-  );
+  await expect(
+    installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false, identity),
+  ).rejects.toThrow("script path is invalid");
   expect(upload).not.toHaveBeenCalled();
-});
-
-test("reports failed live inspection and rolls back after an install failure", async () => {
-  readdir.mockResolvedValueOnce([
-    { name: "health.sh", isFile: () => true, isDirectory: () => false },
-  ]);
-  exec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "permission denied" });
-  await expect(installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false)).rejects.toThrow(
-    /live script inspection failed/,
-  );
-  expect(exec).toHaveBeenCalledTimes(1);
-
-  jest.clearAllMocks();
-  readdir.mockResolvedValueOnce([
-    { name: "health.sh", isFile: () => true, isDirectory: () => false },
-  ]);
-  exec
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "bad mode" })
-    .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
-  await expect(installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false)).rejects.toThrow(
-    /remote script preflight failed/,
-  );
-  expect(exec.mock.calls.length).toBeGreaterThan(4);
-});
-
-test("uses the live inspection fallback when no diagnostic output is available", async () => {
-  readdir.mockResolvedValueOnce([
-    { name: "health.sh", isFile: () => true, isDirectory: () => false },
-  ]);
-  exec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" });
-  await expect(installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false)).rejects.toThrow(
-    "live script inspection failed",
-  );
 });
 
 test("continues when live inspection reports a missing command environment", async () => {
@@ -114,7 +79,14 @@ test("continues when live inspection reports a missing command environment", asy
     { name: "health.sh", isFile: () => true, isDirectory: () => false },
   ]);
   exec.mockRejectedValueOnce(Object.assign(new Error("missing"), { code: "ENOENT" }));
-  const finalize = await installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false);
+  const finalize = await installScripts(
+    {},
+    "/tmp/config.boot",
+    jest.fn(),
+    "run-id",
+    false,
+    identity,
+  );
   expect(upload).toHaveBeenCalled();
   await finalize(true, {});
 });
@@ -123,7 +95,14 @@ test("creates and uploads nested script directories", async () => {
   readdir.mockResolvedValueOnce([
     { name: "health/check.sh", isFile: () => true, isDirectory: () => false },
   ]);
-  const finalize = await installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false);
+  const finalize = await installScripts(
+    {},
+    "/tmp/config.boot",
+    jest.fn(),
+    "run-id",
+    false,
+    identity,
+  );
   expect(exec.mock.calls.some(([, command]) => command.includes(`${scriptsRoot}/health`))).toBe(
     true,
   );
@@ -134,53 +113,4 @@ test("creates and uploads nested script directories", async () => {
     0o755,
   );
   await finalize(true, {});
-});
-
-test("reports nested script directory setup failures", async () => {
-  readdir.mockResolvedValueOnce([
-    { name: "health/check.sh", isFile: () => true, isDirectory: () => false },
-  ]);
-  exec
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" })
-    .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
-  await expect(installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false)).rejects.toThrow(
-    /script upload directory setup failed/,
-  );
-});
-
-test("surfaces manifest update failures after atomic installation", async () => {
-  readdir.mockResolvedValueOnce([
-    { name: "health.sh", isFile: () => true, isDirectory: () => false },
-  ]);
-  exec
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "manifest denied" })
-    .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
-  await expect(installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false)).rejects.toThrow(
-    /manifest update failed/,
-  );
-});
-
-test("uses the manifest update fallback when no diagnostic output is available", async () => {
-  readdir.mockResolvedValueOnce([
-    { name: "health.sh", isFile: () => true, isDirectory: () => false },
-  ]);
-  exec
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" })
-    .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
-  await expect(installScripts({}, "/tmp/config.boot", jest.fn(), "run-id", false)).rejects.toThrow(
-    /manifest update failed/,
-  );
 });

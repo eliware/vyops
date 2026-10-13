@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createDeploymentLogger } from "./logger.mjs";
 import { deploymentRemotePaths } from "./remote-paths.mjs";
 import { registerDeploymentCleanup } from "./cleanup.mjs";
-import { createInterruptionCleanup } from "./remote-cleanup.mjs";
+import { createInterruptionCleanup } from "./remote-interruption-cleanup.mjs";
 
 export async function startDeployment(options) {
   const { target, password, operationId, connect, close, exec, log, getClient, setClient } =

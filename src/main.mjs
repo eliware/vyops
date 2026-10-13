@@ -1,4 +1,5 @@
-import { parseArgs, usage } from "./args.mjs";
+import { parseArgs } from "./args.mjs";
+import { usage } from "./cli/usage.mjs";
 import packageJson from "../package.json" with { type: "json" };
 import { cleanupActiveDeployments } from "./deploy.mjs";
 import { runBackup } from "./commands/backup.mjs";

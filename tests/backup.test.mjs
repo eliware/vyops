@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { join, parse, resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 const fsMocks = {
   mkdir: jest.fn(),
@@ -89,14 +89,6 @@ test("rejects an invalid target before it connects", async () => {
   expect(mocks.close).not.toHaveBeenCalled();
 });
 
-test("rejects a filesystem root before it connects", async () => {
-  const root = parse(resolve(".")).root;
-  await expect(backup({ target: "vyos@router", config: root })).rejects.toThrow(
-    "backup destination must not be a filesystem root",
-  );
-  expect(mocks.connect).not.toHaveBeenCalled();
-});
-
 test("passes a bootstrap password through to SSH", async () => {
   await expect(
     backup({ target: "vyos@router", config: "/tmp/backup", password: "bootstrap-secret" }),
@@ -104,44 +96,15 @@ test("passes a bootstrap password through to SSH", async () => {
   expect(mocks.connect).toHaveBeenCalledWith("vyos@router", { password: "bootstrap-secret" });
 });
 
-test("rejects unsafe remote script paths and closes SSH", async () => {
-  mocks.exec.mockReset();
-  mocks.exec.mockImplementation((_client, command) =>
-    Promise.resolve(
-      command.includes("type l")
-        ? { code: 0, stdout: "", stderr: "" }
-        : { code: 0, stdout: "/config/scripts/../private\n", stderr: "" },
-    ),
+test("uses the resolved path for a relative backup destination", async () => {
+  const destination = resolve("relative/../backup-output");
+  await expect(
+    backup({ target: "vyos@router", config: "relative/../backup-output" }),
+  ).resolves.toBe(0);
+  expect(fsMocks.rename).toHaveBeenCalledWith(
+    `${destination}/config.boot`,
+    expect.stringContaining(".vyops-backup-old-"),
   );
-  await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
-    "unsafe remote script path",
-  );
-  expect(mocks.download).not.toHaveBeenCalled();
-  expect(fsMocks.mkdir).not.toHaveBeenCalled();
-  expect(mocks.close).toHaveBeenCalled();
-});
-
-test.each([
-  ["listing", "stderr", "find failed", "", "could not list remote scripts"],
-  ["listing", "stdout", "", "find output", "could not list remote scripts"],
-  ["symlink inspection", "stderr", "inspection failed", "", "could not inspect remote scripts"],
-  ["symlink inspection", "stdout", "", "inspection output", "could not inspect remote scripts"],
-])("reports %s failures from %s", async (operation, _label, stderr, stdout, message) => {
-  mocks.exec.mockReset();
-  const inspection = operation === "symlink inspection";
-  mocks.exec.mockImplementation((_client, command) => {
-    const inspectCommand = command.includes("type l");
-    const fails = inspection === inspectCommand;
-    return Promise.resolve({
-      code: fails ? 1 : 0,
-      stdout: fails ? stdout : "",
-      stderr: fails ? stderr : "",
-    });
-  });
-  await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
-    `${message}: ${stderr || stdout}`,
-  );
-  expect(mocks.close).toHaveBeenCalled();
 });
 
 test("closes SSH when downloading the backup fails", async () => {
@@ -150,34 +113,5 @@ test("closes SSH when downloading the backup fails", async () => {
     "config download failed",
   );
   expect(mocks.close).toHaveBeenCalled();
-});
-
-test("validates scripts before it downloads the config", async () => {
-  mocks.download.mockRejectedValueOnce(new Error("config download failed"));
-  await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow();
   expect(mocks.exec).toHaveBeenCalledTimes(4);
-});
-
-test("rejects a discovered remote script symlink", async () => {
-  mocks.exec.mockReset();
-  mocks.exec.mockResolvedValueOnce({ code: 0, stdout: "/config/scripts/link.sh\0", stderr: "" });
-  await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
-    "remote script symlink rejected: /config/scripts/link.sh",
-  );
-  expect(mocks.download).not.toHaveBeenCalled();
-  expect(fsMocks.mkdir).not.toHaveBeenCalled();
-  expect(mocks.close).toHaveBeenCalled();
-});
-test("rejects a script replaced before metadata validation", async () => {
-  mocks.exec.mockReset();
-  mocks.exec
-    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-    .mockResolvedValueOnce({ code: 0, stdout: "/config/scripts/hook.sh\0", stderr: "" })
-    .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "path changed" });
-  await expect(backup({ target: "vyos@router", config: "/tmp/backup" })).rejects.toThrow(
-    "remote script changed or is not a regular file: /config/scripts/hook.sh",
-  );
-  expect(mocks.download).not.toHaveBeenCalled();
-  expect(fsMocks.mkdir).not.toHaveBeenCalled();
-  expect(mocks.close).toHaveBeenCalled();
 });

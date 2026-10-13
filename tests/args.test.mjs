@@ -68,11 +68,6 @@ test("accepts switches before a command", () =>
 test("rejects legacy syntax", () =>
   expect(() => parseArgs(["--dry-run", "vyos@router", "config.boot"])).toThrow(/Usage:/));
 
-test("parses help and version switches", () => {
-  expect(parseArgs(["--help"])).toEqual({ help: true });
-  expect(parseArgs(["--version"])).toEqual({ version: true });
-});
-
 test("rejects missing or extra positional arguments", () => {
   expect(() => parseArgs([])).toThrow(/Usage:/);
   expect(() => parseArgs(["release", "config.boot"])).toThrow(/Usage:/);

@@ -40,3 +40,26 @@ test("reports remote file checks that fail", async () => {
     "remote script preflight failed (nested/hook.sh): invalid",
   );
 });
+
+test("reports nested directory setup failures before upload", async () => {
+  exec.mockResolvedValueOnce({ code: 1, stderr: "permission denied" });
+  await expect(uploadStagedScript(options)).rejects.toThrow(
+    /script upload directory setup failed \(nested[\\/]hook\.sh\): permission denied/,
+  );
+  expect(upload).not.toHaveBeenCalled();
+});
+
+test("uses binary validation without text line-ending checks", async () => {
+  await uploadStagedScript({
+    ...options,
+    executable: 0,
+    binary: true,
+    verifyBinaries: true,
+    localHash: "hash",
+  });
+  const command = exec.mock.calls.at(-1)[1];
+  expect(command).toContain("uname -m");
+  expect(command).toContain("sha256sum");
+  expect(command).not.toContain("grep -q");
+  expect(command).not.toContain("test -x");
+});

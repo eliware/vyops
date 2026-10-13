@@ -14,7 +14,8 @@ export async function setupMainHarness(jest) {
   const errors = { removeHandlers: jest.fn() };
   const signals = { removeHandlers: jest.fn() };
   await jest.isolateModulesAsync(async () => {
-    jest.unstable_mockModule("../src/args.mjs", () => ({ parseArgs, usage }));
+    jest.unstable_mockModule("../src/args.mjs", () => ({ parseArgs }));
+    jest.unstable_mockModule("../src/cli/usage.mjs", () => ({ usage }));
     jest.unstable_mockModule("../src/deploy.mjs", () => ({ deploy, cleanupActiveDeployments }));
     jest.unstable_mockModule("../src/commands/backup.mjs", () => ({ runBackup }));
     jest.unstable_mockModule("../src/commands/preflight.mjs", () => ({ runPreflight }));

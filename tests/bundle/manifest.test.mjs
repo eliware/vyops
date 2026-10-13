@@ -2,17 +2,7 @@ import { jest } from "@jest/globals";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { validateScriptManifest, isSafeScriptPath } from "../../src/bundle/manifest.mjs";
-
-test.each(["scripts/@group/hook.sh", "scripts/hook-1.sh", "hook.name"])(
-  "accepts safe script paths: %s",
-  (name) => expect(isSafeScriptPath(name)).toBe(true),
-);
-
-test.each(["/etc/passwd", "../escape", "a//b", "a/./b", "a/../b", "bad name"])(
-  "rejects unsafe script paths: %s",
-  (name) => expect(isSafeScriptPath(name)).toBe(false),
-);
+import { validateScriptManifest } from "../../src/bundle/manifest.mjs";
 
 test("reads file paths from the manifest", async () => {
   const readFile = jest
@@ -21,6 +11,15 @@ test("reads file paths from the manifest", async () => {
   await expect(validateScriptManifest("config.boot", readFile)).resolves.toEqual(
     new Set(["@group/hook.sh", "bin/tool"]),
   );
+});
+
+test("accepts valid preexisting values in the optional column", async () => {
+  await expect(
+    validateScriptManifest(
+      "config.boot",
+      async () => "kind\tpath\tpreexisting\nfile\thook.sh\ttrue\nfile\tother.sh\tfalse\n",
+    ),
+  ).resolves.toEqual(new Set(["hook.sh", "other.sh"]));
 });
 
 test("returns an empty set when the manifest is absent", async () => {
@@ -58,6 +57,8 @@ test.each([
   ["missing header", "file\thook.sh\n"],
   ["malformed record", "kind\tpath\nfile\n"],
   ["duplicate path", "kind\tpath\nfile\thook.sh\nfile\thook.sh\n"],
+  ["invalid preexisting value", "kind\tpath\tpreexisting\nfile\thook.sh\tperhaps\n"],
+  ["missing preexisting value", "kind\tpath\tpreexisting\nfile\thook.sh\n"],
 ])("rejects a manifest with %s", async (_label, content) => {
   await expect(validateScriptManifest("config.boot", async () => content)).rejects.toThrow(
     "deployment manifest",

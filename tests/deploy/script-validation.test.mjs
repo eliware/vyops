@@ -1,49 +1,20 @@
 import { jest } from "@jest/globals";
 import { localScriptMetadata } from "../../src/deploy/script-validation.mjs";
 
-test("derives executable metadata and binary hashes", async () => {
-  const readFile = jest.fn().mockResolvedValue(Buffer.from("#!/bin/sh\n"));
-  const metadata = await localScriptMetadata(readFile, jest.fn(), "/tmp/scripts", "hook.sh");
-  expect(metadata).toMatchObject({
-    mode: 0o755,
-    executable: 0o111,
+test("combines local script content and file metadata", async () => {
+  const content = Buffer.from("notes\n");
+  const readFile = jest.fn().mockResolvedValue(content);
+  const stat = jest.fn().mockResolvedValue({ mode: 0o100640 });
+
+  await expect(
+    localScriptMetadata(readFile, stat, "/bundle/scripts", "notes.txt"),
+  ).resolves.toEqual({
+    content,
+    mode: 0o640,
+    executable: 0,
     binary: false,
     localHash: null,
   });
-});
-
-test("uses existing mode for non-executable files and tolerates missing content", async () => {
-  const readFile = jest
-    .fn()
-    .mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" }));
-  await expect(
-    localScriptMetadata(
-      readFile,
-      jest.fn().mockResolvedValue({ mode: 0o100640 }),
-      "/tmp/scripts",
-      "notes.txt",
-    ),
-  ).resolves.toMatchObject({ mode: 0o640, executable: 0, binary: false });
-});
-
-test("hashes binary scripts", async () => {
-  const metadata = await localScriptMetadata(
-    jest.fn().mockResolvedValue(Buffer.from([0x7f, 0x45, 0x4c, 0x46])),
-    jest.fn(),
-    "/tmp/scripts",
-    "helper.exe",
-  );
-  expect(metadata).toMatchObject({ mode: 0o755, executable: 0o111, binary: true });
-  expect(metadata.localHash).toMatch(/^[a-f0-9]{64}$/);
-});
-
-test("propagates local read failures other than missing files", async () => {
-  await expect(
-    localScriptMetadata(
-      jest.fn().mockRejectedValue(new Error("read failed")),
-      jest.fn(),
-      "/tmp/scripts",
-      "hook.sh",
-    ),
-  ).rejects.toThrow("read failed");
+  expect(readFile).toHaveBeenCalledWith("/bundle/scripts/notes.txt");
+  expect(stat).toHaveBeenCalledWith("/bundle/scripts/notes.txt");
 });

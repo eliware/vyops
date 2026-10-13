@@ -1,13 +1,5 @@
 import { readFile as defaultReadFile } from "node:fs/promises";
-
-export function isSafeScriptPath(name) {
-  return (
-    typeof name === "string" &&
-    /^[A-Za-z0-9._/@-]+$/.test(name) &&
-    !name.startsWith("/") &&
-    !name.split("/").some((part) => !part || part === "." || part === "..")
-  );
-}
+import { isSafeScriptPath } from "./script-path-rules.mjs";
 
 export async function validateScriptManifest(config, readFile = defaultReadFile) {
   const manifestPath = `${config}.manifest.tsv`;
@@ -22,11 +14,15 @@ export async function validateScriptManifest(config, readFile = defaultReadFile)
   const header = lines.shift();
   if (header !== "kind\tpath" && header !== "kind\tpath\tpreexisting")
     throw new Error("preflight failed: deployment manifest has an invalid header");
+  const hasPreexistingColumn = header === "kind\tpath\tpreexisting";
   const names = new Set();
   for (const line of lines) {
     if (!line) continue;
     const [kind, name, ...fields] = line.split("\t");
-    if (kind !== "file" || !name || fields.length > 1)
+    const validFields = hasPreexistingColumn
+      ? fields.length === 1 && ["true", "false"].includes(fields[0])
+      : fields.length === 0;
+    if (kind !== "file" || !name || !validFields)
       throw new Error("preflight failed: deployment manifest contains a malformed record");
     if (names.has(name))
       throw new Error("preflight failed: deployment manifest contains a duplicate script path");

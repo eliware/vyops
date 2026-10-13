@@ -1,4 +1,4 @@
-import { isSafeScriptPath } from "../bundle.mjs";
+import { isSafeScriptPath } from "../bundle/script-path-rules.mjs";
 
 export async function readDeploymentState(readFile, manifestPath) {
   try {

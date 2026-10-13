@@ -2,21 +2,16 @@ import { readFile as readLocalFile } from "node:fs/promises";
 import { fs, path as eliwarePath, log } from "@eliware/common";
 import { exec } from "../ssh/exec.mjs";
 import { listScripts } from "./script-tree.mjs";
-import { finalizeScripts, rollbackScripts } from "./script-rollback.mjs";
+import { finalizeScripts } from "./script-finalize.mjs";
+import { rollbackScripts } from "./script-rollback.mjs";
 import { isSafeScriptPath } from "../bundle.mjs";
 import { deploymentRemotePaths } from "./remote-paths.mjs";
 import { stageScript } from "./script-staging.mjs";
 import { installStagedScripts } from "./script-install.mjs";
 import { inspectLiveScripts } from "./inspect-live-scripts.mjs";
+import { runScriptSyncTransaction } from "./script-sync-transaction.mjs";
 
-export async function installScripts(
-  client,
-  config,
-  debugLog,
-  runId,
-  verifyBinaries,
-  redact = (value) => value,
-) {
+export async function installScripts(client, config, debugLog, runId, verifyBinaries, redact) {
   const scriptsDir = eliwarePath(config, "..", "scripts");
   const names = await listScripts(fs, eliwarePath, scriptsDir);
   if (names === null) return null;
@@ -30,46 +25,32 @@ export async function installScripts(
   const installDir = "/config/scripts";
   const previouslyManaged = await inspectLiveScripts(client, config, names);
   if (!names.length) return null;
-  const made = await exec(
-    client,
-    `mkdir -m 700 ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)} && sudo mkdir -p ${JSON.stringify(installDir)} && printf 'kind\\tpath\\tpreexisting\\told_mode\\told_sha256\\told_type\\tnew_mode\\tnew_sha256\\tnew_type\\n' > ${JSON.stringify(manifest)}`,
-  );
-  if (made.code !== 0)
-    throw new Error(`script directory setup failed: ${made.stderr || made.stdout}`.trim());
-  const staged = [];
-  try {
-    for (const name of names) {
-      await stageScript({
-        name,
-        client,
-        scriptsDir,
-        remoteDir,
-        installDir,
-        backupDir,
-        manifest,
-        previouslyManaged,
-        readLocalFile,
-        stat: fs.promises.stat,
-        eliwarePath,
-        verifyBinaries,
-        redact,
-        staged,
-      });
-    }
-    await installStagedScripts({
-      staged,
+  await runScriptSyncTransaction(
+    {
+      names,
       client,
+      remoteDir,
       backupDir,
       installDir,
-      runId,
       manifest,
+      scriptsDir,
+      previouslyManaged,
+      verifyBinaries,
       redact,
+      runId,
       debugLog,
-    });
-  } catch (error) {
-    await rollbackScripts(exec, log, { client, manifest, installDir, backupDir, remoteDir });
-    throw error;
-  }
+    },
+    {
+      exec,
+      stageScript,
+      installStagedScripts,
+      rollbackScripts,
+      log,
+      readLocalFile,
+      stat: fs.promises.stat,
+      eliwarePath,
+    },
+  );
   return async (committed, activeClient) => {
     await finalizeScripts(exec, log, {
       client: activeClient,

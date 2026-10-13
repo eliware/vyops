@@ -83,35 +83,39 @@ test("joins Git state fields into a snapshot", async () => {
   expect(git).toHaveBeenCalledTimes(5);
 });
 
-test("pushBack refuses a repository changed during deployment", async () => {
-  const { directory, config } = await createGitWorkspace();
-  const git = createGitMock(jest, directory);
-  try {
-    await expect(
-      pushBack(config, { runGit: git, expectedState: { repo: directory, state: "stale" } }),
-    ).rejects.toThrow("repository changed during deployment; refusing to commit");
-  } finally {
-    await removeGitWorkspace(directory);
-  }
-});
-
-test("pushBack refuses unrelated repository changes during deployment", async () => {
-  const { directory, config } = await createGitWorkspace();
-  let changed = false;
-  const git = createGitMock(jest, directory, async (args) => {
-    if (changed && args[0] === "status" && args[2] === "--untracked-files=all")
-      return { stdout: " M other.txt\n" };
-    if (args[0] === "diff" && args[1] === "HEAD") return { stdout: "changed config" };
-  });
-  try {
-    await expect(
-      pushBack(config, {
-        runGit: git,
-        beforeCommit: async () => {
-          changed = true;
+test.each([
+  [
+    "deployment state",
+    (directory) => ({
+      git: createGitMock(jest, directory),
+      options: { expectedState: { repo: directory, state: "stale" } },
+    }),
+    "repository changed during deployment; refusing to commit",
+  ],
+  [
+    "unrelated file changes",
+    (directory) => {
+      let changed = false;
+      return {
+        git: createGitMock(jest, directory, async (args) => {
+          if (changed && args[0] === "status" && args[2] === "--untracked-files=all")
+            return { stdout: " M other.txt\n" };
+          if (args[0] === "diff" && args[1] === "HEAD") return { stdout: "changed config" };
+        }),
+        options: {
+          beforeCommit: async () => {
+            changed = true;
+          },
         },
-      }),
-    ).rejects.toThrow("repository changed during pushback; refusing to commit");
+      };
+    },
+    "repository changed during pushback; refusing to commit",
+  ],
+])("pushBack refuses changes from %s", async (_case, setup, message) => {
+  const { directory, config } = await createGitWorkspace();
+  const { git, options } = setup(directory);
+  try {
+    await expect(pushBack(config, { ...options, runGit: git })).rejects.toThrow(message);
   } finally {
     await removeGitWorkspace(directory);
   }

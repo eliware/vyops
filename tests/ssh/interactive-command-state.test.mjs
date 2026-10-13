@@ -2,7 +2,17 @@ import { jest } from "@jest/globals";
 import {
   completeInteractiveCommand,
   rejectInteractiveCommand,
+  shouldCompleteInteractiveCommand,
 } from "../../src/ssh/interactive-command-state.mjs";
+
+test.each([
+  [{ waiting: true }, "vyos@router#", true],
+  [{ waiting: false }, "vyos@router#", false],
+  [{ waiting: true }, "Proceed? [Y/n]\nvyos@router#", false],
+  [{ waiting: true }, "output", false],
+])("checks if a router prompt completes the command", (state, cleaned, expected) => {
+  expect(shouldCompleteInteractiveCommand(state, cleaned)).toBe(expected);
+});
 
 test("rejects a structured command failure and closes the stream", () => {
   const state = {
@@ -22,7 +32,7 @@ test("rejects a structured command failure and closes the stream", () => {
   );
 });
 
-test("ignores unmatched or unstructured command failures", () => {
+test("ignores unmatched failures and commands that are not active", () => {
   const reject = jest.fn();
   expect(
     rejectInteractiveCommand({
@@ -52,6 +62,17 @@ test("ignores unmatched or unstructured command failures", () => {
     }),
   ).toBe(false);
   expect(reject).not.toHaveBeenCalled();
+  expect(
+    completeInteractiveCommand({
+      state: { waiting: false },
+      commands: [],
+      stream: { end: jest.fn() },
+      timer: undefined,
+      sendNext: jest.fn(),
+      resolve: jest.fn(),
+      onCommandComplete: jest.fn(),
+    }),
+  ).toBe(false);
 });
 
 test("completes the last command and closes the stream", () => {
@@ -104,18 +125,4 @@ test("sends the next command when work remains", () => {
   expect(state).toMatchObject({ waiting: false, answering: false });
   expect(completed).toHaveBeenCalledWith("first");
   expect(sendNext).toHaveBeenCalled();
-});
-
-test("does not complete a command that is not waiting", () => {
-  expect(
-    completeInteractiveCommand({
-      state: { waiting: false },
-      commands: [],
-      stream: { end: jest.fn() },
-      timer: undefined,
-      sendNext: jest.fn(),
-      resolve: jest.fn(),
-      onCommandComplete: jest.fn(),
-    }),
-  ).toBe(false);
 });

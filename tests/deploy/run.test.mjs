@@ -1,5 +1,9 @@
 import { jest } from "@jest/globals";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runDeployment } from "../../src/deploy/run.mjs";
+import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
 
 test("prepares, recovers, and cleans up when release commands fail", async () => {
   const events = [];
@@ -50,4 +54,122 @@ test("prepares, recovers, and cleans up when release commands fail", async () =>
     "unregister",
     "close",
   ]);
+});
+
+const { fsMocks, logMock, mocks, client, deploy, cleanupActiveDeployments } =
+  await setupDeployHarness(jest);
+
+async function pauseDeploymentAtConfirmation() {
+  let releaseInteractive;
+  mocks.interactive.mockImplementation(
+    (_client, _commands, _log, onComplete) =>
+      new Promise((resolve) => {
+        onComplete?.("confirm");
+        releaseInteractive = resolve;
+      }),
+  );
+  const deployment = deploy({
+    target: "testuser@test-router.example.test",
+    config: "/tmp/config.boot",
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  return { deployment, releaseInteractive: (value) => releaseInteractive(value) };
+}
+
+test("cleans active deployment staging on interruption", async () => {
+  const { deployment, releaseInteractive } = await pauseDeploymentAtConfirmation();
+  mocks.connect.mockRejectedValueOnce(new Error("reconnect unavailable"));
+  await cleanupActiveDeployments();
+  expect(logMock.warn).toHaveBeenCalledWith(
+    expect.stringMatching(/interruption cleanup failed.*reconnect unavailable/i),
+  );
+  releaseInteractive("");
+  await deployment;
+});
+
+test("reconnects and removes staging during successful interruption cleanup", async () => {
+  const { deployment, releaseInteractive } = await pauseDeploymentAtConfirmation();
+  await cleanupActiveDeployments();
+  expect(mocks.connect.mock.calls.length).toBeGreaterThanOrEqual(3);
+  expect(
+    mocks.exec.mock.calls.some(
+      ([, command]) => command.includes(".config.deploy.") && command.includes(".scripts-backup."),
+    ),
+  ).toBe(true);
+  releaseInteractive("");
+  await deployment;
+});
+
+test("reports failed recovery reconnects through debug output", async () => {
+  const failure = new Error("deployment transport failed");
+  mocks.interactive.mockRejectedValue(failure);
+  mocks.connect.mockImplementation(async () => {
+    if (mocks.connect.mock.calls.length >= 3) throw new Error("recovery reconnect failed");
+    return client();
+  });
+  await expect(
+    deploy({ target: "testuser@test-router.example.test", config: "/tmp/config.boot" }),
+  ).rejects.toBe(failure);
+  expect(logMock.debug).toHaveBeenCalledWith(expect.stringMatching(/recovery reconnect failed/));
+});
+
+test("keeps the deployment error when hook recovery also fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-recovery-"));
+  const scripts = join(root, "scripts");
+  const failure = new Error("deployment command failed");
+  await mkdir(scripts, { recursive: true });
+  await writeFile(join(scripts, "hook.sh"), "#!/bin/sh\n");
+  fsMocks.readdir.mockResolvedValue([{ name: "hook.sh", isFile: () => true }]);
+  mocks.interactive.mockRejectedValue(failure);
+  mocks.connect.mockImplementation(async () => {
+    if (mocks.connect.mock.calls.length >= 3) throw new Error("recovery unavailable");
+    return client();
+  });
+  try {
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toBe(failure);
+    expect(logMock.debug).toHaveBeenCalledWith(
+      expect.stringMatching(/recovery failed.*unavailable/),
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("discards and reconnects the SSH client after a timeout", async () => {
+  const timeout = Object.assign(new Error("interactive SSH timeout"), { code: "VYOPS_TIMEOUT" });
+  mocks.interactive.mockRejectedValue(timeout);
+  await expect(
+    deploy({ target: "testuser@test-router.example.test", config: "/tmp/config.boot" }),
+  ).rejects.toBe(timeout);
+  expect(mocks.connect).toHaveBeenCalledTimes(3);
+  expect(mocks.close).toHaveBeenCalledTimes(3);
+  expect(
+    mocks.exec.mock.calls.some(
+      ([, command]) => command.includes(".config.deploy.") && command.includes(".scripts-backup."),
+    ),
+  ).toBe(true);
+});
+
+test("tolerates hook rollback cleanup failures", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, "hook.sh"), "#!/bin/sh\n");
+  try {
+    fsMocks.readdir.mockResolvedValue([{ name: "hook.sh", isFile: () => true }]);
+    mocks.interactive.mockRejectedValue(new Error("deployment failed"));
+    mocks.exec.mockImplementation(async (_client, command) =>
+      command.includes('$3 == "false"')
+        ? Promise.reject(new Error("rollback cleanup failed"))
+        : { code: 0, stdout: "", stderr: "" },
+    );
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("deployment failed");
+    expect(mocks.exec).toHaveBeenCalledTimes(9);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

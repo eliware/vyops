@@ -1,4 +1,4 @@
-import { isIP } from "node:net";
+import { isValidHost } from "./host-validation.mjs";
 
 export function parseTarget(target) {
   if (typeof target !== "string" || !target || /\s/.test(target)) {
@@ -10,12 +10,7 @@ export function parseTarget(target) {
   }
   const username = target.slice(0, at);
   const host = target.slice(at + 1);
-  const address = host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
-  const validHost =
-    (host.startsWith("[") && host.endsWith("]")) || address.includes(":")
-      ? isIP(address) === 6
-      : /^[A-Za-z0-9._-]+$/.test(host);
-  if (!/^[A-Za-z0-9._-]+$/.test(username) || !validHost) {
+  if (!/^[A-Za-z0-9._-]+$/.test(username) || !isValidHost(host)) {
     throw new Error("invalid target; expected user@host");
   }
   return { username, host };
