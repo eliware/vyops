@@ -1,19 +1,23 @@
 import { randomUUID } from "node:crypto";
 import { basename, dirname, join } from "node:path";
 
-export async function downloadToReplace(fs, download, client, remote, local) {
+export async function downloadToReplace(fs, download, client, remote, local, log) {
   const temporary = join(dirname(local), `.${basename(local)}.vyops-${randomUUID()}`);
   try {
     await fs.writeFile(temporary, "", { flag: "wx", mode: 0o600 });
     await download(client, remote, temporary);
     await fs.rename(temporary, local);
   } catch (error) {
-    await fs.rm(temporary, { force: true });
+    try {
+      await fs.rm(temporary, { force: true });
+    } catch (cleanupError) {
+      log?.warn?.(`VyOps cleanup warning: temporary file removal failed: ${cleanupError.message}`);
+    }
     throw error;
   }
 }
 
-export async function downloadFilesToReplace(fs, download, client, files) {
+export async function downloadFilesToReplace(fs, download, client, files, log) {
   const staged = files.map(({ remote, local }) => ({
     remote,
     local,
@@ -54,8 +58,18 @@ export async function downloadFilesToReplace(fs, download, client, files) {
     throw error;
   } finally {
     for (const file of staged) {
-      await fs.rm(file.temporary, { force: true });
-      if (rollbackComplete) await fs.rm(file.previous, { force: true });
+      try {
+        await fs.rm(file.temporary, { force: true });
+      } catch (error) {
+        log?.warn?.(`VyOps cleanup warning: temporary file removal failed: ${error.message}`);
+      }
+      if (rollbackComplete) {
+        try {
+          await fs.rm(file.previous, { force: true });
+        } catch (error) {
+          log?.warn?.(`VyOps cleanup warning: prior file removal failed: ${error.message}`);
+        }
+      }
     }
   }
 }

@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises";
 import { mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { jest } from "@jest/globals";
 import {
   downloadFilesToReplace,
   downloadToReplace,
@@ -23,20 +24,30 @@ test("replaces a local file after the download completes", async () => {
 test("preserves the old file when the download fails", async () => {
   const root = await mkdtemp(join(tmpdir(), "vyops-download-"));
   const local = join(root, "config.boot");
+  const log = { warn: jest.fn() };
+  const fsApi = {
+    ...fs,
+    rm: async (target, options) => {
+      if (target.includes(".vyops-")) throw new Error("temporary cleanup denied");
+      return rm(target, options);
+    },
+  };
   await writeFile(local, "old");
   try {
     await expect(
       downloadToReplace(
-        fs,
+        fsApi,
         async () => {
           throw new Error("download failed");
         },
         {},
         "/remote",
         local,
+        log,
       ),
     ).rejects.toThrow("download failed");
     await expect(readFile(local, "utf8")).resolves.toBe("old");
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("temporary cleanup denied"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -131,6 +142,36 @@ test("keeps prior files when local rollback fails", async () => {
       ),
     ).rejects.toThrow("local release state rollback failed: rollback failed");
     expect((await readdir(root)).some((name) => name.includes(".previous-"))).toBe(true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("reports cleanup failures without changing the successful replacement result", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-download-"));
+  const local = join(root, "config.boot");
+  const log = { warn: jest.fn() };
+  const fsApi = {
+    ...fs,
+    rm: async (target, options) => {
+      if (target.includes(".previous-") || target.includes(".vyops-"))
+        throw new Error("cleanup denied");
+      return rm(target, options);
+    },
+  };
+  try {
+    await expect(
+      downloadFilesToReplace(
+        fsApi,
+        async (_client, _remote, temporary) => writeFile(temporary, "new"),
+        {},
+        [{ remote: "/config/config.boot", local }],
+        log,
+      ),
+    ).resolves.toBeUndefined();
+    await expect(readFile(local, "utf8")).resolves.toBe("new");
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("cleanup denied"));
+    expect(log.warn).toHaveBeenCalledTimes(2);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

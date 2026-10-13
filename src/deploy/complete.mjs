@@ -32,7 +32,7 @@ export async function completeDeployment(options) {
     phase("download deployment manifest");
     files.push({ remote: manifest, local: deploymentManifestPath(config) });
   }
-  await downloadFilesToReplace(fs, download, getClient(), files);
+  await downloadFilesToReplace(fs, download, getClient(), files, log);
   if (verify) await verifyRelease(getClient(), exec, log, redact);
   phase("run hooks");
   if (finalizeHooks) {
