@@ -29,11 +29,3 @@ export async function readDeploymentState(readFile, manifestPath) {
 export async function readManagedPaths(readFile, manifestPath) {
   return (await readDeploymentState(readFile, manifestPath)).managed;
 }
-
-export function unmanagedPaths(liveOutput, managed) {
-  return liveOutput
-    .split("\0")
-    .filter(Boolean)
-    .map((file) => file.replace(/^\/config\/scripts\/?/, ""))
-    .filter((file) => file && !managed.has(file));
-}

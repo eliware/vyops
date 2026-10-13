@@ -3,11 +3,7 @@ import { tmpdir } from "node:os";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
 import { jest } from "@jest/globals";
-import {
-  readDeploymentState,
-  readManagedPaths,
-  unmanagedPaths,
-} from "../../src/deploy/script-manifest.mjs";
+import { readDeploymentState, readManagedPaths } from "../../src/deploy/script-manifest.mjs";
 
 const header =
   "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type";
@@ -58,12 +54,6 @@ test.each([
   await expect(
     readManagedPaths(jest.fn().mockResolvedValue(content), "/tmp/manifest"),
   ).rejects.toThrow(/invalid header|malformed record|duplicate script path/);
-});
-
-test("finds live files absent from the managed manifest", () => {
-  expect(
-    unmanagedPaths("/config/scripts/hook.sh\0/config/scripts/manual.sh\0", new Set(["hook.sh"])),
-  ).toEqual(["manual.sh"]);
 });
 
 const { fsMocks, mocks, client, deploy } = await setupDeployHarness(jest);

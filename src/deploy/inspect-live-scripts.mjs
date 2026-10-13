@@ -1,14 +1,20 @@
 import { readFile } from "node:fs/promises";
 import { log } from "@eliware/common";
 import { exec } from "../ssh/exec.mjs";
-import { readDeploymentState, unmanagedPaths } from "./script-manifest.mjs";
+import { readDeploymentState } from "./script-manifest.mjs";
+import { unmanagedPaths } from "./live-script-paths.mjs";
 import { deploymentManifestPath } from "./deployment-manifest-path.mjs";
 
 export async function inspectLiveScripts(client, config, bundleNames = []) {
   const manifest = deploymentManifestPath(config);
   try {
     const state = await readDeploymentState(readFile, manifest);
-    const live = await exec(client, "find -P /config/scripts -type f -print0 2>/dev/null");
+    const live = await exec(
+      client,
+      'links=$(find -P /config/scripts -type l -print -quit 2>/dev/null) || exit 1; if [ -n "$links" ]; then printf \'VYOPS_SYMLINK\\0%s\\0\' "$links"; exit 0; fi; find -P /config/scripts -type f -print0 2>/dev/null',
+    );
+    if (live.stdout.startsWith("VYOPS_SYMLINK\0"))
+      throw new Error(`symbolic link found in live script tree: ${live.stdout.split("\0")[1]}`);
     if (live.code !== 0)
       throw new Error(live.stderr || live.stdout || "live script inspection failed");
     const livePaths = unmanagedPaths(live.stdout, new Set());

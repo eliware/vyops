@@ -32,3 +32,25 @@ test.each([
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("rejects symbolic links in the live script tree", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vyops-inspection-"));
+  const config = join(root, "config.boot");
+  await writeFile(
+    `${config}.deployment.tsv`,
+    "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\n",
+  );
+  mocks.exec.mockResolvedValueOnce({
+    code: 0,
+    stdout: "VYOPS_SYMLINK\0/config/scripts/linked-hook\0",
+    stderr: "",
+  });
+  try {
+    await expect(inspectLiveScripts({}, config)).rejects.toThrow(
+      "symbolic link found in live script tree",
+    );
+    expect(mocks.exec).toHaveBeenCalledTimes(1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
