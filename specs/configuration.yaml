@@ -23,6 +23,7 @@ directives:
       - Start a host name with a letter or digit.
       - Use letters, digits, period, underscore, or hyphen in the rest of a host name.
       - Accept an IPv4 address as a host name.
+      - Reject a malformed numeric IPv4 host name.
       - Accept usernames that contain letters, digits, period, underscore, or hyphen.
       - Accept host names that contain letters, digits, period, underscore, or hyphen.
     donts:

@@ -21,6 +21,7 @@ test("builds a managed text install command with safety checks", () => {
   expect(command).toContain("printf '\\r'");
   expect(command).toContain("sudo test -x");
   expect(command).toContain("sudo mv -f");
+  expect(command.indexOf("sudo mv -f")).toBeLessThan(command.indexOf("|| {"));
 });
 
 test("builds an unmanaged binary install command without text checks", () => {

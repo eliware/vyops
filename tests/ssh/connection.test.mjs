@@ -41,7 +41,7 @@ test("connect parses user@host and resolves on ready", async () => {
     host: "router",
     username: "vyos",
     agent: "/tmp/agent.sock",
-    privateKey: Buffer.from("private-key"),
+    privateKey: undefined,
   });
   expect(client.options.hostVerifier).toEqual(expect.any(Function));
   await rm(keyDir, { recursive: true, force: true });

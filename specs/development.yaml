@@ -11,7 +11,7 @@ directives:
       - Mock SSH and Git process calls in unit tests.
       - Keep tests independent from live routers and external Git remotes.
       - Keep package metadata and version in package.json.
-      - Limit npm package files to src/, docs/, README.md, AGENTS.md, LICENSE, RELEASE_NOTES.md, and bin/.
+      - Limit npm package files to src/, docs/, specs/, README.md, AGENTS.md, LICENSE, RELEASE_NOTES.md, and bin/.
       - Run npm ci after a package-lock.json change.
       - Run npm test after code or behavior changes.
       - Require 100 percent statement, branch, function, and line coverage for src/ modules.

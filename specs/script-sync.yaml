@@ -24,13 +24,13 @@ directives:
       - Require executable scripts to pass a remote execute check.
       - Require text scripts to contain no carriage-return bytes on the router.
       - Create parent folders before the program uploads nested scripts.
-      - Install each staged file through a temporary file and an atomic move.
+      - Validate each staged file before an atomic move to its final path.
       - Record installed file mode, hash, and type in the remote manifest.
       - Read file and directory records from config.boot.deployment.tsv.
       - Use only file records as managed script paths.
       - Restore prior managed and unmanaged files when an install fails.
       - Keep the remote backup folder when script rollback fails.
-      - Remove files that did not exist before an install when it fails.
+      - Remove files and empty folders that did not exist before an install when it fails.
       - Keep installed scripts after config confirmation.
       - Restore prior scripts if the release does not confirm.
       - Remove temporary script and backup folders after finalization.

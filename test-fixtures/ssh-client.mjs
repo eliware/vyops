@@ -70,7 +70,9 @@ export function createSshClientModule({ MockClient, fs, join, mockHostVerifier }
       const client = new MockClient();
       const privateKeyPath = options.privateKeyPath || join(process.env.HOME, ".ssh/id_rsa");
       const privateKey =
-        options.password === undefined ? await fs.promises.readFile(privateKeyPath) : undefined;
+        options.password === undefined && !options.agent
+          ? await fs.promises.readFile(privateKeyPath)
+          : undefined;
       const knownHosts = options.knownHostsPath
         ? await fs.promises.readFile(join(process.env.HOME, ".ssh/known_hosts"), "utf8")
         : "";

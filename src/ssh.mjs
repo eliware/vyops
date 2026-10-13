@@ -15,7 +15,6 @@ export function close(client) {
   if (!client) return Promise.resolve();
   return Promise.resolve()
     .then(() => client.close())
-    .catch(() => {})
     .finally(() => activeClients.delete(client));
 }
 

@@ -5,5 +5,6 @@ export function isValidHost(host) {
   const bracketed = host.startsWith("[") && host.endsWith("]");
   const address = bracketed ? host.slice(1, -1) : host;
   if (bracketed || address.includes(":")) return bracketed && isIP(address) === 6;
+  if (/^\d+(?:\.\d+){3}$/.test(host)) return isIP(host) === 4;
   return /^[A-Za-z0-9._-]+$/.test(host);
 }

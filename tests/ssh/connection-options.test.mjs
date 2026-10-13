@@ -15,7 +15,7 @@ test("builds key and host verification options", () => {
   ).toEqual({
     host: "router",
     username: "vyos",
-    privateKeyPath: "/keys/release",
+    privateKeyPath: undefined,
     agent: "/tmp/agent",
     knownHostsPath: "/keys/known_hosts",
     hostCaPath: "/keys/ca",

@@ -1,4 +1,5 @@
 import { configBlock } from "./config-block.mjs";
+import { isValidHost } from "../ssh/host-validation.mjs";
 
 export function targetFromConfig(text) {
   const system = configBlock(text, "system");
@@ -13,6 +14,8 @@ export function targetFromConfig(text) {
     (match) => match[1],
   );
   if (!host) throw new Error("preflight failed: config does not define system host-name");
+  if (!isValidHost(host))
+    throw new Error("preflight failed: config has an invalid system host-name");
   if (users.length !== 1)
     throw new Error(
       `preflight failed: expected exactly one system login user; found ${users.length}`,

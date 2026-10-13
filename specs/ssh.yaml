@@ -6,13 +6,14 @@ directives:
       - Accept one user and one host in the form user@host.
       - Accept a valid DNS-style host, IPv4 address, or IPv6 address.
       - Require brackets around IPv6 addresses in SSH targets.
-      - Use the configured private key when no password is set.
       - Use the SSH agent when SSH_AUTH_SOCK is set.
+      - Use the configured private key when no password or SSH agent is set.
       - Use ~/.ssh/known_hosts when SSH_KNOWN_HOSTS is not set.
       - Use SSH_HOST_CA when the process sets that value.
       - Keep host key verification enabled.
-      - Use VYOPS_SSH_KEY for the private key path when it is set.
-      - Use ~/.ssh/id_rsa when VYOPS_SSH_KEY is not set.
+      - Use VYOPS_SSH_KEY for the private key path when no SSH agent is set.
+      - Use ~/.ssh/id_rsa when no SSH agent or VYOPS_SSH_KEY is set.
+      - Report an SSH client close error after the program tries to close the client.
       - Set the phase and target on each active SSH client for error context.
       - Use VYOPS_CONNECT_TIMEOUT for the connection timeout.
       - Use VYOPS_OPERATION_TIMEOUT for command and transfer timeouts.

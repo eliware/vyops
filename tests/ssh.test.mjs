@@ -45,9 +45,9 @@ test("closes reusable SSH connections", async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-test("ignores a missing client and handles close errors", async () => {
+test("ignores a missing client and reports close errors", async () => {
   await expect(close(null)).resolves.toBeUndefined();
   const client = { close: jest.fn().mockRejectedValue(new Error("close failed")) };
-  await expect(close(client)).resolves.toBeUndefined();
+  await expect(close(client)).rejects.toThrow("close failed");
   expect(client.close).toHaveBeenCalledTimes(1);
 });
