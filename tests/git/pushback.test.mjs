@@ -118,3 +118,29 @@ test("does not reclaim a lock with missing owner metadata", async () => {
     await removeGitWorkspace(directory);
   }
 });
+
+test("force does not reclaim a lock owned by a live process", async () => {
+  const { directory, config } = await createGitWorkspace();
+  const git = createGitMock(jest, directory);
+  try {
+    await mkdir(lockPath(directory));
+    await writeFile(join(lockPath(directory), "owner"), `${process.pid}\n`);
+    await expect(pushBack(config, { force: true, runGit: git })).rejects.toThrow(
+      "another pushback is already running",
+    );
+  } finally {
+    await removeGitWorkspace(directory);
+  }
+});
+
+test("force reclaims a lock with invalid owner metadata", async () => {
+  const { directory, config } = await createGitWorkspace();
+  const git = createGitMock(jest, directory);
+  try {
+    await mkdir(lockPath(directory));
+    await writeFile(join(lockPath(directory), "owner"), "invalid\n");
+    await expect(pushBack(config, { force: true, runGit: git })).resolves.toBe(false);
+  } finally {
+    await removeGitWorkspace(directory);
+  }
+});

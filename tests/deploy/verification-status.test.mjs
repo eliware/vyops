@@ -19,5 +19,11 @@ test("treats an empty WireGuard table as no configured interfaces", () => {
 
 test("does not classify operational failures or route checks as optional absence", () => {
   expect(optionalVerificationStatus("show bgp summary", "connection refused")).toBeNull();
+  expect(
+    optionalVerificationStatus(
+      "show bgp summary",
+      "BGP instance not found\noperation failed: permission denied",
+    ),
+  ).toBeNull();
   expect(optionalVerificationStatus("show ip route", "")).toBeNull();
 });

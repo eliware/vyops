@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import { path } from "@eliware/common";
 const LOCK_MAX_AGE = 60 * 60 * 1000;
 
-async function staleLock(lock) {
+async function staleLock(lock, force) {
   let owner;
   let stats;
   try {
@@ -21,7 +21,7 @@ async function staleLock(lock) {
       return false;
     }
   }
-  return Date.now() - stats.mtimeMs > LOCK_MAX_AGE;
+  return force || Date.now() - stats.mtimeMs > LOCK_MAX_AGE;
 }
 
 export async function withRepositoryLock(repo, action, force) {
@@ -29,7 +29,7 @@ export async function withRepositoryLock(repo, action, force) {
   try {
     await fs.mkdir(lock);
   } catch (error) {
-    if (error.code !== "EEXIST" || (!force && !(await staleLock(lock)))) {
+    if (error.code !== "EEXIST" || !(await staleLock(lock, force))) {
       if (error.code === "EEXIST") throw new Error("another pushback is already running");
       throw error;
     }
