@@ -9,13 +9,20 @@ export async function cleanupRemoteStaging({
   log,
   debugLog,
   preserveScriptsBackup = false,
+  operationError,
 }) {
   debugLog("cleaning up remote file");
   let cleanupClient = client;
+  let cleanupError;
   try {
     if (cleanupClient?.state && cleanupClient.state !== "open") {
-      await close(cleanupClient);
+      const closedClient = cleanupClient;
       cleanupClient = null;
+      try {
+        await close(closedClient);
+      } catch (error) {
+        log.warn(`VyOps cleanup warning: closed SSH client close failed: ${error.message}`);
+      }
     }
     if (!cleanupClient) cleanupClient = await connectClient();
     await removeRemoteStaging(exec, cleanupClient, {
@@ -23,9 +30,25 @@ export async function cleanupRemoteStaging({
       scriptsBackup: preserveScriptsBackup ? undefined : remotePaths.scriptsBackup,
     });
   } catch (error) {
+    cleanupError = error;
     log.warn(
       `VyOps cleanup warning: remote staging cleanup could not be completed: ${error.message}`,
     );
   }
-  await close(cleanupClient);
+  if (cleanupClient) {
+    try {
+      await close(cleanupClient);
+    } catch (error) {
+      cleanupError ||= error;
+      log.warn(`VyOps cleanup warning: SSH close failed after staging cleanup: ${error.message}`);
+    }
+  }
+  if (cleanupError) {
+    const message = `remote staging cleanup failed: ${cleanupError.message}`;
+    if (operationError) {
+      log.warn(`VyOps cleanup warning: ${message}`);
+      return;
+    }
+    throw new Error(message, { cause: cleanupError });
+  }
 }

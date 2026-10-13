@@ -66,4 +66,9 @@ test("rejects remote links and unsafe script paths", async () => {
     .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
     .mockResolvedValueOnce({ code: 0, stdout: "/config/scripts/../secret\0", stderr: "" });
   await expect(inspectRemoteScripts(unsafe, {}, log)).rejects.toThrow("unsafe remote script path");
+  const outside = jest
+    .fn()
+    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+    .mockResolvedValueOnce({ code: 0, stdout: "/tmp/other\0", stderr: "" });
+  await expect(inspectRemoteScripts(outside, {}, log)).rejects.toThrow("unsafe remote script path");
 });

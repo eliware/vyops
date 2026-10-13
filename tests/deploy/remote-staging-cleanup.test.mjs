@@ -38,21 +38,94 @@ test("reconnects when the client is closed before cleanup", async () => {
   expect(close).toHaveBeenNthCalledWith(2, recovery);
 });
 
-test("warns when staging cleanup fails", async () => {
+test("reconnects when close fails for a closed SSH client", async () => {
   const log = { warn: jest.fn() };
-  const close = jest.fn();
-  const client = {};
+  const closedClient = { state: "closed" };
+  const recovery = { state: "open" };
+  const close = jest.fn().mockRejectedValueOnce(new Error("close denied"));
+  const connectClient = jest.fn().mockResolvedValue(recovery);
   await cleanupRemoteStaging({
-    exec: jest.fn().mockRejectedValue(new Error("transport lost")),
+    exec: jest.fn().mockResolvedValue({ code: 0 }),
     close,
-    connectClient: jest.fn(),
-    client,
+    connectClient,
+    client: closedClient,
     remotePaths: {},
     log,
     debugLog: jest.fn(),
   });
-  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("transport lost"));
+  expect(connectClient).toHaveBeenCalledTimes(1);
+  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("close denied"));
+  expect(close).toHaveBeenLastCalledWith(recovery);
+});
+
+test("fails when staging cleanup does not complete", async () => {
+  const log = { warn: jest.fn() };
+  const close = jest.fn();
+  const client = {};
+  await expect(
+    cleanupRemoteStaging({
+      exec: jest.fn().mockResolvedValue({ code: 1, stderr: "", stdout: "permission denied" }),
+      close,
+      connectClient: jest.fn(),
+      client,
+      remotePaths: {},
+      log,
+      debugLog: jest.fn(),
+    }),
+  ).rejects.toThrow(
+    "remote staging cleanup failed: remote staging removal failed: permission denied",
+  );
+  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("permission denied"));
   expect(close).toHaveBeenCalledWith(client);
+});
+
+test("reports a staging cleanup error when SSH close fails", async () => {
+  const log = { warn: jest.fn() };
+  await expect(
+    cleanupRemoteStaging({
+      exec: jest.fn().mockResolvedValue({ code: 0 }),
+      close: jest.fn().mockRejectedValue(new Error("close denied")),
+      connectClient: jest.fn(),
+      client: { state: "open" },
+      remotePaths: {},
+      log,
+      debugLog: jest.fn(),
+    }),
+  ).rejects.toThrow("remote staging cleanup failed: close denied");
+  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("close denied"));
+});
+
+test("preserves the first staging cleanup error when SSH close also fails", async () => {
+  const log = { warn: jest.fn() };
+  await expect(
+    cleanupRemoteStaging({
+      exec: jest.fn().mockRejectedValue(new Error("remove denied")),
+      close: jest.fn().mockRejectedValue(new Error("close denied")),
+      connectClient: jest.fn(),
+      client: { state: "open" },
+      remotePaths: {},
+      log,
+      debugLog: jest.fn(),
+    }),
+  ).rejects.toThrow("remote staging cleanup failed: remove denied");
+  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("close denied"));
+});
+
+test("keeps the release error when staging cleanup also fails", async () => {
+  const log = { warn: jest.fn() };
+  await expect(
+    cleanupRemoteStaging({
+      exec: jest.fn().mockRejectedValue(new Error("cleanup failed")),
+      close: jest.fn(),
+      connectClient: jest.fn(),
+      client: {},
+      remotePaths: {},
+      log,
+      debugLog: jest.fn(),
+      operationError: new Error("release failed"),
+    }),
+  ).resolves.toBeUndefined();
+  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("cleanup failed"));
 });
 
 test("keeps the script backup when rollback fails", async () => {

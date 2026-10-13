@@ -8,6 +8,6 @@ test("removes config, scripts, and backup staging paths", async () => {
   await removeRemoteStaging(exec, client, paths);
   expect(exec).toHaveBeenCalledWith(
     client,
-    'rm -f -- "/tmp/config"; rm -rf -- "/tmp/scripts" "/tmp/backup"',
+    'rm -f -- "/tmp/config" && rm -rf -- "/tmp/scripts" "/tmp/backup"',
   );
 });

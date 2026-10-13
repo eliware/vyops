@@ -14,6 +14,7 @@ directives:
       - Close active SSH clients during normal shutdown.
       - Reconnect for cleanup when the interrupted SSH client close fails.
       - Run remote cleanup when a release stops or fails.
+      - Report a cleanup failure when release cleanup cannot remove remote files.
     donts:
       - Do not load .env files.
       - Do not connect to a router during preflight.

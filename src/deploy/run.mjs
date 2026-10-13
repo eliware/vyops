@@ -10,6 +10,7 @@ export async function runDeployment(options) {
   let finalizeHooks;
   const deploymentState = createDeploymentState();
   const remote = state.remotePaths.config;
+  let deploymentError;
   try {
     finalizeHooks = await prepareDeployment({ ...state, remote });
     state.phase("connect");
@@ -39,6 +40,7 @@ export async function runDeployment(options) {
     });
     return 0;
   } catch (error) {
+    deploymentError = error;
     await recoverRun(state, { error, ...deploymentState.recovery(finalizeHooks) });
     state.preserveScriptsBackup = error.preserveScriptsBackup === true;
     throw error;
@@ -48,6 +50,7 @@ export async function runDeployment(options) {
       ...state,
       client: state.client,
       preserveScriptsBackup: state.preserveScriptsBackup,
+      operationError: deploymentError,
     });
   }
 }

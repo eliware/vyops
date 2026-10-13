@@ -8,12 +8,24 @@ export async function stageBackupScript({ fs, path, client, scripts, name, downl
   const snapshot = `${snapshotDirectory}/script`;
   const local = path(scripts, name);
   await snapshotRemoteScript(exec, client, remote, snapshotDirectory);
+  let operationError;
   try {
     await fs.mkdir(path(local, ".."), { recursive: true, mode: 0o700 });
     await download(client, snapshot, local);
     await fs.chmod(local, 0o600);
-  } finally {
-    await exec(client, `rm -rf -- ${shellQuote(snapshotDirectory)}`);
+  } catch (error) {
+    operationError = error;
   }
+  let cleanupError;
+  try {
+    const result = await exec(client, `rm -rf -- ${shellQuote(snapshotDirectory)}`);
+    if (result.code !== 0)
+      cleanupError = new Error(`remote snapshot cleanup failed: ${result.stderr || result.stdout}`);
+  } catch (error) {
+    cleanupError = error;
+  }
+  if (cleanupError)
+    throw new Error(cleanupError.message, { cause: operationError || cleanupError });
+  if (operationError) throw operationError;
   log.debug(`[vyops] backed up script: ${name}`);
 }

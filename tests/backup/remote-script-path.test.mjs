@@ -7,3 +7,7 @@ test("accepts a systemd template path with an at sign", () => {
 test("rejects a remote script path with traversal", () => {
   expect(() => remoteScriptPath("/config/scripts/../private")).toThrow("unsafe remote script path");
 });
+
+test("rejects a listed file outside the remote script folder", () => {
+  expect(() => remoteScriptPath("/tmp/other")).toThrow("unsafe remote script path");
+});
