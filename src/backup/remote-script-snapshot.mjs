@@ -6,7 +6,7 @@ export async function snapshotRemoteScript(exec, client, remote, snapshot) {
   try {
     const result = await exec(
       client,
-      `mkdir -m 700 -- ${shellQuote(snapshot)} || exit 1; if exec 3<${shellQuote(remote)} && test -f /proc/self/fd/3 && test "$(realpath -- /proc/self/fd/3)" = ${shellQuote(remote)} && cat <&3 > ${shellQuote(script)}; then exit 0; fi; exit 1`,
+      `mkdir -m 700 -- ${shellQuote(snapshot)} || exit 1; if test ! -L ${shellQuote(remote)} && exec 3<${shellQuote(remote)} && test -f /proc/self/fd/3 && test "$(realpath -- /proc/self/fd/3)" = ${shellQuote(remote)} && cat <&3 > ${shellQuote(script)}; then exit 0; fi; exit 1`,
     );
     if (result.code !== 0)
       snapshotError = new Error(`remote script changed or is not a regular file: ${remote}`);

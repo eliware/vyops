@@ -6,6 +6,7 @@ test("creates the snapshot in a private remote directory", async () => {
   await snapshotRemoteScript(exec, {}, "/config/scripts/hook.sh", "/tmp/.vyops-backup.run-id");
   const command = exec.mock.calls[0][1];
   expect(command).toContain("mkdir -m 700 -- '/tmp/.vyops-backup.run-id'");
+  expect(command).toContain("test ! -L '/config/scripts/hook.sh'");
   expect(command).toContain("cat <&3 > '/tmp/.vyops-backup.run-id/script'");
   expect(command).not.toContain("rm -rf");
 });
