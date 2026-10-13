@@ -104,6 +104,15 @@ test("handles argument errors and removes handlers", async () => {
   expect(process.exitCode).toBe(1);
 });
 
+test("reports SSH close errors and removes process handlers", async () => {
+  cli.closeAll.mockRejectedValueOnce(new Error("SSH close failed"));
+  await cli.runCli();
+  expect(cli.log.error).toHaveBeenCalledWith("SSH close failed");
+  expect(cli.signals.removeHandlers).toHaveBeenCalled();
+  expect(cli.errors.removeHandlers).toHaveBeenCalled();
+  expect(process.exitCode).toBe(1);
+});
+
 test("runs both registered shutdown actions", async () => {
   await cli.signals.shutdownHook();
   expect(cli.closeAll).toHaveBeenCalled();

@@ -39,3 +39,16 @@ test("restores old files when installing a staged file fails", async () => {
   };
   await expect(publishBackup(fs, "staged", "output", "previous")).rejects.toThrow("install failed");
 });
+
+test("reports prior backup cleanup failure after successful publication", async () => {
+  const log = { warn: jest.fn() };
+  const fs = {
+    mkdir: jest.fn(),
+    rename: jest.fn(),
+    rm: jest.fn().mockRejectedValue(new Error("cleanup denied")),
+  };
+  await expect(publishBackup(fs, "staged", "output", "previous", log)).resolves.toBeUndefined();
+  expect(log.warn).toHaveBeenCalledWith(
+    "VyOps backup cleanup warning: prior backup removal failed: cleanup denied",
+  );
+});

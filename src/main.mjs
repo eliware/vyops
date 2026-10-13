@@ -52,6 +52,11 @@ export async function runCli() {
     log.error(error.message);
     process.exitCode = 1;
   } finally {
-    await lifecycle.finish();
+    try {
+      await lifecycle.finish();
+    } catch (error) {
+      log.error(error.message);
+      process.exitCode = 1;
+    }
   }
 }

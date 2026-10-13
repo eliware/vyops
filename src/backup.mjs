@@ -28,7 +28,7 @@ export async function backup({ target, config, password, log = defaultLog }) {
         exec,
         log,
       });
-      await publishBackup(fs.promises, stagedBackup, config, previousBackup);
+      await publishBackup(fs.promises, stagedBackup, config, previousBackup, log);
       log.debug("[vyops] backup: published configuration, scripts, and manifest");
     } finally {
       await fs.promises.rm(stagedBackup, { recursive: true, force: true });

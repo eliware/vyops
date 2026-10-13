@@ -17,9 +17,12 @@ export function registerCliLifecycle({
     errors,
     signals,
     finish: async () => {
-      await closeAll();
-      signals.removeHandlers();
-      errors.removeHandlers();
+      try {
+        await closeAll();
+      } finally {
+        signals.removeHandlers();
+        errors.removeHandlers();
+      }
     },
   };
 }

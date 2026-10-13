@@ -22,3 +22,18 @@ test("registers shutdown work and removes process handlers", async () => {
   expect(signals.removeHandlers).toHaveBeenCalledTimes(1);
   expect(errors.removeHandlers).toHaveBeenCalledTimes(1);
 });
+
+test("removes process handlers when SSH close fails", async () => {
+  const errors = { removeHandlers: jest.fn() };
+  const signals = { removeHandlers: jest.fn() };
+  const lifecycle = registerCliLifecycle({
+    log: {},
+    registerHandlers: jest.fn(() => errors),
+    registerSignals: jest.fn(() => signals),
+    closeAll: jest.fn().mockRejectedValue(new Error("SSH close failed")),
+    cleanup: jest.fn(),
+  });
+  await expect(lifecycle.finish()).rejects.toThrow("SSH close failed");
+  expect(signals.removeHandlers).toHaveBeenCalledTimes(1);
+  expect(errors.removeHandlers).toHaveBeenCalledTimes(1);
+});
