@@ -6,6 +6,7 @@ import {
 
 test("recognizes router, pager, and commit prompts", () => {
   expect(isRouterPrompt("router@vyos#")).toBe(true);
+  expect(isRouterPrompt("testuser@test-router.example.test# ")).toBe(true);
   expect(isRouterPrompt("ordinary output")).toBe(false);
   expect(isPagerPrompt("--More--")).toEqual({ found: true, returnPager: false });
   expect(isPagerPrompt("No next tag (press RETURN)")).toEqual({
