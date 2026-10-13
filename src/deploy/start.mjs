@@ -17,19 +17,29 @@ export async function startDeployment(options) {
     client.__vyopsPhase = "connect";
     return client;
   };
-  setClient(await connectClient());
-  logger.debugLog("SSH connected");
-  const runId = randomUUID();
-  const remotePaths = deploymentRemotePaths(runId);
-  const cleanup = createInterruptionCleanup({
-    close,
-    connectClient,
-    exec,
-    remotePaths,
-    target,
-    log,
-    getClient,
-  });
-  const unregisterCleanup = registerDeploymentCleanup(cleanup);
-  return { ...logger, connectClient, runId, remotePaths, unregisterCleanup };
+  const client = await connectClient();
+  try {
+    setClient(client);
+    logger.debugLog("SSH connected");
+    const runId = randomUUID();
+    const remotePaths = deploymentRemotePaths(runId);
+    const cleanup = createInterruptionCleanup({
+      close,
+      connectClient,
+      exec,
+      remotePaths,
+      target,
+      log,
+      getClient,
+    });
+    const unregisterCleanup = registerDeploymentCleanup(cleanup);
+    return { ...logger, connectClient, runId, remotePaths, unregisterCleanup };
+  } catch (error) {
+    try {
+      await close(client);
+    } catch (closeError) {
+      log.warn(`VyOps cleanup warning: SSH close failed after setup error: ${closeError.message}`);
+    }
+    throw error;
+  }
 }

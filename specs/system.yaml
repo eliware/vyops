@@ -12,6 +12,7 @@ directives:
       - Parse command arguments before each command starts.
       - Create one operation ID for each command run.
       - Close active SSH clients during normal shutdown.
+      - Close the SSH client when deployment setup fails after connection.
       - Reconnect for cleanup when the interrupted SSH client close fails.
       - Run remote cleanup when a release stops or fails.
       - Report a cleanup failure when release cleanup cannot remove remote files.

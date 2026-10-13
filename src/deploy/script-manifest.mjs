@@ -7,14 +7,19 @@ export async function readDeploymentState(readFile, manifestPath) {
       "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type";
     if (header !== expectedHeader) throw new Error("deployment manifest has an invalid header");
     const records = lines.filter(Boolean).map((line) => line.split("\t"));
-    if (records.some((fields) => fields.length !== 9 || fields[0] !== "file" || !fields[1]))
+    if (
+      records.some(
+        (fields) => fields.length !== 9 || !["file", "directory"].includes(fields[0]) || !fields[1],
+      )
+    )
       throw new Error("deployment manifest contains a malformed record");
     const names = records.map((fields) => fields[1]);
     if (new Set(names).size !== names.length)
       throw new Error("deployment manifest contains a duplicate script path");
     if (names.some((name) => !isSafeScriptPath(name)))
       throw new Error("deployment manifest contains an unsafe script path");
-    return { managed: new Set(names), hasManifest: true };
+    const managed = records.filter((fields) => fields[0] === "file").map((fields) => fields[1]);
+    return { managed: new Set(managed), hasManifest: true };
   } catch (error) {
     if (error.code === "ENOENT") return { managed: new Set(), hasManifest: false };
     throw error;

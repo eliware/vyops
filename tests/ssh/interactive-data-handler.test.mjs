@@ -46,6 +46,14 @@ test("answers pager prompts and holds the command open", () => {
   expect(options.resolve).not.toHaveBeenCalled();
 });
 
+test("completes the command after pager output and the router prompt", () => {
+  const options = createOptions();
+  handleInteractiveData("--More--", options);
+  handleInteractiveData("\nvyos@router#", options);
+  expect(options.stream.write).toHaveBeenCalledWith(" ");
+  expect(options.resolve).toHaveBeenCalledWith("--More--\nvyos@router#");
+});
+
 test("collects ordinary output while a command remains active", () => {
   const options = createOptions();
   handleInteractiveData("partial response", options);

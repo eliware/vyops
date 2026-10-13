@@ -13,6 +13,7 @@ export function rejectInteractiveCommand({ state, stream, timer, reject, cleaned
   )
     return false;
   state.settled = true;
+  state.waiting = false;
   clearTimeout(timer);
   stream.close();
   const detail = interactiveFailureDetail(cleaned);

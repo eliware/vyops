@@ -4,6 +4,7 @@ export function answerInteractivePrompt({ cleaned, state, stream, log }) {
   const { found, returnPager } = isPagerPrompt(cleaned);
   if (found) {
     const key = returnPager ? "\n" : " ";
+    state.response = "";
     log(`pager prompt detected; sending ${returnPager ? "return" : "space"}`);
     stream.write(key);
     log(`write complete: ${returnPager ? "return" : "space"}`);

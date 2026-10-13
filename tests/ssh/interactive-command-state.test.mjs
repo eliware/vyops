@@ -25,7 +25,7 @@ test("rejects a structured command failure and closes the stream", () => {
   expect(
     rejectInteractiveCommand({ state, stream, timer: undefined, reject, cleaned: "invalid" }),
   ).toBe(true);
-  expect(state.settled).toBe(true);
+  expect(state).toMatchObject({ settled: true, waiting: false });
   expect(stream.close).toHaveBeenCalled();
   expect(reject).toHaveBeenCalledWith(
     new Error("interactive command failed: load config (invalid)"),

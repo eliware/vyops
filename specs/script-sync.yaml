@@ -26,6 +26,8 @@ directives:
       - Create parent folders before the program uploads nested scripts.
       - Install each staged file through a temporary file and an atomic move.
       - Record installed file mode, hash, and type in the remote manifest.
+      - Read file and directory records from config.boot.deployment.tsv.
+      - Use only file records as managed script paths.
       - Restore prior managed and unmanaged files when an install fails.
       - Keep the remote backup folder when script rollback fails.
       - Remove files that did not exist before an install when it fails.

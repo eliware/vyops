@@ -19,6 +19,13 @@ test("reads and validates managed file paths", async () => {
   await expect(readManagedPaths(readFile, "/tmp/manifest")).resolves.toEqual(new Set(["hook.sh"]));
 });
 
+test("reads directory records without treating directories as managed files", async () => {
+  const content = `${header}\ndirectory\tnested\tfalse\t-\t-\tdirectory\t755\t-\tdirectory\n${manifest("nested/hook.sh").split("\n")[1]}\n`;
+  await expect(
+    readDeploymentState(jest.fn().mockResolvedValue(content), "/tmp/manifest"),
+  ).resolves.toEqual({ managed: new Set(["nested/hook.sh"]), hasManifest: true });
+});
+
 test("reports whether a deployment manifest exists", async () => {
   await expect(
     readDeploymentState(jest.fn().mockResolvedValue(manifest("hook.sh")), "/tmp/manifest"),
