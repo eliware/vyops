@@ -10,6 +10,7 @@ export async function cleanupRemoteStaging({
   debugLog,
   preserveScriptsBackup = false,
   operationError,
+  operationSucceeded = false,
 }) {
   debugLog("cleaning up remote file");
   let cleanupClient = client;
@@ -45,7 +46,7 @@ export async function cleanupRemoteStaging({
   }
   if (cleanupError) {
     const message = `remote staging cleanup failed: ${cleanupError.message}`;
-    if (operationError) {
+    if (operationError || operationSucceeded) {
       log.warn(`VyOps cleanup warning: ${message}`);
       return;
     }

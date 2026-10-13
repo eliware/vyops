@@ -11,6 +11,7 @@ export async function runDeployment(options) {
   const deploymentState = createDeploymentState();
   const remote = state.remotePaths.config;
   let deploymentError;
+  let deploymentSucceeded = false;
   try {
     finalizeHooks = await prepareDeployment({ ...state, remote });
     state.phase("connect");
@@ -38,6 +39,7 @@ export async function runDeployment(options) {
         deploymentState.markHooksFinalized();
       },
     });
+    deploymentSucceeded = true;
     return 0;
   } catch (error) {
     deploymentError = error;
@@ -51,6 +53,7 @@ export async function runDeployment(options) {
       client: state.client,
       preserveScriptsBackup: state.preserveScriptsBackup,
       operationError: deploymentError,
+      operationSucceeded: deploymentSucceeded,
     });
   }
 }

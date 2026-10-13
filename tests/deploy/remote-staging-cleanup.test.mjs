@@ -95,6 +95,23 @@ test("reports a staging cleanup error when SSH close fails", async () => {
   expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("close denied"));
 });
 
+test("reports cleanup errors without failing a successful operation", async () => {
+  const log = { warn: jest.fn() };
+  await expect(
+    cleanupRemoteStaging({
+      exec: jest.fn().mockRejectedValue(new Error("remove denied")),
+      close: jest.fn(),
+      connectClient: jest.fn(),
+      client: { state: "open" },
+      remotePaths: {},
+      log,
+      debugLog: jest.fn(),
+      operationSucceeded: true,
+    }),
+  ).resolves.toBeUndefined();
+  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("remove denied"));
+});
+
 test("preserves the first staging cleanup error when SSH close also fails", async () => {
   const log = { warn: jest.fn() };
   await expect(

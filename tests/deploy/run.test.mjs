@@ -100,6 +100,18 @@ test("reconnects and removes staging during successful interruption cleanup", as
   await deployment;
 });
 
+test("returns success when confirmed release staging cleanup fails", async () => {
+  mocks.exec.mockImplementation(async (_client, command) =>
+    command.startsWith("rm -f --")
+      ? { code: 1, stdout: "", stderr: "permission denied" }
+      : { code: 0, stdout: "", stderr: "" },
+  );
+  await expect(
+    deploy({ target: "testuser@test-router.example.test", config: "/tmp/config.boot" }),
+  ).resolves.toBe(0);
+  expect(logMock.warn).toHaveBeenCalledWith(expect.stringContaining("permission denied"));
+});
+
 test("reports failed recovery reconnects through debug output", async () => {
   const failure = new Error("deployment transport failed");
   mocks.interactive.mockRejectedValue(failure);
