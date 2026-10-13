@@ -16,7 +16,7 @@
 - Add safe debug details to preflight, release, and backup.
 - Add backup manifests for the active config and script paths.
 - Add host certificate checks and SSH key setup through standard input.
-- Add Windows and Ubuntu CI workflows and the Knit release workflow.
+- Add Ubuntu CI and publish workflows and the Knit release workflow.
 - Add opt-in tests for disposable VyOS routers.
 
 ### Changed
@@ -32,6 +32,7 @@
 - Replace deploy, CLI, validation, backup, and SSH modules with focused modules.
 - Split tests by workflow and mock Git and SSH commands.
 - Use the standard package, documentation, and repository metadata.
+- Run CI on Ubuntu only. Windows support remains unverified.
 
 ### Fixed
 
