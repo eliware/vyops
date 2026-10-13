@@ -51,6 +51,13 @@ test("builds binary staging validation with hash verification", async () => {
   await writeFile(join(scripts, "helper.exe"), Buffer.from([0x7f, 0x45, 0x4c, 0x46]));
   try {
     fsMocks.readdir.mockResolvedValue([{ name: "helper.exe", isFile: () => true }]);
+    mocks.download.mockImplementation(async (_client, remote, local) => {
+      if (remote !== "/config/config.boot")
+        await writeFile(
+          local,
+          "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\n",
+        );
+    });
     await expect(
       deploy({
         target: "testuser@test-router.example.test",

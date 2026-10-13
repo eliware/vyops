@@ -9,14 +9,19 @@ import {
   unmanagedPaths,
 } from "../../src/deploy/script-manifest.mjs";
 
+const header =
+  "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type";
+const manifest = (name, preexisting = "false") =>
+  `${header}\nfile\t${name}\t${preexisting}\t-\t-\t-\t755\thash\tregular file\n`;
+
 test("reads and validates managed file paths", async () => {
-  const readFile = jest.fn().mockResolvedValue("file\thook.sh\tfalse\n");
+  const readFile = jest.fn().mockResolvedValue(manifest("hook.sh"));
   await expect(readManagedPaths(readFile, "/tmp/manifest")).resolves.toEqual(new Set(["hook.sh"]));
 });
 
 test("reports whether a deployment manifest exists", async () => {
   await expect(
-    readDeploymentState(jest.fn().mockResolvedValue("file\thook.sh\tfalse\n"), "/tmp/manifest"),
+    readDeploymentState(jest.fn().mockResolvedValue(manifest("hook.sh")), "/tmp/manifest"),
   ).resolves.toEqual({ managed: new Set(["hook.sh"]), hasManifest: true });
   await expect(
     readDeploymentState(
@@ -28,7 +33,7 @@ test("reports whether a deployment manifest exists", async () => {
 
 test("rejects unsafe manifest paths and tolerates a missing manifest", async () => {
   await expect(
-    readManagedPaths(jest.fn().mockResolvedValue("file\t../escape\tfalse\n"), "/tmp/manifest"),
+    readManagedPaths(jest.fn().mockResolvedValue(manifest("../escape")), "/tmp/manifest"),
   ).rejects.toThrow("unsafe script path");
   await expect(
     readManagedPaths(
@@ -36,6 +41,16 @@ test("rejects unsafe manifest paths and tolerates a missing manifest", async () 
       "/tmp/manifest",
     ),
   ).resolves.toEqual(new Set());
+});
+
+test.each([
+  "file\thook.sh\tfalse\n",
+  "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\thook.sh\tfalse\n",
+  `${header}\nfile\thook.sh\tfalse\t-\t-\t-\t755\thash\tregular file\nfile\thook.sh\tfalse\t-\t-\t-\t755\thash\tregular file\n`,
+])("rejects malformed deployment manifests", async (content) => {
+  await expect(
+    readManagedPaths(jest.fn().mockResolvedValue(content), "/tmp/manifest"),
+  ).rejects.toThrow(/invalid header|malformed record|duplicate script path/);
 });
 
 test("finds live files absent from the managed manifest", () => {
@@ -51,10 +66,7 @@ test("restores a previously managed file through the manifest on failure", async
   const hooks = join(root, "scripts");
   await mkdir(hooks, { recursive: true });
   await writeFile(join(hooks, "managed.sh"), "#!/bin/sh\n");
-  await writeFile(
-    `${join(root, "config.boot")}.deployment.tsv`,
-    "kind\tpath\tpreexisting\nfile\tmanaged.sh\ttrue\n",
-  );
+  await writeFile(`${join(root, "config.boot")}.deployment.tsv`, manifest("managed.sh", "true"));
   try {
     fsMocks.readdir.mockResolvedValue([{ name: "managed.sh", isFile: () => true }]);
     mocks.interactive.mockRejectedValue(new Error("deployment failed"));

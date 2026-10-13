@@ -2,11 +2,16 @@ import { isSafeScriptPath } from "../bundle/script-path-rules.mjs";
 
 export async function readDeploymentState(readFile, manifestPath) {
   try {
-    const names = (await readFile(manifestPath, "utf8"))
-      .split(/\r?\n/)
-      .filter((line) => line.startsWith("file\t"))
-      .map((line) => line.split("\t")[1])
-      .filter(Boolean);
+    const [header, ...lines] = (await readFile(manifestPath, "utf8")).split(/\r?\n/);
+    const expectedHeader =
+      "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type";
+    if (header !== expectedHeader) throw new Error("deployment manifest has an invalid header");
+    const records = lines.filter(Boolean).map((line) => line.split("\t"));
+    if (records.some((fields) => fields.length !== 9 || fields[0] !== "file" || !fields[1]))
+      throw new Error("deployment manifest contains a malformed record");
+    const names = records.map((fields) => fields[1]);
+    if (new Set(names).size !== names.length)
+      throw new Error("deployment manifest contains a duplicate script path");
     if (names.some((name) => !isSafeScriptPath(name)))
       throw new Error("deployment manifest contains an unsafe script path");
     return { managed: new Set(names), hasManifest: true };

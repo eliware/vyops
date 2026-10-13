@@ -11,6 +11,23 @@ test("extracts the target from native VyOS configuration", () => {
   ).toBe("vyos@router-one");
 });
 
+test("ignores block-like text inside a multiline quoted system value", () => {
+  const config = `system {
+  note "text starts here
+login {
+  user attacker {
+  }
+}
+and ends here"
+  host-name router
+  login {
+    user vyos {
+    }
+  }
+}`;
+  expect(targetFromConfig(config)).toBe("vyos@router");
+});
+
 test.each([
   ["system {}", "config does not define system host-name"],
   ["system {\n host-name router\n}", "expected exactly one system login user; found 0"],

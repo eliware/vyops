@@ -19,7 +19,10 @@ test.each([
 ])("reports live script scan failures from %s", async (_label, stderr, stdout, message) => {
   const root = await mkdtemp(join(tmpdir(), "vyops-inspection-"));
   const config = join(root, "config.boot");
-  await writeFile(`${config}.deployment.tsv`, "file\tmanaged.sh\n");
+  await writeFile(
+    `${config}.deployment.tsv`,
+    "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\tmanaged.sh\tfalse\t-\t-\t-\t755\thash\tregular file\n",
+  );
   mocks.exec.mockResolvedValueOnce({ code: 1, stderr, stdout });
   try {
     await expect(inspectLiveScripts({}, config)).rejects.toThrow(
