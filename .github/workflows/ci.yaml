@@ -1,5 +1,4 @@
 name: Validation
-
 on:
   push:
     branches:
@@ -7,14 +6,11 @@ on:
   pull_request:
     branches:
       - main
-
 concurrency:
   group: ${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: true
-
 permissions:
   contents: read
-
 jobs:
   test:
     runs-on: ubuntu-latest
