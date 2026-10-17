@@ -2,8 +2,8 @@ import { promises as fs } from "node:fs";
 import { join, relative } from "node:path";
 import { targetFromConfig } from "./bundle/target.mjs";
 import { validateScriptManifest } from "./bundle/manifest.mjs";
-import { isSafeScriptPath, validateScriptPath } from "./bundle/script-path-rules.mjs";
-import { validateScriptContent } from "./bundle/script-content-validation.mjs";
+import { isSafeScriptPath, validateScriptPath } from "./bundle/script/path-rules.mjs";
+import { validateScriptContent } from "./bundle/script/content-validation.mjs";
 
 export { targetFromConfig, isSafeScriptPath, validateScriptManifest };
 
@@ -18,7 +18,7 @@ async function filesIn(directory, root, fsApi) {
   }
   for (const entry of entries) {
     const file = join(directory, entry.name);
-    // Symlinks are intentionally excluded so traversal cannot escape the bundle root.
+    // Symlinks are intentionally excluded so traversal cannot go outside the bundle root.
     if (entry.isDirectory()) result.push(...(await filesIn(file, root, fsApi)));
     else if (entry.isFile())
       result.push({ file, name: relative(root, file).replaceAll("\\", "/") });

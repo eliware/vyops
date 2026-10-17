@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { publishBackupEntries } from "../../src/backup/publication-transaction.mjs";
+const { publishBackupEntries } = await import("../../src/backup/publication-transaction.mjs");
 
 const entries = ["config.boot"];
 

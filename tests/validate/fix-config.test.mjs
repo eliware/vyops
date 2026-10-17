@@ -1,5 +1,5 @@
-import { fixConfig } from "../../src/validate/fix-config.mjs";
-import { validateConfig } from "../../src/validate/config.mjs";
+const { fixConfig } = await import("../../src/validate/fix-config.mjs");
+const { validateConfig } = await import("../../src/validate/config.mjs");
 
 test("fixes ordering, whitespace, indentation, and line endings", async () => {
   expect(

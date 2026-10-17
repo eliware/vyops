@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { attachInteractiveListeners } from "./interactive-listeners.mjs";
-import { startInteractiveTimeout } from "./interactive-timeout.mjs";
+import { attachInteractiveListeners } from "./interactive/listeners.mjs";
+import { startInteractiveTimeout } from "./interactive/timeout.mjs";
 
 export function interactive(client, commands, log = () => {}, onCommandComplete = () => {}) {
   const operation = randomUUID();

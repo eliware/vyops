@@ -1,4 +1,4 @@
-import { parseConfigBlocks } from "../../src/validate/parse-config-blocks.mjs";
+const { parseConfigBlocks } = await import("../../src/validate/parse-config-blocks.mjs");
 
 test("parses comments, blank lines, statements, and nested blocks", () => {
   expect(parseConfigBlocks("# note\nsystem {\n    host-name router\n}\n")).toEqual([
@@ -13,6 +13,8 @@ test("parses comments, blank lines, statements, and nested blocks", () => {
 });
 
 test("rejects missing and extra closing braces", () => {
-  expect(() => parseConfigBlocks("system {\n host-name router")).toThrow(/unbalanced braces/);
-  expect(() => parseConfigBlocks("system {\n}\n}")).toThrow(/unexpected closing brace/);
+  expect(() => parseConfigBlocks("system {\n host-name router")).toThrow(
+    /unbalanced curly brackets/,
+  );
+  expect(() => parseConfigBlocks("system {\n}\n}")).toThrow(/unexpected closing curly bracket/);
 });

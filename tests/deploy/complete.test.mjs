@@ -1,12 +1,15 @@
+import { promises, resetMemoryFilesystem } from "../../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-import { completeDeployment } from "../../src/deploy/complete.mjs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const { completeDeployment } = await import("../../src/deploy/complete.mjs");
+const { mkdir, mkdtemp, readFile, rm, writeFile } = await import("node:fs/promises");
 import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { runPreflight } from "../../src/commands/preflight.mjs";
+const { runPreflight } = await import("../../src/commands/preflight.mjs");
 
 test("downloads the confirmed config and finalizes hooks", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-complete-"));
+  const root = await mkdtemp(join("/virtual", "vyops-complete-"));
   const config = join(root, "config.boot");
   const configText =
     "system {\n    host-name test-router\n    login {\n        user vyos {\n        }\n    }\n}\n";
@@ -62,7 +65,7 @@ test("downloads the confirmed config and finalizes hooks", async () => {
 });
 
 test("preserves the local config when the download fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-complete-"));
+  const root = await mkdtemp(join("/virtual", "vyops-complete-"));
   const config = join(root, "config.boot");
   await writeFile(config, "old config");
   await expect(
@@ -89,7 +92,7 @@ test("preserves the local config when the download fails", async () => {
 });
 
 test("preserves both local files when the manifest download fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-complete-"));
+  const root = await mkdtemp(join("/virtual", "vyops-complete-"));
   const config = join(root, "config.boot");
   const deployment = `${config}.deployment.tsv`;
   await writeFile(config, "old config");
@@ -123,7 +126,7 @@ test("preserves both local files when the manifest download fails", async () => 
 });
 
 test("does not mark hooks finalized when cleanup fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-complete-"));
+  const root = await mkdtemp(join("/virtual", "vyops-complete-"));
   const config = join(root, "config.boot");
   const setHooksFinalized = jest.fn();
   try {
@@ -145,7 +148,7 @@ test("does not mark hooks finalized when cleanup fails", async () => {
         debugLog: () => {},
         setHooksFinalized,
       }),
-    ).rejects.toThrow("hook finalization failed");
+    ).rejects.toThrow("post-commit script finalization failed");
     expect(setHooksFinalized).not.toHaveBeenCalled();
   } finally {
     await rm(root, { recursive: true, force: true });

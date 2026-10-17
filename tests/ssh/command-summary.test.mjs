@@ -1,4 +1,4 @@
-import { commandSummary } from "../../src/ssh/command-summary.mjs";
+const { commandSummary } = await import("../../src/ssh/command-summary.mjs");
 
 test("normalizes and bounds command summaries", () => {
   expect(commandSummary("  show\n version  ")).toBe("show version");

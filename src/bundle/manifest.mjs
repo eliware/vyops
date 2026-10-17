@@ -1,5 +1,6 @@
 import { readFile as defaultReadFile } from "node:fs/promises";
-import { isSafeScriptPath } from "./script-path-rules.mjs";
+import { isSafeScriptPath } from "./script/path-rules.mjs";
+import { bundleManifestHeader, bundleManifestHeaderWithPreexisting } from "../manifest/columns.mjs";
 
 export async function validateScriptManifest(config, readFile = defaultReadFile, availablePaths) {
   const manifestPath = `${config}.manifest.tsv`;
@@ -12,9 +13,9 @@ export async function validateScriptManifest(config, readFile = defaultReadFile,
   }
   const lines = content.split(/\r?\n/);
   const header = lines.shift();
-  if (header !== "kind\tpath" && header !== "kind\tpath\tpreexisting")
+  if (header !== bundleManifestHeader && header !== bundleManifestHeaderWithPreexisting)
     throw new Error("preflight failed: deployment manifest has an invalid header");
-  const hasPreexistingColumn = header === "kind\tpath\tpreexisting";
+  const hasPreexistingColumn = header === bundleManifestHeaderWithPreexisting;
   const names = new Set();
   for (const line of lines) {
     if (!line) continue;

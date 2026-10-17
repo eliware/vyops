@@ -5,19 +5,19 @@ directives:
     dos:
       - Keep router config, router output, and SSH keys private.
       - Redact passwords, private keys, tokens, and secret values from release output.
-      - Limit each logged remote command summary to 240 characters.
-      - Do not log full router config content.
+      - Limit each remote command summary in output to 240 characters.
+      - Do not write full router config content to output.
       - Use least-privilege router access.
       - Validate local and remote script paths before use.
       - Reject absolute paths and traversal paths.
       - Reject symbolic links in local and remote script trees.
-      - Quote paths that the program uses in remote shell commands.
+      - Put quotation marks around paths in remote shell commands.
       - Keep SSH host verification enabled.
       - Use mocks for router operations in tests.
       - Use mocks for Git process calls in tests.
-      - Require a specific user request before any live router test or release.
+      - Require an explicit user request before a live router test or release.
     donts:
       - Do not store credentials or private router data in the repository.
       - Do not put credentials in source code, tests, docs, or command arguments.
-      - Do not log passwords, private keys, or full router configs.
-      - Do not connect to a live router during routine tests.
+      - Do not write passwords, private keys, or full router configs to output.
+      - Do not connect to a live router during standard tests.

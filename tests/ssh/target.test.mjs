@@ -26,5 +26,5 @@ test.each([
   "vyos@[gggg::1]",
   "vyos@999.168.1.1",
 ])("rejects invalid target %p", (target) => {
-  expect(() => parseTarget(target)).toThrow("invalid target; expected user@host");
+  expect(() => parseTarget(target)).toThrow("invalid target. Use user@host.");
 });

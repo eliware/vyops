@@ -1,4 +1,4 @@
-import { parseArgs } from "../src/args.mjs";
+const { parseArgs } = await import("../src/args.mjs");
 
 test("parses preflight", () =>
   expect(parseArgs(["preflight", "config.boot"])).toEqual({

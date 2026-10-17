@@ -7,26 +7,26 @@ directives:
       - Reject an empty config file.
       - Require at least one config statement.
       - Require four spaces for each nested config level.
-      - Put the brace that starts a block at the end of its line.
-      - Put the brace that ends a block alone on its line.
+      - Put the opening curly bracket at the end of its line.
+      - Put the closing curly bracket alone on its line.
       - "Allow comments that start with # outside quoted text."
       - Allow single or double quotes around config values.
       - Ignore braces and comment marks inside quoted values.
-      - Reject an unterminated quote.
-      - Reject two start braces on one line.
-      - Reject two end braces on one line.
-      - Reject start and end braces on the same line.
-      - Reject unbalanced braces and unexpected closing braces.
-      - Require a host-name statement inside the system block.
-      - Require exactly one user in the system login block.
-      - Form the SSH target as user@host from that config.
+      - Reject a value without a closing quotation mark.
+      - Reject two opening curly brackets on one line.
+      - Reject two closing curly brackets on one line.
+      - Reject an opening and closing curly bracket on one line.
+      - Reject unbalanced curly brackets and unexpected closing brackets.
+      - Require a host-name statement in the system section.
+      - Require exactly one user in the system login section.
+      - Set the SSH target as user@host from that config.
       - Start a host name with a letter or digit.
-      - Use letters, digits, period, underscore, or hyphen in the rest of a host name.
+      - Use letters, digits, period, underscore, or hyphen for other host name characters.
       - Accept an IPv4 address as a host name.
       - Reject a malformed numeric IPv4 host name.
       - Accept usernames that contain letters, digits, period, underscore, or hyphen.
       - Accept host names that contain letters, digits, period, underscore, or hyphen.
     donts:
-      - Do not connect to a router when the program reads or checks a config.
+      - Do not connect to a router when the CLI reads or checks a config.
       - Do not accept multiple system login users for a release target.
       - Do not accept a target with whitespace or more than one at sign.

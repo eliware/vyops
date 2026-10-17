@@ -2,7 +2,7 @@
 
 ## Files
 
-Place the config and script folder in one bundle directory:
+Put the config and script folder in one bundle directory:
 
 ```text
 bundle/
@@ -17,24 +17,24 @@ Store the bundle in Git when you want release pushback.
 
 ## Config rules
 
-Write native VyOS config text as UTF-8.
-Use four spaces for each nested block.
-Put each opening brace at the end of its line.
-Put each closing brace alone on its line.
-Use one config statement on each line.
-Use single or double quotes around values when needed.
-Start comments with `#` outside quoted values.
+- Write native VyOS config text as UTF-8.
+- Use four spaces for each nested section.
+- Put each opening curly bracket at the end of its line.
+- Put each closing curly bracket alone on its line.
+- Use one config statement on each line.
+- Use single or double quotation marks around values when necessary.
+- Start comments with `#` outside quoted values.
 
-Put one `host-name` inside the `system` block.
+Put one `host-name` inside the `system` section.
 Put exactly one user inside `system login`.
 VyOps forms the release target as `user@host-name`.
 
 ## Script rules
 
-Place regular script files under `scripts/`.
+Put regular script files under `scripts/`.
 Use nested folders and forward slashes in manifest paths.
 Use letters, digits, period, underscore, at sign, slash, or hyphen in each path.
-Do not use an absolute path or a `.` or `..` path part.
+Do not use an absolute path or a `.` or `..` path segment.
 Use LF line endings for text scripts.
 
 VyOps checks executable text files for a supported shebang.
@@ -53,5 +53,5 @@ file	commit/post-hooks.d/example
 ```
 
 You can add a `preexisting` column to the header and one field to each row.
-Do not add directory rows, duplicate paths, unsafe paths, or extra fields.
+Do not add directory rows, duplicate paths, unsafe paths, or more fields.
 VyOps keeps this bundle manifest separate from `config.boot.deployment.tsv`.

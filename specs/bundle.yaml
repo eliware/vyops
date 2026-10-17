@@ -4,33 +4,33 @@ directives:
   - id: E-1110.5
     dos:
       - Find scripts in the scripts folder beside the config file.
-      - Search script folders recursively.
+      - Scan script folders recursively.
       - Include regular files and ignore symbolic links.
       - Use forward slashes in script names.
       - Accept letters, digits, period, underscore, slash, at sign, and hyphen in script paths.
       - Allow the at sign in safe systemd template paths.
-      - Reject absolute paths, empty path parts, dot parts, and parent path parts.
+      - Reject absolute paths, empty segments, dot segments, and parent segments.
       - Read the local bundle manifest from config.boot.manifest.tsv beside the config.
-      - Accept the header kind and path, with an optional preexisting column.
+      - Accept the header type and path, with an optional preexisting column.
       - Require each record to name one file and one safe path.
       - Require each manifest path to match a file in the local script tree.
       - Reject duplicate paths and malformed records.
-      - Treat a missing local bundle manifest as empty.
+      - Read a missing local bundle manifest as an empty manifest.
       - Keep router deployment state in config.boot.deployment.tsv.
       - Do not read router deployment state as a local bundle manifest.
     donts:
       - Do not include symbolic links in the script tree.
       - Do not reject a safe script path because it contains an at sign.
-      - Do not accept paths that can escape the script root.
+      - Do not accept paths that can go outside the script root.
   - id: E-1110.6
     dos:
       - Reject carriage-return bytes in text scripts.
       - Allow carriage-return bytes in .exe files.
-      - Treat .exe files as binary files.
+      - Use .exe files as binary files.
       - Require a shebang for executable text scripts.
-      - Treat executable mode, a shebang, .sh, .script, and hook paths as executable.
-      - Treat files under commit/post-hooks.d as executable.
-      - Treat vyos-preconfig-bootup.script and vyos-postconfig-bootup.script as executable.
+      - Mark files executable by mode, shebang, .sh, .script, or post-commit script path.
+      - Mark files under commit/post-hooks.d as executable.
+      - Mark vyos-preconfig-bootup.script and vyos-postconfig-bootup.script as executable.
       - Allow /bin/sh, /bin/bash, /bin/vbash, and /usr/bin/env as script interpreters.
       - Preserve each script path in the manifest.
     donts:
@@ -38,9 +38,9 @@ directives:
       - Do not follow a symbolic link outside the bundle.
   - id: E-1110.7
     dos:
-      - Treat an .exe file as a binary script during release.
+      - Use an .exe file as a binary script during release.
       - Check binary type and CPU type on the router.
-      - Accept x86-64, AArch64, and ARMv7 ELF binaries.
+      - Accept ELF binaries for x86-64, AArch64, and ARMv7 CPUs.
       - Compare the remote binary hash with the local hash when --verify-binaries is set.
     donts:
       - Do not accept a binary with a different file type or CPU type.

@@ -7,7 +7,7 @@ This repository contains the VyOps CLI.
 ## Scope and boundaries
 
 Use README.md for repository purpose, ownership, scope, and boundaries.
-Get Eliware Operations approval before an external change.
+Request Eliware Operations approval before each external change.
 
 ## Layout
 
@@ -32,11 +32,16 @@ Keep credentials, private data, router data, and runtime state out of Git.
 
 ## Changes
 
-Keep changes within this repository scope.
+Keep all changes in this repository.
 
 ## Application
 
 Document workflows, entrypoints, settings, startup, and shutdown in README.md.
+Run focused tests first during development.
+Run one test file with `npm test -- tests/path/to/example.test.mjs`.
+Run multiple test files with `npm test -- tests/path/to/first.test.mjs tests/path/to/second.test.mjs`.
+Avoid repeated full-suite runs during development.
+Run the full `npm test` suite for final validation before a commit, milestone, or release.
 
 ## CLI
 

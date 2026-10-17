@@ -1,9 +1,13 @@
+import { promises, resetMemoryFilesystem } from "../../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+jest.useFakeTimers();
+const { mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
 import { join } from "node:path";
-import { runDeployment } from "../../src/deploy/run.mjs";
-import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
+const { runDeployment } = await import("../../src/deploy/run.mjs");
+const { setupDeployHarness } = await import("../../test-fixtures/deploy-harness.mjs");
 
 test("prepares, recovers, and cleans up when release commands fail", async () => {
   const events = [];
@@ -72,7 +76,7 @@ async function pauseDeploymentAtConfirmation() {
     target: "testuser@test-router.example.test",
     config: "/tmp/config.boot",
   });
-  await new Promise((resolve) => setImmediate(resolve));
+  await jest.advanceTimersByTimeAsync(0);
   return { deployment, releaseInteractive: (value) => releaseInteractive(value) };
 }
 
@@ -126,7 +130,7 @@ test("reports failed recovery reconnects through debug output", async () => {
 });
 
 test("keeps the deployment error when hook recovery also fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-recovery-"));
+  const root = await mkdtemp(join("/virtual", "vyops-recovery-"));
   const scripts = join(root, "scripts");
   const failure = new Error("deployment command failed");
   await mkdir(scripts, { recursive: true });
@@ -165,7 +169,7 @@ test("discards and reconnects the SSH client after a timeout", async () => {
 });
 
 test("tolerates hook rollback cleanup failures", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
+  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
   const hooks = join(root, "scripts");
   await mkdir(hooks, { recursive: true });
   await writeFile(join(hooks, "hook.sh"), "#!/bin/sh\n");

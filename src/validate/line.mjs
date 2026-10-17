@@ -8,21 +8,21 @@ export function validateConfigLine(lineText, depth, line) {
   const trimmed = code.trim();
   if (!trimmed) return { depth, hasStatement: false };
   const expectedDepth = trimmed === "}" ? depth - 1 : depth;
-  if (expectedDepth < 0) fail(line, "unexpected closing brace");
+  if (expectedDepth < 0) fail(line, "unexpected closing curly bracket");
   const indent = "    ".repeat(expectedDepth);
   if (!lineText.startsWith(indent) || lineText.slice(indent.length).startsWith(" ")) {
-    fail(line, `incorrect indentation; expected ${expectedDepth * 4} spaces`);
+    fail(line, `incorrect indentation. Expected ${expectedDepth * 4} spaces.`);
   }
   if (opening >= 0 && closing >= 0)
-    fail(line, "opening and closing brace must be on separate lines");
+    fail(line, "opening and closing curly bracket must be on separate lines");
   if (opening >= 0) {
     if (!code.slice(0, opening).trim() || code.slice(opening + 1).trim()) {
-      fail(line, "opening brace must end the line");
+      fail(line, "opening curly bracket must end the line");
     }
     depth += 1;
   } else if (closing >= 0) {
     if (code.slice(0, closing).trim() || code.slice(closing + 1).trim()) {
-      fail(line, "closing brace must be alone");
+      fail(line, "closing curly bracket must be alone");
     }
     depth -= 1;
   }

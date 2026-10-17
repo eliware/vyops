@@ -7,6 +7,8 @@ test("validates a statement and a closing brace at matching depth", () => {
 });
 
 test("rejects invalid line syntax", () => {
-  expect(() => validateConfigLine("    }", 0, 1)).toThrow("unexpected closing brace");
-  expect(() => validateConfigLine("system { extra", 0, 1)).toThrow("opening brace must end");
+  expect(() => validateConfigLine("    }", 0, 1)).toThrow("unexpected closing curly bracket");
+  expect(() => validateConfigLine("system { extra", 0, 1)).toThrow(
+    "opening curly bracket must end the line",
+  );
 });

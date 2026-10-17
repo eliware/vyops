@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { restoreBackup } from "../../src/backup/restore-backup.mjs";
+const { restoreBackup } = await import("../../src/backup/restore-backup.mjs");
 
 test("removes new files, restores saved files, and removes the recovery directory", async () => {
   const fs = { rm: jest.fn(), rename: jest.fn() };
@@ -25,7 +25,7 @@ test("reports a restore failure and keeps the original cause", async () => {
   await expect(
     restoreBackup(fs, ["config.boot"], [], "output", "previous", cause),
   ).rejects.toMatchObject({
-    message: "backup update failed; prior files remain in previous: remove failed",
+    message: "Backup update failed. Prior files remain in previous: remove failed",
     cause,
   });
 });

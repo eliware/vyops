@@ -1,8 +1,8 @@
+import { jest } from "@jest/globals";
 import packageJson from "../package.json" with { type: "json" };
 import { Readable } from "node:stream";
 import "../src/main.mjs";
-import { jest } from "@jest/globals";
-import { setupMainHarness } from "../test-fixtures/main-harness.mjs";
+const { setupMainHarness } = await import("../test-fixtures/main-harness.mjs");
 
 let cli;
 let args;

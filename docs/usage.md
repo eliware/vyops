@@ -14,7 +14,7 @@ Print the installed version:
 vyops --version
 ```
 
-Use these options alone. Do not add a command or another option.
+Use these options alone. Do not add a command or a second option.
 
 ## Commands
 
@@ -30,7 +30,7 @@ Release a bundle to its configured router:
 vyops release --yes [options] <config.boot>
 ```
 
-Back up a router:
+Save router config and scripts:
 
 ```sh
 vyops backup [--debug] [--password-stdin] <user@host> <directory>
@@ -75,5 +75,5 @@ Put `--` before a path that starts with a hyphen.
 
 Use `--password-stdin` when the router uses password authentication.
 Send one password line through standard input.
-VyOps removes one final line break and rejects empty input.
+VyOps removes one final newline and rejects empty input.
 Do not put a password in a command argument or shell history.

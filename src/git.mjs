@@ -1,8 +1,8 @@
 import { runGit } from "./git/command.mjs";
-import { repositoryState } from "./git/repository-state.mjs";
+import { repositoryState } from "./git/repository/state.mjs";
 import { deploymentPaths } from "./git/deployment-paths.mjs";
 import { pushBack } from "./git/pushback.mjs";
-import { repositoryRoot, relativeConfigPath } from "./git/repository-location.mjs";
+import { repositoryRoot, relativeConfigPath } from "./git/repository/location.mjs";
 
 export { pushBack };
 

@@ -10,7 +10,7 @@ export async function runRelease(args, log) {
   log.debug(`[vyops] [deployment ${args.operationId}] config validation complete`);
   if (!args.force && !args.noPushback && (await shouldSkip(args.config))) {
     log.info(
-      `[deployment ${args.operationId}] Latest commit is Pushback and deployment files are unchanged; skipping deployment`,
+      `[deployment ${args.operationId}] Latest commit is Pushback and deployment files are unchanged. Skipping deployment.`,
     );
     return;
   }
@@ -24,5 +24,5 @@ export async function runRelease(args, log) {
   ) {
     log.info(`[deployment ${args.operationId}] Pushback committed and pushed`);
   }
-  log.info(`[deployment ${args.operationId}] Deployment successful`);
+  log.info(`[deployment ${args.operationId}] Deployment complete`);
 }

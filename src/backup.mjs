@@ -4,9 +4,9 @@ import { close, connect, parseTarget } from "./ssh.mjs";
 import { exec } from "./ssh/exec.mjs";
 import { download } from "./ssh/download.mjs";
 import { backupDestination } from "./backup/destination.mjs";
-import { inspectRemoteScripts } from "./backup/remote-inspection.mjs";
+import { inspectRemoteScripts } from "./backup/remote/inspection.mjs";
 import { publishBackup } from "./backup/publish-backup.mjs";
-import { stageBackup } from "./backup/stage-backup.mjs";
+import { stageBackup } from "./backup/stage/backup.mjs";
 
 export async function backup({ target, config, password, log = defaultLog }) {
   parseTarget(target);

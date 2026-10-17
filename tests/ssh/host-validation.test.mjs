@@ -1,4 +1,4 @@
-import { isValidHost } from "../../src/ssh/host-validation.mjs";
+const { isValidHost } = await import("../../src/ssh/host-validation.mjs");
 
 test.each(["router", "router.example.test", "192.0.2.1", "[2001:db8::1]"])(
   "accepts host form %s",

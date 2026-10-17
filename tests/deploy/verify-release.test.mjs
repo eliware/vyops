@@ -1,6 +1,6 @@
-import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
 import { jest } from "@jest/globals";
-import { verifyRelease } from "../../src/deploy/verify-release.mjs";
+const { setupDeployHarness } = await import("../../test-fixtures/deploy-harness.mjs");
+const { verifyRelease } = await import("../../src/deploy/verify-release.mjs");
 
 test("runs optional router checks and logs their results", async () => {
   const exec = jest.fn().mockResolvedValue({ code: 0, stdout: "ok", stderr: "" });
@@ -75,12 +75,12 @@ test("does not fail verification when optional router services are absent", asyn
   ).resolves.toBe(0);
   expect(logMock.info).toHaveBeenCalledWith(
     expect.stringContaining(
-      "show bgp summary: optional feature is not configured or active; continuing",
+      "show bgp summary: optional check is not configured or active. Continuing.",
     ),
   );
   expect(logMock.info).toHaveBeenCalledWith(
     expect.stringContaining(
-      "show interfaces wireguard: no WireGuard interfaces are configured; continuing",
+      "show interfaces wireguard: no WireGuard interfaces are configured. Continuing.",
     ),
   );
 });

@@ -1,4 +1,4 @@
-import { isSafeScriptPath } from "../bundle/script-path-rules.mjs";
+import { isSafeScriptPath } from "../bundle/script/path-rules.mjs";
 
 export function unmanagedPaths(liveOutput, managed) {
   return liveOutput

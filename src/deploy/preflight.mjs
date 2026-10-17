@@ -8,7 +8,7 @@ export async function remotePreflight(exec, client, hasHaproxyHooks, hasBinarySc
   ];
   if (hasHaproxyHooks) requirements.push("command -v haproxy");
   if (hasBinaryScripts) requirements.push("command -v file", "command -v uname");
-  const result = await exec(client, `set -e; ${requirements.join(" && ")}`);
+  const result = await exec(client, `set -e && ${requirements.join(" && ")}`);
   if (result.code !== 0) {
     throw new Error(
       `remote preflight failed: ${result.stderr || result.stdout || "router prerequisites are not satisfied"}`.trim(),

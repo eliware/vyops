@@ -7,5 +7,5 @@ test("runs backup and reports success", async () => {
   const args = { config: "/tmp/config.boot" };
   await runBackup(args, log);
   expect(backup).toHaveBeenCalledWith({ ...args, log });
-  expect(log.info).toHaveBeenCalledWith("Backup successful: /tmp/config.boot");
+  expect(log.info).toHaveBeenCalledWith("Backup complete: /tmp/config.boot");
 });

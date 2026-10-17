@@ -1,5 +1,5 @@
 import { Readable } from "node:stream";
-import { readPasswordStdin } from "../../src/cli/password.mjs";
+const { readPasswordStdin } = await import("../../src/cli/password.mjs");
 
 test("reads a password and removes the final newline", async () => {
   await expect(readPasswordStdin(Readable.from([Buffer.from("secret\r\n")]))).resolves.toBe(

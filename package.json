@@ -1,8 +1,8 @@
 {
   "name": "@eliware/vyops",
-  "version": "12.0.0",
+  "version": "13.0.0",
   "type": "module",
-  "description": "Preflight, release, and back up native VyOS configuration bundles over SSH.",
+  "description": "Preflight local VyOS bundles. Release bundles with SSH. Copy router configuration and scripts with SSH.",
   "keywords": [
     "vyos",
     "networking",

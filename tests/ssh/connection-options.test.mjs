@@ -1,4 +1,4 @@
-import { createConnectionOptions } from "../../src/ssh/connection-options.mjs";
+const { createConnectionOptions } = await import("../../src/ssh/connection-options.mjs");
 
 test("builds key and host verification options", () => {
   expect(

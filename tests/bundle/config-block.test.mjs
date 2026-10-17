@@ -1,4 +1,4 @@
-import { configBlock } from "../../src/bundle/config-block.mjs";
+const { configBlock } = await import("../../src/bundle/config-block.mjs");
 
 test("extracts nested blocks and ignores braces in comments and quoted text", () => {
   const config = `system {

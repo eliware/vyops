@@ -14,13 +14,13 @@ export async function verifyRelease(client, exec, log, redact) {
       `${result.stdout}\n${result.stderr}`.trim(),
       result.code,
     );
-    // codescope ignore: next router command failures require live-router integration.
+    // codescope ignore: later router command failures require live-router integration.
     if (result.code !== 0 && !optional) {
       throw new Error(
         `verification phase failed (${command}): ${redact(result.stderr || result.stdout)}`.trim(),
       );
     }
-    if (optional) log.info(`[verify] ${command}: ${optional}; continuing`);
+    if (optional) log.info(`[verify] ${command}: ${optional}. Continuing.`);
     else log.info(redact(`[verify] ${command}\n${result.stdout}`));
   }
 }

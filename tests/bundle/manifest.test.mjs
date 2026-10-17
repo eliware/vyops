@@ -1,8 +1,7 @@
 import { jest } from "@jest/globals";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { validateScriptManifest } from "../../src/bundle/manifest.mjs";
+const { validateScriptManifest } = await import("../../src/bundle/manifest.mjs");
 
 test("reads file paths from the manifest", async () => {
   const readFile = jest
@@ -32,7 +31,7 @@ test("returns an empty set when the manifest is absent", async () => {
 });
 
 test("uses the file reader default when the manifest is absent", async () => {
-  await expect(validateScriptManifest(join(tmpdir(), `vyops-${randomUUID()}`))).resolves.toEqual(
+  await expect(validateScriptManifest(join("/virtual", `vyops-${randomUUID()}`))).resolves.toEqual(
     new Set(),
   );
 });

@@ -1,8 +1,11 @@
+import { promises, resetMemoryFilesystem } from "../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+await import("../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const { mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
 import { join } from "node:path";
-import { setupDeployHarness } from "../test-fixtures/deploy-harness.mjs";
+const { setupDeployHarness } = await import("../test-fixtures/deploy-harness.mjs");
 const { fsMocks, logMock, mocks, deploy } = await setupDeployHarness(jest);
 const deploySource = await import("../src/deploy.mjs");
 
@@ -62,7 +65,7 @@ test("rejects a completed interactive session without commit confirmation", asyn
 });
 
 test("marks every deployment phase explicitly", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
+  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
   const scripts = join(root, "scripts");
   await mkdir(scripts, { recursive: true });
   await writeFile(join(scripts, "hook.sh"), "#!/bin/sh\n");
@@ -124,7 +127,7 @@ test("propagates download failures and tolerates cleanup failures", async () => 
 });
 
 test("reports router-only scripts while preserving them", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-stale-"));
+  const root = await mkdtemp(join("/virtual", "vyops-stale-"));
   try {
     await writeFile(join(root, "config.boot"), "system {}\n");
     await writeFile(`${join(root, "config.boot")}.manifest.tsv`, "kind\tpath\nfile\tbundle.sh\n");
@@ -148,7 +151,7 @@ test("reports router-only scripts while preserving them", async () => {
 });
 
 test("reports matching scripts that release saves for rollback", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-managed-"));
+  const root = await mkdtemp(join("/virtual", "vyops-managed-"));
   try {
     await writeFile(join(root, "config.boot"), "system {}\n");
     await mkdir(join(root, "scripts"));

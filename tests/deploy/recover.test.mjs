@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { recoverDeployment } from "../../src/deploy/recover.mjs";
+const { recoverDeployment } = await import("../../src/deploy/recover.mjs");
 
 test("reconnects and finalizes hooks during recovery", async () => {
   const client = {};

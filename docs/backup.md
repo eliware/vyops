@@ -4,7 +4,7 @@ Backup reads the active config and scripts from a router.
 It does not change router config.
 It uses temporary remote snapshots while it reads script files.
 
-Back up a router:
+Save router data:
 
 ```sh
 vyops backup vyos@router /path/to/backup

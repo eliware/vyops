@@ -3,14 +3,15 @@ description: "Shared boundaries for the complete VyOps specification."
 directives:
   - id: E-1110.0
     dos:
-      - Use every focused specification file to describe one part of VyOps.
-      - Read all focused files to understand the full program.
+      - Use every focused specification file to describe one aspect of VyOps.
+      - Read all focused files to understand the full CLI.
       - Keep preflight local and read-only.
       - Run preflight before each release.
       - Require --yes before a release can change router state.
       - Use safe paths for local and remote script files.
       - Keep router config, credentials, and private data out of public files.
-      - Use the system, CLI, config, bundle, preflight, release, script, backup, SSH, Git, security, and development rules in this directory.
+      - Use the system, CLI, config, bundle, preflight, release, script, backup, SSH, and Git
+        specifications, plus the `security` and development specifications.
     donts:
-      - Do not treat this file as the full program specification.
-      - Do not let one focused file weaken a shared boundary.
+      - Do not use this file as the full CLI specification.
+      - Do not let one focused file weaken a shared requirement.

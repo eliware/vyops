@@ -13,14 +13,16 @@ directives:
       - Accept one target and one destination path for backup.
       - Accept positional values that start with a hyphen after --.
       - Allow --debug and --password-stdin for preflight and backup.
-      - Allow --yes, --force, --debug, --verify, --verify-binaries, --no-pushback, --no-hooks, and --password-stdin for release.
+      - >-
+        Allow --yes, --force, --debug, --verify, --verify-binaries, --no-pushback, --no-hooks,
+        and --password-stdin for release.
       - Require --yes for release.
       - Require --force when release uses --no-hooks.
       - Read a password from standard input when --password-stdin is set.
-      - Remove one final line break from the password input.
+      - Remove one final newline from the password input.
       - Return an error when password input is empty.
     donts:
       - Do not accept unknown options.
-      - Do not accept extra positional values.
+      - Do not accept more positional values than required.
       - Do not accept a password as a command-line value.
       - Do not accept --yes for preflight or backup.

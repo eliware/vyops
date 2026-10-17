@@ -1,5 +1,5 @@
 import { parse, resolve } from "node:path";
-import { backupDestination } from "../../src/backup/destination.mjs";
+const { backupDestination } = await import("../../src/backup/destination.mjs");
 
 test("resolves a backup destination", () => {
   expect(backupDestination("backup/config")).toBe(resolve("backup/config"));

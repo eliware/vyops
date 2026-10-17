@@ -6,7 +6,7 @@ directives:
       - Find the Git root from the config folder.
       - Return no repository state when the config is outside a Git work tree.
       - Reject a config path that resolves outside the Git root.
-      - Snapshot the current commit, branch, upstream, and relevant changes before release.
+      - Snapshot the current commit, branch, upstream, and related changes before release.
       - Include staged deployment changes in the repository snapshot.
       - Exclude the config and both manifests from unrelated change checks.
       - Check tracked and untracked changes outside the deployment files.
@@ -16,17 +16,17 @@ directives:
       - Include config.boot.deployment.tsv when Git tracks it or the file exists.
       - Keep the bundle manifest and deployment manifest as separate files.
       - Reject staged and unstaged changes to deployment files.
-      - Compare deployment files with HEAD before a pushback commit.
+      - Compare deployment files with `HEAD` before a pushback commit.
       - Reject repository changes that occur during release or pushback.
       - Add only deployment files to the pushback commit.
       - Name each pushback commit with the Pushback prefix and a timestamp.
       - Push the new commit to the configured upstream.
       - Report the local commit and recovery command when push fails.
       - Use a repository lock to stop concurrent pushback operations.
-      - Reclaim a stale lock when its owner process is gone or its owner is invalid.
+      - Remove a stale lock when its owner process is gone or invalid.
       - Remove the lock after each completed or failed pushback operation.
     donts:
       - Do not commit unrelated files.
       - Do not overwrite staged deployment content.
       - Do not discard a local commit when a push fails.
-      - Do not report a successful pushback before Git accepts the push.
+      - Do not report a complete pushback before Git accepts the push.

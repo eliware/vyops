@@ -1,15 +1,16 @@
-import * as fs from "node:fs/promises";
-import { mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { promises, resetMemoryFilesystem } from "../../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-import {
-  downloadFilesToReplace,
-  downloadToReplace,
-} from "../../src/deploy/download-to-replace.mjs";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const fs = await import("node:fs/promises");
+const { mkdtemp, readFile, readdir, rename, rm, writeFile } = await import("node:fs/promises");
+import { join } from "node:path";
+const { downloadFilesToReplace, downloadToReplace } =
+  await import("../../src/deploy/download-to-replace.mjs");
 
 test("replaces a local file after the download completes", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-download-"));
+  const root = await mkdtemp(join("/virtual", "vyops-download-"));
   const local = join(root, "config.boot");
   await writeFile(local, "old");
   const download = async (_client, _remote, temporary) => writeFile(temporary, "new");
@@ -22,7 +23,7 @@ test("replaces a local file after the download completes", async () => {
 });
 
 test("preserves the old file when the download fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-download-"));
+  const root = await mkdtemp(join("/virtual", "vyops-download-"));
   const local = join(root, "config.boot");
   const log = { warn: jest.fn() };
   const fsApi = {
@@ -54,7 +55,7 @@ test("preserves the old file when the download fails", async () => {
 });
 
 test("restores both old files when the second local replacement fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-download-"));
+  const root = await mkdtemp(join("/virtual", "vyops-download-"));
   const config = join(root, "config.boot");
   const manifest = `${config}.deployment.tsv`;
   await writeFile(config, "old config");
@@ -87,7 +88,7 @@ test("restores both old files when the second local replacement fails", async ()
 });
 
 test("keeps prior files when saving the old state fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-download-"));
+  const root = await mkdtemp(join("/virtual", "vyops-download-"));
   const config = join(root, "config.boot");
   await writeFile(config, "old config");
   const fsApi = {
@@ -114,7 +115,7 @@ test("keeps prior files when saving the old state fails", async () => {
 });
 
 test("keeps prior files when local rollback fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-download-"));
+  const root = await mkdtemp(join("/virtual", "vyops-download-"));
   const config = join(root, "config.boot");
   const manifest = `${config}.deployment.tsv`;
   await writeFile(config, "old config");
@@ -148,7 +149,7 @@ test("keeps prior files when local rollback fails", async () => {
 });
 
 test("reports cleanup failures without changing the successful replacement result", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-download-"));
+  const root = await mkdtemp(join("/virtual", "vyops-download-"));
   const local = join(root, "config.boot");
   const log = { warn: jest.fn() };
   const fsApi = {

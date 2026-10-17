@@ -1,4 +1,4 @@
-import { relocateHeaderComments } from "../../src/validate/header-comments.mjs";
+const { relocateHeaderComments } = await import("../../src/validate/header-comments.mjs");
 
 test("moves leading slash comments after formatted config content", () => {
   expect(relocateHeaderComments(["// first", "// second", "", "system {", "}", ""])).toEqual([

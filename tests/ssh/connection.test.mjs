@@ -1,13 +1,14 @@
-import {
-  MockClient,
-  fs,
-  mockHostVerifier,
-  createSshClientModule,
-} from "../../test-fixtures/ssh-client.mjs";
+import { promises, resetMemoryFilesystem } from "../../test-fixtures/helpers/memory-filesystem.mjs";
+import { jest } from "@jest/globals";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const { MockClient, fs, mockHostVerifier, createSshClientModule } =
+  await import("../../test-fixtures/ssh-client.mjs");
 import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+const { mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
 import { jest as testJest } from "@jest/globals";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
 testJest.unstable_mockModule("@eliware/ssh-client", () =>
   createSshClientModule({ MockClient, fs, join, mockHostVerifier }),
 );
@@ -27,7 +28,7 @@ afterEach(() => {
 });
 
 test("connect parses user@host and resolves on ready", async () => {
-  const keyDir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const keyDir = await mkdtemp(join("/virtual", "ssh-test-"));
   const key = join(keyDir, "key");
   await writeFile(key, "private-key");
   await mkdir(join(keyDir, ".ssh"), { recursive: true });
@@ -48,7 +49,7 @@ test("connect parses user@host and resolves on ready", async () => {
 });
 
 test("connect uses the default key path", async () => {
-  const keyDir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const keyDir = await mkdtemp(join("/virtual", "ssh-test-"));
   process.env.HOME = keyDir;
   await mkdir(join(keyDir, ".ssh"), { recursive: true });
   await writeFile(join(keyDir, ".ssh/id_rsa"), "default-key");
@@ -59,7 +60,7 @@ test("connect uses the default key path", async () => {
 });
 
 test("connect supports password authentication without reading a private key", async () => {
-  const keyDir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const keyDir = await mkdtemp(join("/virtual", "ssh-test-"));
   process.env.HOME = keyDir;
   await mkdir(join(keyDir, ".ssh"), { recursive: true });
   await writeFile(join(keyDir, ".ssh/known_hosts"), "router ssh-ed25519 AAAA\n");
@@ -70,7 +71,7 @@ test("connect supports password authentication without reading a private key", a
 });
 
 test("connect rejects host-only targets and connection errors", async () => {
-  const keyDir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const keyDir = await mkdtemp(join("/virtual", "ssh-test-"));
   const key = join(keyDir, "key");
   await writeFile(key, "key");
   await mkdir(join(keyDir, ".ssh"), { recursive: true });
@@ -88,7 +89,7 @@ test("connect rejects host-only targets and connection errors", async () => {
 
 test("returns the reusable connection with VyOps metadata", async () => {
   process.env.VYOPS_OPERATION_TIMEOUT = "0";
-  const dir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const dir = await mkdtemp(join("/virtual", "ssh-test-"));
   await mkdir(join(dir, ".ssh"), { recursive: true });
   await writeFile(join(dir, ".ssh/id_rsa"), "key");
   await writeFile(join(dir, ".ssh/known_hosts"), "router ssh-ed25519 AAAA\n");
@@ -100,7 +101,7 @@ test("returns the reusable connection with VyOps metadata", async () => {
 });
 
 test("connect rejects missing known_hosts", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const dir = await mkdtemp(join("/virtual", "ssh-test-"));
   await mkdir(join(dir, ".ssh"), { recursive: true });
   await writeFile(join(dir, ".ssh/id_rsa"), "key");
   process.env.HOME = dir;
@@ -109,7 +110,7 @@ test("connect rejects missing known_hosts", async () => {
 });
 
 test("host verifier accepts matching known host and rejects mismatch", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const dir = await mkdtemp(join("/virtual", "ssh-test-"));
   await mkdir(join(dir, ".ssh"), { recursive: true });
   await writeFile(join(dir, ".ssh/id_rsa"), "key");
   await writeFile(
@@ -125,7 +126,7 @@ test("host verifier accepts matching known host and rejects mismatch", async () 
 });
 
 test("host verifier handles revoked, negated, wildcard, and hashed entries", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const dir = await mkdtemp(join("/virtual", "ssh-test-"));
   await mkdir(join(dir, ".ssh"), { recursive: true });
   await writeFile(join(dir, ".ssh/id_rsa"), "key");
   await writeFile(
@@ -141,7 +142,7 @@ test("host verifier handles revoked, negated, wildcard, and hashed entries", asy
 });
 
 test("host verifier handles valid hashed and malformed key entries", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const dir = await mkdtemp(join("/virtual", "ssh-test-"));
   await mkdir(join(dir, ".ssh"), { recursive: true });
   await writeFile(join(dir, ".ssh/id_rsa"), "key");
   const digest = await import("node:crypto").then(({ createHmac }) =>
@@ -160,7 +161,7 @@ test("host verifier handles valid hashed and malformed key entries", async () =>
 });
 
 test("host verifier rejects malformed hashes and matching negated hosts", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const dir = await mkdtemp(join("/virtual", "ssh-test-"));
   await mkdir(join(dir, ".ssh"), { recursive: true });
   await writeFile(join(dir, ".ssh/id_rsa"), "key");
   await writeFile(

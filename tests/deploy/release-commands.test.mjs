@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { runReleaseCommands } from "../../src/deploy/release-commands.mjs";
+const { runReleaseCommands } = await import("../../src/deploy/release-commands.mjs");
 
 test("runs the candidate commit and save sequence", async () => {
   const interactive = async (_client, commands, _log, complete) => {

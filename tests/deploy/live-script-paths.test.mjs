@@ -1,4 +1,4 @@
-import { unmanagedPaths } from "../../src/deploy/live-script-paths.mjs";
+const { unmanagedPaths } = await import("../../src/deploy/live-script-paths.mjs");
 
 test("finds live files absent from the managed manifest", () => {
   expect(

@@ -6,16 +6,16 @@ directives:
       - Build VyOps as a command-line tool for VyOS configuration bundles.
       - Provide local preflight, router release, and router backup commands.
       - Use Node.js 26 and native ECMAScript modules.
-      - Start the program from bin/vyops and load src/main.mjs.
+      - Start the CLI from bin/vyops and load src/main.mjs.
       - Read runtime settings from process environment variables.
       - Use package.json as the source of the package version.
       - Parse command arguments before each command starts.
       - Create one operation ID for each command run.
-      - Close active SSH clients during normal shutdown.
+      - Close active SSH clients during the usual shutdown.
       - Close the SSH client when deployment setup fails after connection.
       - Reconnect for cleanup when the interrupted SSH client close fails.
       - Run remote cleanup when a release stops or fails.
-      - Report a cleanup failure when release cleanup cannot remove remote files.
+      - Report a cleanup error when release cleanup cannot remove remote files.
     donts:
       - Do not load .env files.
       - Do not connect to a router during preflight.
@@ -24,10 +24,10 @@ directives:
   - id: E-1110.2
     dos:
       - Keep local validation separate from router operations.
-      - Return exit code zero after a successful command.
+      - Return exit code zero after a command completes without error.
       - Set a non-zero exit code after a command error.
-      - Log command phases without passwords or private keys.
+      - Write command phases without passwords or private keys.
       - Keep each source module focused on one responsibility.
     donts:
       - Do not change router state during tests.
-      - Do not expose a secret in an error or log.
+      - Do not expose a secret in an error or output.

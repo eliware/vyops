@@ -1,9 +1,9 @@
 import { prepareDeployment } from "./prepare.mjs";
 import { completeDeployment } from "./complete.mjs";
-import { cleanupRemoteStaging } from "./remote-staging-cleanup.mjs";
+import { cleanupRemoteStaging } from "./remote/staging-cleanup.mjs";
 import { recoverRun } from "./recover-run.mjs";
 import { runReleaseCommands } from "./release-commands.mjs";
-import { createDeploymentState } from "./deployment-state.mjs";
+import { createDeploymentState } from "./deployment/state.mjs";
 
 export async function runDeployment(options) {
   const state = options;

@@ -1,4 +1,4 @@
-import { extractCompare } from "../../src/deploy/compare.mjs";
+const { extractCompare } = await import("../../src/deploy/compare.mjs");
 
 test("extracts only compare results from an interactive transcript", () => {
   const output = `--- compare ---\n[edit]\ntestuser@test-router.example.test# compare\n[system login banner]\n- post-login "GitOps deployment test v2"\n+ post-login ""\n\ntestuser@test-router.example.test# printf '%s\\n' '--- end compare ---'`;

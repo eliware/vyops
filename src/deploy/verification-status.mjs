@@ -14,7 +14,7 @@ export function optionalVerificationStatus(command, output, code) {
   )
     return null;
   if (code !== 0 && optionalUnavailable.get(command)?.test(output.trim()))
-    return "optional feature is not configured or active";
+    return "optional check is not configured or active";
   if (command === "show interfaces wireguard" && hasNoWireGuardInterfaces(output))
     return "no WireGuard interfaces are configured";
   return null;

@@ -9,7 +9,7 @@ export async function restoreBackup(fs, installed, saved, destination, previous,
     await fs.rm(previous, { recursive: true, force: true });
   } catch (restoreError) {
     throw new Error(
-      `backup update failed; prior files remain in ${previous}: ${restoreError.message}`,
+      `Backup update failed. Prior files remain in ${previous}: ${restoreError.message}`,
       { cause },
     );
   }

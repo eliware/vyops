@@ -1,5 +1,19 @@
 # Release Notes
 
+## 13.0.0 — 2026-10-17
+
+### Changed
+
+- Align package metadata and workflows with Eliware Test 13 conventions.
+- Group related source modules and tests in focused folders.
+- Check the local deployment manifest during preflight.
+- Update each script record after installation.
+
+### Fixed
+
+- Reject duplicate deployment paths before release.
+- Keep prior and installed script data in one manifest row.
+
 ## 12.0.0 — 2026-10-12
 
 ### Breaking changes
@@ -7,7 +21,7 @@
 - Require Node.js 26 or later.
 - Remove legacy deploy and dry-run commands.
 - Require `--yes` before release.
-- Get the release target from the VyOS config.
+- Read the release target from the VyOS config.
 
 ### Added
 
@@ -38,16 +52,16 @@
 
 - Accept `@` in safe script paths.
 - Reject malformed, duplicate, and unsafe script manifest paths.
-- Reject unsafe live script paths and recheck remote script links before backup.
+- Reject unsafe live script paths and check remote script links before backup.
 - Parse config blocks and deployment manifest headers correctly.
 - Preserve prior backup files when backup publication fails.
 - Restore script files after a failed release and remove temporary router files.
 - Preserve manifest updates during Git pushback.
-- Protect Git pushback locks during live verification.
-- Preserve successful releases when cleanup fails.
-- Retry failed hook finalization and report remote cleanup failures.
-- Handle router prompts with trailing spaces.
-- Handle backup staging, remote scans, and snapshot cleanup failures.
+- Prevent Git pushback locks from expiring during live verification.
+- Preserve completed releases when cleanup fails.
+- Retry failed script finalization and report remote cleanup failures.
+- Process router prompts with trailing spaces.
+- Report backup staging, remote scans, and snapshot cleanup failures.
 - Close SSH sessions after success and failure.
 - Hide raw interactive router output from debug logs.
 
@@ -67,7 +81,7 @@
 ### Added
 
 - Validate nested script bundles before release.
-- Get the router target from VyOS system config.
+- Read the router target from VyOS system config.
 - Support global command switches before or after the command name.
 
 ### Changed
@@ -82,12 +96,12 @@
 
 ### Added
 
-- Add host certificate checks, hook backup, Git pushback, and debug logs.
+- Add host certificate checks, post-commit script backup, Git pushback, and debug output.
 - Add Windows and Ubuntu CI checks.
 
 ### Fixed
 
-- Close SFTP channels after file transfer.
+- Close SFTP channels after file copy.
 - Reconnect after interactive release before download and cleanup.
 
 ## 1.0.11 — 2026-08-21
@@ -133,8 +147,8 @@
 
 ### Added
 
-- Back up the active config and complete scripts tree.
-- Handle config load and commit errors.
+- Save the active config and complete scripts tree.
+- Report config load and commit errors.
 
 ### Fixed
 
@@ -152,18 +166,4 @@
 ### Added
 
 - Sync nested script files and keep file modes.
-- Back up and restore script paths as one transaction.
-
-## 1.0.3 — 2026-08-10
-
-### Added
-
-- Add install, config, usage, security, and operations guidance.
-- Add shared logging, file, path, error, and signal tools.
-
-## 1.0.2 — 2026-08-10
-
-### Added
-
-- Add SSH host checks, timeouts, remote cleanup, hook backup, and Git pushback.
-- Add package file rules and CI validation.
+- Save and restore script paths as one transaction.

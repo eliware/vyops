@@ -1,18 +1,18 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { promises } from "./helpers/memory-filesystem.mjs";
 import { join } from "node:path";
 
-export async function createGitWorkspace(prefix = "vyops-git-test-") {
-  const directory = await mkdtemp(join(tmpdir(), prefix));
-  await mkdir(join(directory, ".git"));
+export async function createGitWorkspace(prefix = "vyops-git-test-", root = undefined) {
+  const directory = root || (await promises.mkdtemp(join("/virtual", prefix)));
+  if (root) await promises.mkdir(directory, { recursive: true });
+  await promises.mkdir(join(directory, ".git"));
   const config = join(directory, "config.boot");
-  await writeFile(config, "system {}\n");
-  await writeFile(`${config}.manifest.tsv`, "kind\tpath\n");
+  await promises.writeFile(config, "system {}\n");
+  await promises.writeFile(`${config}.manifest.tsv`, "kind\tpath\n");
   return { directory, config };
 }
 
 export async function removeGitWorkspace(directory) {
-  await rm(directory, { recursive: true, force: true });
+  await promises.rm(directory, { recursive: true, force: true });
 }
 
 export function createGitMock(jest, directory, override = () => undefined) {

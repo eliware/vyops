@@ -1,5 +1,5 @@
-import { EventEmitter } from "node:events";
 import { jest } from "@jest/globals";
+import { EventEmitter } from "node:events";
 
 class MockStream extends EventEmitter {
   constructor() {
@@ -33,7 +33,7 @@ class MockClient {
   }
 }
 
-import { interactive } from "../../src/ssh/interactive.mjs";
+const { interactive } = await import("../../src/ssh/interactive.mjs");
 
 beforeEach(() => {
   MockClient.instances.length = 0;

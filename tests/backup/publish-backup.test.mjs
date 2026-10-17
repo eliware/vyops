@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { publishBackup } from "../../src/backup/publish-backup.mjs";
+const { publishBackup } = await import("../../src/backup/publish-backup.mjs");
 
 test.each([false, true])("publishes a bundle with no previous files: %s", async (missing) => {
   const fs = {

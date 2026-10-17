@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { writeBackupManifest } from "../../src/backup/write-backup-manifest.mjs";
+const { writeBackupManifest } = await import("../../src/backup/write-backup-manifest.mjs");
 
 test("writes the backup file list with private permissions", async () => {
   const fs = { writeFile: jest.fn() };

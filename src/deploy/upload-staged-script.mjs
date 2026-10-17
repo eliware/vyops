@@ -27,7 +27,15 @@ export async function uploadStagedScript({
   const pathCheck = `test -f ${JSON.stringify(remote)} && test ! -L ${JSON.stringify(remote)} && test "$(realpath -- ${JSON.stringify(remote)})" = ${JSON.stringify(remote)}${executable ? ` && test -x ${JSON.stringify(remote)}` : ""}`;
   const lineEndingCheck = binary ? "true" : `! grep -q "$(printf '\\r')" ${JSON.stringify(remote)}`;
   const binaryCheck = binary
-    ? `case "$(uname -m):$(file -b ${JSON.stringify(remote)})" in x86_64:*ELF*x86-64*|aarch64:*ELF*ARM\\ aarch64*|armv7l:*ELF*ARM*) ;; *) exit 1 ;; esac${verifyBinaries ? ` && test "$(sha256sum ${JSON.stringify(remote)} | awk '{print $1}')" = ${JSON.stringify(localHash)}` : ""}`
+    ? [
+        `printf '%s\\n' "$(uname -m):$(file -b ${JSON.stringify(remote)})"`,
+        "| grep -Eq '^(x86_64:.*ELF.*x86-64|aarch64:.*ELF.*ARM aarch64|armv7l:.*ELF.*ARM)$'",
+        verifyBinaries
+          ? `&& test "$(sha256sum ${JSON.stringify(remote)} | awk '{print $1}')" = ${JSON.stringify(localHash)}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
     : "true";
   const result = await exec(client, `${pathCheck} && ${lineEndingCheck} && ${binaryCheck}`);
   if (result.code !== 0)

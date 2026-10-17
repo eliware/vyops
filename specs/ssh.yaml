@@ -1,9 +1,9 @@
 version: "11.0"
-description: "SSH target, connection, transfer, and shutdown rules."
+description: "SSH target, connection, file copy, and shutdown rules."
 directives:
   - id: E-1110.14
     dos:
-      - Accept one user and one host in the form user@host.
+      - Accept one user and one host as user@host.
       - Accept a valid DNS-style host, IPv4 address, or IPv6 address.
       - Require brackets around IPv6 addresses in SSH targets.
       - Use the SSH agent when SSH_AUTH_SOCK is set.
@@ -13,20 +13,20 @@ directives:
       - Keep host key verification enabled.
       - Use VYOPS_SSH_KEY for the private key path when no SSH agent is set.
       - Use ~/.ssh/id_rsa when no SSH agent or VYOPS_SSH_KEY is set.
-      - Report an SSH client close error after the program tries to close the client.
+      - Report an SSH client close error after VyOps tries to close the client.
       - Set the phase and target on each active SSH client for error context.
       - Use VYOPS_CONNECT_TIMEOUT for the connection timeout.
-      - Use VYOPS_OPERATION_TIMEOUT for command and transfer timeouts.
+      - Use VYOPS_OPERATION_TIMEOUT for command and file copy timeouts.
       - Use VYOPS_INTERACTIVE_TIMEOUT for interactive shell timeouts.
       - Use defaults of 30000, 60000, and 60000 milliseconds for those timeouts.
       - Close the stream and SSH client when an operation times out.
       - Close every active SSH client during shutdown.
       - Stop a command when its operation timeout expires.
       - Stop an interactive shell when its interactive timeout expires.
-      - Use SFTP for config and script file transfer.
+      - Use SFTP to copy config and script files.
       - Use SSH command channels for remote checks and cleanup.
-      - Close transfer channels after success or failure.
+      - Close SFTP channels after success or failure.
     donts:
       - Do not disable host key verification.
       - Do not accept an invalid user, host, or IP address.
-      - Do not leave an SSH stream open after a timeout.
+      - Close an SSH stream after a timeout.

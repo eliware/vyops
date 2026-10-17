@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { registerCliLifecycle } from "../../src/cli/lifecycle.mjs";
+const { registerCliLifecycle } = await import("../../src/cli/lifecycle.mjs");
 
 test("registers shutdown work and removes process handlers", async () => {
   const errors = { removeHandlers: jest.fn() };

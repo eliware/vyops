@@ -1,4 +1,4 @@
-import { hasNoWireGuardInterfaces } from "../../src/deploy/wireguard-status.mjs";
+const { hasNoWireGuardInterfaces } = await import("../../src/deploy/wireguard-status.mjs");
 
 test("detects a WireGuard table with no interface rows", () => {
   expect(hasNoWireGuardInterfaces("Interface  IP Address\n---------  ----------\n")).toBe(true);

@@ -5,7 +5,7 @@ import { exec } from "./ssh/exec.mjs";
 import { interactive } from "./ssh/interactive.mjs";
 import { download } from "./ssh/download.mjs";
 import { upload } from "./ssh/upload.mjs";
-import { installScripts } from "./deploy/script-sync.mjs";
+import { installScripts } from "./deploy/script/sync.mjs";
 import { remotePreflight } from "./deploy/preflight.mjs";
 import { startDeployment } from "./deploy/start.mjs";
 import { runDeployment } from "./deploy/run.mjs";

@@ -1,4 +1,4 @@
-import { formatConfigBlocks } from "../../src/validate/format-config-blocks.mjs";
+const { formatConfigBlocks } = await import("../../src/validate/format-config-blocks.mjs");
 
 test("sorts consecutive blocks and formats nested statements", () => {
   expect(

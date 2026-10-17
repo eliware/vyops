@@ -40,7 +40,7 @@ test("prepares a release without optional hooks, verification, or pushback warni
     hasHaproxyHooks: false,
     hasBinaryScripts: false,
   });
-  expect(log.info).toHaveBeenCalledWith(expect.stringContaining("hooks: enabled"));
+  expect(log.info).toHaveBeenCalledWith(expect.stringContaining("post-commit scripts: enabled"));
   expect(log.info).toHaveBeenCalledWith(expect.stringContaining("verification: disabled"));
   expect(log.info).toHaveBeenCalledWith(expect.stringContaining("pushback: enabled"));
   expect(log.warn).not.toHaveBeenCalled();

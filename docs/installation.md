@@ -37,6 +37,6 @@ It does not contain tests, CI files, or the package lockfile.
 
 ## Release limits
 
-Only an authorized release owner can publish a package version.
+Only an approved release owner can publish a package version.
 Validation does not authorize npm publication.
 VyOps does not publish the package during a router release.

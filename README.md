@@ -2,7 +2,7 @@
 
 ## @eliware/vyops [![npm](https://img.shields.io/npm/v/@eliware/vyops)](https://www.npmjs.com/package/@eliware/vyops) [![License](https://img.shields.io/github/license/eliware/vyops)](https://github.com/eliware/vyops/blob/main/LICENSE) [![CI](https://github.com/eliware/vyops/actions/workflows/ci.yaml/badge.svg)](https://github.com/eliware/vyops/actions/workflows/ci.yaml)
 
-Preflight, release, and back up native VyOS configuration bundles over SSH.
+Preflight local VyOS bundles. Release bundles with SSH. Copy router configuration and scripts with SSH.
 
 ## Table of Contents
 
@@ -24,7 +24,7 @@ Preflight, release, and back up native VyOS configuration bundles over SSH.
 
 ## Features
 
-VyOps checks local VyOS bundles before release. It can back up router config and scripts over SSH.
+VyOps checks local bundles before release. It can save router configuration and scripts with SSH.
 It can save confirmed router state to Git.
 
 ## Requirements
@@ -43,7 +43,7 @@ npm install --global @eliware/vyops
 
 The `vyops` command runs `bin/vyops`.
 The package includes `bin/`, `src/`, `docs/`, `specs/`, and project records.
-Only an authorized release owner can publish a new package version.
+Only an approved release owner can publish a new package version.
 Read the [installation guide](docs/installation.md) for package contents and release limits.
 
 ## Usage
@@ -80,15 +80,15 @@ The tests mock SSH and Git commands. They do not connect to a router.
 
 ## Troubleshooting
 
-Read the [troubleshooting guide](docs/troubleshooting.md) for common errors.
+Read the [troubleshooting guide](docs/troubleshooting.md) for typical errors.
 Use `vyops --help` to view command syntax.
 
 ## Security
 
 Keep router config, backups, logs, and SSH keys private.
-Never pass a password as a command-line value.
+Do not pass a password as a command-line value.
 Use `--password-stdin` for SSH password input.
-Read the [security guidance](docs/release.md#security) before a release.
+Read the [safe release guidance](docs/release.md#security) before a release.
 
 ## Configuration
 

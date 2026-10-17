@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { startDeployment } from "../../src/deploy/start.mjs";
+const { startDeployment } = await import("../../src/deploy/start.mjs");
 
 test("connects once and registers cleanup", async () => {
   const client = {};

@@ -9,7 +9,7 @@ directives:
       - Read and validate the saved script manifest.
       - Report the target and script count after all checks pass.
       - Return the target and script list to the release command.
-      - Return a non-zero process result when any check fails.
+      - Return a non-zero process result when one check fails.
     donts:
       - Do not make an SSH connection during preflight.
       - Do not read router state during preflight.

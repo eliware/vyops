@@ -30,7 +30,7 @@ export async function withRepositoryLock(repo, action, force) {
     await fs.mkdir(lock);
   } catch (error) {
     if (error.code !== "EEXIST" || !(await staleLock(lock, force))) {
-      if (error.code === "EEXIST") throw new Error("another pushback is already running");
+      if (error.code === "EEXIST") throw new Error("a pushback is in progress");
       throw error;
     }
     await fs.rm(lock, { recursive: true, force: true });

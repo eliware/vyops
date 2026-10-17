@@ -1,13 +1,16 @@
-import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { promises, resetMemoryFilesystem } from "../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-import {
+await import("../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const { mkdtemp, writeFile, mkdir, rm } = await import("node:fs/promises");
+import { join } from "node:path";
+const {
   MockClient,
-  fs as fixtureFs,
+  fs: fixtureFs,
   mockHostVerifier,
   createSshClientModule,
-} from "../test-fixtures/ssh-client.mjs";
+} = await import("../test-fixtures/ssh-client.mjs");
 
 jest.unstable_mockModule("@eliware/ssh-client", () =>
   createSshClientModule({ MockClient, fs: fixtureFs, join, mockHostVerifier }),
@@ -27,7 +30,7 @@ afterEach(() => {
 });
 
 async function prepareKey() {
-  const dir = await mkdtemp(join(tmpdir(), "ssh-test-"));
+  const dir = await mkdtemp(join("/virtual", "ssh-test-"));
   const key = join(dir, "key");
   await writeFile(key, "key");
   await mkdir(join(dir, ".ssh"), { recursive: true });

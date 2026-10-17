@@ -1,6 +1,6 @@
-import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
 import { jest } from "@jest/globals";
-import { redactDeploymentOutput } from "../../src/deploy/redact.mjs";
+const { setupDeployHarness } = await import("../../test-fixtures/deploy-harness.mjs");
+const { redactDeploymentOutput } = await import("../../src/deploy/redact.mjs");
 
 test("redacts password values and private keys", () => {
   const value = `password=hunter2\nAuthorization: token\n-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----`;

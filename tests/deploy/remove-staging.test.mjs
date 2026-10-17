@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { removeRemoteStaging } from "../../src/deploy/remove-staging.mjs";
+const { removeRemoteStaging } = await import("../../src/deploy/remove-staging.mjs");
 
 test("removes config, scripts, and backup staging paths", async () => {
   const exec = jest.fn().mockResolvedValue({ code: 0 });

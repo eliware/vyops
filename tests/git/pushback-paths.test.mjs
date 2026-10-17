@@ -1,10 +1,14 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { promises, resetMemoryFilesystem } from "../../test-fixtures/helpers/memory-filesystem.mjs";
+import { jest } from "@jest/globals";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const { mkdtemp, rm, writeFile } = await import("node:fs/promises");
 import { join } from "node:path";
-import { pushbackPaths } from "../../src/git/pushback-paths.mjs";
+const { pushbackPaths } = await import("../../src/git/pushback-paths.mjs");
 
 test("includes each present manifest as a separate deployment file", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "vyops-pushback-paths-"));
+  const repo = await mkdtemp(join("/virtual", "vyops-pushback-paths-"));
   await writeFile(join(repo, "config.boot.manifest.tsv"), "kind\tpath\n");
   await writeFile(join(repo, "config.boot.deployment.tsv"), "kind\tpath\tstate\n");
   const git = async () => {

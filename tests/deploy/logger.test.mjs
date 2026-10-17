@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { createDeploymentLogger } from "../../src/deploy/logger.mjs";
+const { createDeploymentLogger } = await import("../../src/deploy/logger.mjs");
 
 test("logs deployment phases and redacts the password", () => {
   const log = { debug: jest.fn() };

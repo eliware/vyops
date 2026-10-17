@@ -13,12 +13,14 @@ export function parseConfigBlocks(text) {
       else if (value.startsWith("#")) units.push({ type: "comment", value });
       else if (value === "}") {
         if (depth === 0)
-          throw new Error(`config validation failed: unexpected closing brace at line ${index}`);
+          throw new Error(
+            `config validation failed: unexpected closing curly bracket at line ${index}`,
+          );
         return { units, closed: true };
       } else if (value.endsWith("{")) {
         const children = parseLevel(depth + 1);
         if (!children.closed)
-          throw new Error(`config validation failed: unbalanced braces at line ${index}`);
+          throw new Error(`config validation failed: unbalanced curly brackets at line ${index}`);
         units.push({ type: "block", key: value, children: children.units });
       } else units.push({ type: "statement", value });
     }

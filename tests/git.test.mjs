@@ -1,25 +1,28 @@
-import { mkdir, utimes, writeFile } from "node:fs/promises";
-import { promises as fs } from "node:fs";
-import { join } from "node:path";
+import {
+  filesystem,
+  promises,
+  resetMemoryFilesystem,
+} from "../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-import { chdir } from "node:process";
+beforeEach(() => resetMemoryFilesystem());
+jest.useFakeTimers();
+jest.unstable_mockModule("node:fs", () => filesystem);
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const { mkdir, utimes, writeFile } = await import("node:fs/promises");
+const { promises: fs } = await import("node:fs");
+import { join } from "node:path";
 const defaultGit = jest.fn();
 await jest.unstable_mockModule("../src/git/command.mjs", () => ({ runGit: defaultGit }));
 const { repositorySnapshot, shouldSkip, pushBack } = await import("../src/git.mjs");
 const { repositoryRoot } = await import("../src/git/pushback.mjs");
-import {
-  createGitMock,
-  createGitWorkspace,
-  removeGitWorkspace,
-} from "../test-fixtures/git-harness.mjs";
+const { createGitMock, createGitWorkspace, removeGitWorkspace } =
+  await import("../test-fixtures/git-harness.mjs");
 
 test("git checks use the config directory and skip unchanged pushback commits", async () => {
   const { directory, config } = await createGitWorkspace();
-  const outside = process.cwd();
   const git = createGitMock(jest, directory, async (args) => {
     if (args[0] === "log") return { stdout: "Pushback test\n" };
   });
-  chdir(outside);
   try {
     await expect(shouldSkip(config, git)).resolves.toBe(true);
     expect(git).toHaveBeenCalledWith(["rev-parse", "--show-toplevel"], directory);
@@ -35,7 +38,6 @@ test("git checks use the config directory and skip unchanged pushback commits", 
       directory,
     );
   } finally {
-    chdir(outside);
     await removeGitWorkspace(directory);
   }
 });
@@ -54,16 +56,13 @@ test("shouldSkip is false for a changed config", async () => {
 });
 
 test("shouldSkip accepts a repository-relative config path", async () => {
-  const { directory } = await createGitWorkspace();
-  const outside = process.cwd();
+  const { directory } = await createGitWorkspace("relative-", process.cwd());
   const git = createGitMock(jest, directory, async (args) => {
     if (args[0] === "log") return { stdout: "Pushback relative\n" };
   });
-  chdir(directory);
   try {
     await expect(shouldSkip("config.boot", git)).resolves.toBe(true);
   } finally {
-    chdir(outside);
     await removeGitWorkspace(directory);
   }
 });
@@ -105,9 +104,7 @@ test("rejects an active pushback lock", async () => {
   const git = createGitMock(jest, directory);
   try {
     await makeLock(directory, String(process.pid), false);
-    await expect(pushBack(config, { runGit: git })).rejects.toThrow(
-      "another pushback is already running",
-    );
+    await expect(pushBack(config, { runGit: git })).rejects.toThrow("a pushback is in progress");
   } finally {
     await removeGitWorkspace(directory);
   }
@@ -137,9 +134,7 @@ test.each([
   });
   try {
     await makeLock(directory, "12345");
-    await expect(pushBack(config, { runGit: git })).rejects.toThrow(
-      "another pushback is already running",
-    );
+    await expect(pushBack(config, { runGit: git })).rejects.toThrow("a pushback is in progress");
   } finally {
     kill.mockRestore();
     await removeGitWorkspace(directory);

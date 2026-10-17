@@ -1,11 +1,18 @@
-import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import {
+  filesystem,
+  promises,
+  resetMemoryFilesystem,
+} from "../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-import { validateBundle } from "../src/bundle.mjs";
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs", () => filesystem);
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const { chmod, mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
+const { join } = await import("node:path");
+const { validateBundle } = await import("../src/bundle.mjs");
 
 async function bundleDirectory() {
-  const root = await mkdtemp(join(tmpdir(), "vyops-bundle-"));
+  const root = await mkdtemp(join("/virtual", "vyops-bundle-"));
   await mkdir(join(root, "scripts"), { recursive: true });
   return root;
 }
@@ -30,7 +37,7 @@ test("traverses nested scripts and excludes directories", async () => {
 });
 
 test("treats a non-directory scripts path as a traversal error", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-bundle-"));
+  const root = await mkdtemp(join("/virtual", "vyops-bundle-"));
   try {
     await rm(join(root, "scripts"), { recursive: true, force: true });
     await writeFile(join(root, "scripts"), "not a directory");
@@ -66,7 +73,7 @@ test("rejects CRLF in non-executable text files during local preflight", async (
     await writeFile(join(root, "scripts", "host-cert.pub"), "ssh-ed25519 AAAA\r\n");
     await expect(
       validateBundle(join(root, "config.boot"), "system {}\n", { extractTarget: false }),
-    ).rejects.toThrow("preflight failed: scripts/host-cert.pub contains CR bytes; convert to LF");
+    ).rejects.toThrow("preflight failed: scripts/host-cert.pub contains CR bytes. Convert to LF.");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

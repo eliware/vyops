@@ -1,4 +1,4 @@
-import { targetFromConfig } from "../../src/bundle/target.mjs";
+const { targetFromConfig } = await import("../../src/bundle/target.mjs");
 
 test("extracts the target from native VyOS configuration", () => {
   expect(
@@ -35,10 +35,10 @@ and ends here"
 
 test.each([
   ["system {}", "config does not define system host-name"],
-  ["system {\n host-name router\n}", "expected exactly one system login user; found 0"],
+  ["system {\n host-name router\n}", "expected one system login user. Found 0"],
   [
     "system {\n host-name router\n login {\n user a {\n }\n user b {\n }\n }\n}",
-    "expected exactly one system login user; found 2",
+    "expected one system login user. Found 2",
   ],
   ["system {\n host-name router\n", "config does not define system host-name"],
   [

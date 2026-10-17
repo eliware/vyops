@@ -10,7 +10,7 @@ directives:
       - List remote script files with NUL separators.
       - Validate each remote script path and file before download.
       - Require each listed file path to start with /config/scripts/.
-      - Read each remote script through a checked file handle.
+      - Read each remote script through a checked file descriptor.
       - Download the active config and scripts to a private temporary folder.
       - Set backed-up files to mode 0600.
       - Write config.boot.manifest.tsv with the backed-up script paths.
@@ -19,9 +19,9 @@ directives:
       - Restore prior backup files when publication fails.
       - Close the SSH client after success or failure.
       - Report a remote snapshot cleanup failure.
-      - Return success after all backup files are in place.
+      - Return success after each backup file exists.
     donts:
       - Do not change router config during backup.
-      - Do not publish a partial backup.
+      - Do not publish an incomplete backup.
       - Do not follow a remote script link.
-      - Do not write a backup over a filesystem root.
+      - Do not replace files at a filesystem root.

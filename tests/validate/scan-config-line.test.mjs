@@ -1,4 +1,4 @@
-import { scanConfigLine } from "../../src/validate/scan-config-line.mjs";
+const { scanConfigLine } = await import("../../src/validate/scan-config-line.mjs");
 
 test("scans comments and braces outside quoted text", () => {
   expect(scanConfigLine('value "# { }" { # note', 4)).toEqual({
@@ -14,7 +14,7 @@ test("keeps escaped quotes and comment markers inside quoted text", () => {
 });
 
 test.each([
-  ['value "unfinished', "unterminated quote"],
+  ['value "unfinished', "unterminated quotation mark"],
   ["value { {", "multiple opening braces"],
   ["value } }", "multiple closing braces"],
 ])("rejects invalid lexical line %s", (value, message) => {

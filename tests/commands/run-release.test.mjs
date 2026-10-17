@@ -30,6 +30,7 @@ test("runs preflight, prepares, deploys, and pushes back", async () => {
   pushBack.mockResolvedValue(true);
   await runRelease(args, log);
   expect(runPreflight).toHaveBeenCalledWith(args, log);
+  expect(runPreflight.mock.invocationCallOrder[0]).toBeLessThan(deploy.mock.invocationCallOrder[0]);
   expect(prepareRelease).toHaveBeenCalledWith(args, { target: "vyos@router" }, log);
   expect(repositorySnapshot).toHaveBeenCalledWith("config.boot");
   expect(deploy).toHaveBeenCalledWith(args);
@@ -38,7 +39,16 @@ test("runs preflight, prepares, deploys, and pushes back", async () => {
     expectedState: { repo: "/repo", state: "snapshot" },
   });
   expect(log.info).toHaveBeenCalledWith(expect.stringContaining("Pushback committed and pushed"));
-  expect(log.info).toHaveBeenCalledWith("[deployment op] Deployment successful");
+  expect(log.info).toHaveBeenCalledWith("[deployment op] Deployment complete");
+});
+
+test("does not connect when preflight fails", async () => {
+  runPreflight.mockRejectedValueOnce(new Error("preflight failed"));
+  await expect(
+    runRelease({ command: "release", config: "config.boot", operationId: "op" }, log),
+  ).rejects.toThrow("preflight failed");
+  expect(prepareRelease).not.toHaveBeenCalled();
+  expect(deploy).not.toHaveBeenCalled();
 });
 
 test("skips unchanged releases unless force is set", async () => {
@@ -46,7 +56,7 @@ test("skips unchanged releases unless force is set", async () => {
   shouldSkip.mockResolvedValue(true);
   await runRelease(args, log);
   expect(deploy).not.toHaveBeenCalled();
-  expect(log.info).toHaveBeenCalledWith(expect.stringContaining("skipping deployment"));
+  expect(log.info).toHaveBeenCalledWith(expect.stringContaining("Skipping deployment."));
   await runRelease({ ...args, force: true }, log);
   expect(deploy).toHaveBeenCalledTimes(1);
 });

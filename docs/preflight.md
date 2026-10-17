@@ -9,7 +9,7 @@ Run preflight:
 vyops preflight config.boot
 ```
 
-Show safe detail logs:
+Show safe debug messages:
 
 ```sh
 vyops preflight --debug config.boot

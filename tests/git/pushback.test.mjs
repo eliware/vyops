@@ -1,13 +1,18 @@
-import { promises as fs } from "node:fs";
-import { join } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
-import { jest } from "@jest/globals";
-import { pushBack } from "../../src/git/pushback.mjs";
 import {
-  createGitMock,
-  createGitWorkspace,
-  removeGitWorkspace,
-} from "../../test-fixtures/git-harness.mjs";
+  filesystem,
+  promises,
+  resetMemoryFilesystem,
+} from "../../test-fixtures/helpers/memory-filesystem.mjs";
+import { jest } from "@jest/globals";
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs", () => filesystem);
+jest.unstable_mockModule("node:fs/promises", () => promises);
+const { promises: fs } = await import("node:fs");
+import { join } from "node:path";
+const { mkdir, writeFile } = await import("node:fs/promises");
+const { pushBack } = await import("../../src/git/pushback.mjs");
+const { createGitMock, createGitWorkspace, removeGitWorkspace } =
+  await import("../../test-fixtures/git-harness.mjs");
 
 function lockPath(directory) {
   return join(directory, ".git", "vyops-pushback.lock");
@@ -99,7 +104,7 @@ test("pushBack preserves staged content when the worktree also changed", async (
   });
   try {
     await expect(pushBack(config, { runGit: git })).rejects.toThrow(
-      "configuration or manifest has staged and unstaged changes; refusing to overwrite staged content",
+      "configuration or manifest has staged and unstaged changes. Refusing to overwrite staged content.",
     );
   } finally {
     await removeGitWorkspace(directory);
@@ -111,9 +116,7 @@ test("does not reclaim a lock with missing owner metadata", async () => {
   const git = createGitMock(jest, directory);
   try {
     await mkdir(lockPath(directory));
-    await expect(pushBack(config, { runGit: git })).rejects.toThrow(
-      "another pushback is already running",
-    );
+    await expect(pushBack(config, { runGit: git })).rejects.toThrow("a pushback is in progress");
   } finally {
     await removeGitWorkspace(directory);
   }
@@ -126,7 +129,7 @@ test("force does not reclaim a lock owned by a live process", async () => {
     await mkdir(lockPath(directory));
     await writeFile(join(lockPath(directory), "owner"), `${process.pid}\n`);
     await expect(pushBack(config, { force: true, runGit: git })).rejects.toThrow(
-      "another pushback is already running",
+      "a pushback is in progress",
     );
   } finally {
     await removeGitWorkspace(directory);

@@ -1,4 +1,4 @@
-import { deploymentPaths } from "../../src/git/deployment-paths.mjs";
+const { deploymentPaths } = await import("../../src/git/deployment-paths.mjs");
 
 test("lists config, bundle manifest, and deployment manifest", () => {
   expect(deploymentPaths("config.boot")).toEqual([

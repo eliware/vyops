@@ -1,7 +1,7 @@
 import { verifyRelease } from "./verify-release.mjs";
 import { promises as fs } from "node:fs";
 import { downloadFilesToReplace } from "./download-to-replace.mjs";
-import { deploymentManifestPath } from "./deployment-manifest-path.mjs";
+import { deploymentManifestPath } from "./deployment/manifest-path.mjs";
 
 export async function completeDeployment(options) {
   const {
@@ -34,10 +34,10 @@ export async function completeDeployment(options) {
   }
   await downloadFilesToReplace(fs, download, getClient(), files, log);
   if (verify) await verifyRelease(getClient(), exec, log, redact);
-  phase("run hooks");
+  phase("run post-commit scripts");
   if (finalizeHooks) {
     const finalized = await finalizeHooks(true, getClient());
-    if (finalized === false) throw new Error("hook finalization failed");
+    if (finalized === false) throw new Error("post-commit script finalization failed");
     setHooksFinalized();
   }
 }

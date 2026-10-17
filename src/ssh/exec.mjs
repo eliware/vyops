@@ -25,7 +25,7 @@ export async function exec(client, command) {
       commandTimeout: timeout("VYOPS_OPERATION_TIMEOUT", 60000),
     });
     log.debug(
-      `[vyops] SSH exec [${operation}] complete: code=${result.code}; output=${(result.stdout || "").length + (result.stderr || "").length} bytes`,
+      `[vyops] SSH exec [${operation}] complete. code=${result.code}. output=${(result.stdout || "").length + (result.stderr || "").length} bytes`,
     );
     return result;
   } catch (error) {

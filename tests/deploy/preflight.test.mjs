@@ -1,5 +1,5 @@
-import { remotePreflight } from "../../src/deploy/preflight.mjs";
 import { jest } from "@jest/globals";
+const { remotePreflight } = await import("../../src/deploy/preflight.mjs");
 
 test("checks base router requirements", async () => {
   const exec = jest.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" });

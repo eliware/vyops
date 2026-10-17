@@ -17,8 +17,6 @@ export function targetFromConfig(text) {
   if (!isValidHost(host))
     throw new Error("preflight failed: config has an invalid system host-name");
   if (users.length !== 1)
-    throw new Error(
-      `preflight failed: expected exactly one system login user; found ${users.length}`,
-    );
+    throw new Error(`preflight failed: expected one system login user. Found ${users.length}`);
   return `${users[0]}@${host}`;
 }

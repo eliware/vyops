@@ -25,6 +25,6 @@ export function scanConfigLine(lineText, line) {
     }
     code += char;
   }
-  if (quote) fail(line, "unterminated quote");
+  if (quote) fail(line, "unterminated quotation mark");
   return { code, opening, closing };
 }

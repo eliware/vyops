@@ -1,8 +1,11 @@
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
+import { promises, resetMemoryFilesystem } from "../../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+import { join } from "node:path";
+const { mkdtemp, rm, writeFile } = await import("node:fs/promises");
+const { setupDeployHarness } = await import("../../test-fixtures/deploy-harness.mjs");
 test("returns an empty managed path set when no manifest exists", async () => {
   const { inspectLiveScripts } = await import("../../src/deploy/inspect-live-scripts.mjs");
   const result = await inspectLiveScripts({}, "missing-config");
@@ -17,7 +20,7 @@ test.each([
   ["stdout", "", "inspection output", "inspection output"],
   ["empty output", "", "", "live script inspection failed"],
 ])("reports live script scan failures from %s", async (_label, stderr, stdout, message) => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-inspection-"));
+  const root = await mkdtemp(join("/virtual", "vyops-inspection-"));
   const config = join(root, "config.boot");
   await writeFile(
     `${config}.deployment.tsv`,
@@ -34,7 +37,7 @@ test.each([
 });
 
 test("rejects symbolic links in the live script tree", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-inspection-"));
+  const root = await mkdtemp(join("/virtual", "vyops-inspection-"));
   const config = join(root, "config.boot");
   await writeFile(
     `${config}.deployment.tsv`,

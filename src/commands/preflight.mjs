@@ -1,5 +1,7 @@
 import { readAndValidateConfig } from "../validate/config-file.mjs";
 import { validateBundle, validateScriptManifest } from "../bundle.mjs";
+import { readDeploymentState } from "../deploy/script/manifest.mjs";
+import { readFile } from "node:fs/promises";
 
 export async function runPreflight(args, log) {
   log.debug(`[vyops] preflight: reading config ${args.config}`);
@@ -14,6 +16,12 @@ export async function runPreflight(args, log) {
     scripts.map(({ name }) => name),
   );
   log.debug("[vyops] preflight: script manifest validation complete");
-  log.info(`Preflight successful: ${target} (${scripts.length} script files)`);
+  try {
+    await readDeploymentState(readFile, `${args.config}.deployment.tsv`);
+  } catch (error) {
+    throw new Error(`preflight failed: ${error.message}`, { cause: error });
+  }
+  log.debug("[vyops] preflight: deployment state validation complete");
+  log.info(`Preflight complete: ${target} (${scripts.length} script files)`);
   return { target, scripts };
 }

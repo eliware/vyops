@@ -1,4 +1,4 @@
-import { usage } from "../../src/cli/usage.mjs";
+const { usage } = await import("../../src/cli/usage.mjs");
 
 test("documents each supported command and global option", () => {
   expect(usage).toContain("vyops preflight [--debug] <config.boot>");

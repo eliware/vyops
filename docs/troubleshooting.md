@@ -3,8 +3,8 @@
 ## Preflight errors
 
 Check the reported config line for syntax or indentation errors.
-Use four spaces for each nested block.
-Check the host name and single login user inside the `system` block.
+Use four spaces for each nested section.
+Check the host name and single login user inside the `system` section.
 Check script paths and the manifest header.
 Use tabs between manifest fields.
 
@@ -25,14 +25,14 @@ Use `VYOPS_INTERACTIVE_TIMEOUT` for interactive VyOS commands.
 ## Release errors
 
 Run preflight to find local errors before SSH setup.
-Check router tools, free space, and `/config` write access when remote preflight fails.
-Review the `compare` output before VyOS accepts the candidate.
-Run `vyops backup` before release when you need a full router backup.
+Check router tools, available storage, and `/config` write access when remote preflight fails.
+Check the `compare` output before VyOS accepts the candidate.
+Run `vyops backup` before release when a full router copy is necessary.
 
 Check the latest Git pushback commit when VyOps skips a release.
-Use `--force` when you need to run an unchanged release.
+Use `--force` when it is necessary to run an unchanged release.
 Set a branch upstream when pushback fails.
-Review the pushback error before you run `git push` yourself.
+Read the pushback error before you run `git push`.
 
 ## Debug logs
 

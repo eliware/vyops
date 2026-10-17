@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { log } from "@eliware/common";
 import { exec } from "../ssh/exec.mjs";
-import { readDeploymentState } from "./script-manifest.mjs";
+import { readDeploymentState } from "./script/manifest.mjs";
 import { unmanagedPaths } from "./live-script-paths.mjs";
-import { deploymentManifestPath } from "./deployment-manifest-path.mjs";
+import { deploymentManifestPath } from "./deployment/manifest-path.mjs";
 
 export async function inspectLiveScripts(client, config, bundleNames = []) {
   const manifest = deploymentManifestPath(config);
@@ -11,7 +11,15 @@ export async function inspectLiveScripts(client, config, bundleNames = []) {
     const state = await readDeploymentState(readFile, manifest);
     const live = await exec(
       client,
-      'links=$(find -P /config/scripts -type l -print -quit 2>/dev/null) || exit 1; if [ -n "$links" ]; then printf \'VYOPS_SYMLINK\\0%s\\0\' "$links"; exit 0; fi; find -P /config/scripts -type f -print0 2>/dev/null',
+      [
+        "links=$(find -P /config/scripts -type l -print 2>/dev/null | sed -n '1p') || exit 1",
+        'if [ -n "$links" ]',
+        "then",
+        "  printf 'VYOPS_SYMLINK\\0%s\\0' \"$links\"",
+        "  exit 0",
+        "fi",
+        "find -P /config/scripts -type f -print0 2>/dev/null",
+      ].join("\n"),
     );
     if (live.stdout.startsWith("VYOPS_SYMLINK\0"))
       throw new Error(`symbolic link found in live script tree: ${live.stdout.split("\0")[1]}`);
@@ -24,12 +32,12 @@ export async function inspectLiveScripts(client, config, bundleNames = []) {
       const matching = livePaths.filter((file) => bundle.has(file));
       const routerOnly = livePaths.filter((file) => !bundle.has(file));
       const baseline = state.hasManifest ? "" : "No prior deployment manifest exists. ";
-      const review = `${baseline}Live script review: VyOps will save matching files for rollback (${matching.join(", ") || "none"}). Router-only files will remain unchanged (${routerOnly.join(", ") || "none"}).`;
+      const summary = `${baseline}Live script check: VyOps will save matching files for rollback (${matching.join(", ") || "none"}). Router-only files will remain unchanged (${routerOnly.join(", ") || "none"}).`;
       if (unmanaged.length)
         log.warn(
-          `${review} Run vyops backup <target> <directory> before release for a full backup.`,
+          `${summary} Run vyops backup <target> <directory> before release for a full backup.`,
         );
-      else log.info(review);
+      else log.info(summary);
     }
     return state.managed;
   } catch (error) {

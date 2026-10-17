@@ -1,11 +1,9 @@
-import { pushFailure } from "../../src/git/push-failure.mjs";
-import { pushBack } from "../../src/git/pushback.mjs";
 import { jest } from "@jest/globals";
-import {
-  createGitMock,
-  createGitWorkspace,
-  removeGitWorkspace,
-} from "../../test-fixtures/git-harness.mjs";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+const { pushFailure } = await import("../../src/git/push-failure.mjs");
+const { pushBack } = await import("../../src/git/pushback.mjs");
+const { createGitMock, createGitWorkspace, removeGitWorkspace } =
+  await import("../../test-fixtures/git-harness.mjs");
 
 test.each([
   [

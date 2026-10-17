@@ -1,9 +1,12 @@
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { setupDeployHarness } from "../../test-fixtures/deploy-harness.mjs";
+import { promises, resetMemoryFilesystem } from "../../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-import { prepareDeployment } from "../../src/deploy/prepare.mjs";
+await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+beforeEach(() => resetMemoryFilesystem());
+jest.unstable_mockModule("node:fs/promises", () => promises);
+import { join } from "node:path";
+const { mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
+const { setupDeployHarness } = await import("../../test-fixtures/deploy-harness.mjs");
+const { prepareDeployment } = await import("../../src/deploy/prepare.mjs");
 
 test("preflights and uploads before script installation", async () => {
   const events = [];
@@ -74,7 +77,7 @@ test("skips hooks when requested", async () => {
 });
 
 test("aborts before interactive deployment when remote script validation fails", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vyops-deploy-"));
+  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
   const scripts = join(root, "scripts");
   await mkdir(scripts, { recursive: true });
   await writeFile(join(scripts, "hook.sh"), "#!/bin/sh\n");

@@ -1,4 +1,4 @@
-import { optionalVerificationStatus } from "../../src/deploy/verification-status.mjs";
+const { optionalVerificationStatus } = await import("../../src/deploy/verification-status.mjs");
 
 test.each([
   ["show vrrp", "VRRP data is not available (process not running or no active groups)"],
@@ -6,7 +6,7 @@ test.each([
   ["show haproxy", "Haproxy is not configured"],
 ])("treats absent optional service as non-blocking for %s", (command, output) => {
   expect(optionalVerificationStatus(command, output, 1)).toBe(
-    "optional feature is not configured or active",
+    "optional check is not configured or active",
   );
 });
 

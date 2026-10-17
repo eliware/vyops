@@ -1,7 +1,7 @@
-import { validateCommandOptions } from "./args-validation.mjs";
-import { buildArgsResult } from "./args-result.mjs";
-import { readCommandTokens } from "./args-tokens.mjs";
-import { parseSpecialArgs } from "./args-special.mjs";
+import { validateCommandOptions } from "./args/validation.mjs";
+import { buildArgsResult } from "./args/result.mjs";
+import { readCommandTokens } from "./args/tokens.mjs";
+import { parseSpecialArgs } from "./args/special.mjs";
 import { usage } from "./cli/usage.mjs";
 
 export function parseArgs(argv) {
