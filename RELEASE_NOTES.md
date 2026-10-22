@@ -1,18 +1,20 @@
 # Release Notes
 
-## 13.0.0 — 2026-10-17
+## 15.0.0 — 2026-10-22
 
 ### Changed
 
-- Align package metadata and workflows with Eliware Test 13 conventions.
-- Group related source modules and tests in focused folders.
-- Check the local deployment manifest during preflight.
-- Update each script record after installation.
+- Align package metadata, documentation, and workflows with Eliware Test 15 conventions.
+- Update `@eliware/common`, `@eliware/ssh-client`, and `@eliware/test` to version 15.0.0.
+- Group implementation modules and tests by responsibility.
+- Replace test filesystem setup with an in-memory mock filesystem.
+- Check deployment manifests during preflight and record installed script state.
 
 ### Fixed
 
 - Reject duplicate deployment paths before release.
-- Keep prior and installed script data in one manifest row.
+- Store prior and installed script data in one manifest record.
+- Keep Git and SSH commands isolated behind test mocks.
 
 ## 12.0.0 — 2026-10-12
 
