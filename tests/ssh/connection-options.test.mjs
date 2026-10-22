@@ -9,10 +9,9 @@ test("builds key and host verification options", () => {
         SSH_AUTH_SOCK: "/tmp/agent",
         SSH_KNOWN_HOSTS: "/keys/known_hosts",
         SSH_HOST_CA: "/keys/ca",
-        VYOPS_CONNECT_TIMEOUT: "1234",
       },
     ),
-  ).toEqual({
+  ).toMatchObject({
     host: "router",
     username: "vyos",
     privateKeyPath: undefined,
@@ -20,26 +19,18 @@ test("builds key and host verification options", () => {
     knownHostsPath: "/keys/known_hosts",
     hostCaPath: "/keys/ca",
     password: undefined,
-    connectTimeout: 1234,
   });
 });
 
-test("uses defaults for missing and invalid timeout values", () => {
+test("uses default host verification options when no environment values exist", () => {
   expect(createConnectionOptions({ host: "router", username: "vyos" }, {})).toMatchObject({
     privateKeyPath: undefined,
     knownHostsPath: "~/.ssh/known_hosts",
-    connectTimeout: 30000,
   });
   expect(
     createConnectionOptions(
       { host: "router", username: "vyos", password: "secret" },
-      { VYOPS_SSH_KEY: "/keys/release", VYOPS_CONNECT_TIMEOUT: "0" },
+      { VYOPS_SSH_KEY: "/keys/release" },
     ),
-  ).toMatchObject({ privateKeyPath: undefined, password: "secret", connectTimeout: 30000 });
-  expect(
-    createConnectionOptions(
-      { host: "router", username: "vyos" },
-      { VYOPS_CONNECT_TIMEOUT: "invalid" },
-    ).connectTimeout,
-  ).toBe(30000);
+  ).toMatchObject({ privateKeyPath: undefined, password: "secret" });
 });

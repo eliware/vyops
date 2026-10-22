@@ -10,11 +10,7 @@ export { targetFromConfig, isSafeScriptPath, validateScriptManifest };
 
 /* SPLIT_TARGET_START */
 export async function validateBundle(config, text, { extractTarget = true, fsApi = fs } = {}) {
-  const scripts = await filesIn(
-    join(config, "..", "scripts"),
-    join(config, "..", "scripts"),
-    fsApi,
-  );
+  const scripts = await filesIn(join(config, "..", "scripts"), fsApi);
   for (const { file, name } of scripts) {
     validateScriptPath(name);
     const data = await fsApi.readFile(file);
