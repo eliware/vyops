@@ -37,6 +37,8 @@ directives:
       - Keep the local deployment manifest when the release does not sync scripts.
       - Keep router script state separate from config.boot.manifest.tsv.
       - Write a nine-column tab-separated header to config.boot.deployment.tsv.
+      - Read compatible legacy state pairs as one deployment manifest path.
+      - Write one deployment manifest record for each script path after script sync.
       - >-
         Use these columns in order: `kind`, `path`, `preexisting`, `old_mode`, `old_sha256`,
         `old_type`, `new_mode`, `new_sha256`, `new_type`.

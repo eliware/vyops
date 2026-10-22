@@ -4,6 +4,7 @@
 
 ### Added
 
+- Include `.env.example` in the published package.
 - Upgrade `@eliware/common`, `@eliware/ssh-client`, and `@eliware/test` to version 15.0.0.
 - Align CI, npm publication, and Knit workflows with the approved shared workflows.
 - Use full Git history in CI for tag and release checks.
@@ -19,6 +20,7 @@
 
 ### Fixed
 
+- Read compatible legacy deployment manifest pairs and keep one state record for each script path.
 - Reject a command after a leading `--` and reject more positional values after the delimiter.
 - Validate deployment manifest headers, records, paths, and duplicates before remote updates.
 - Write actual tab characters in the remote deployment manifest header.

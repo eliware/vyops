@@ -68,6 +68,8 @@ VyOps refuses pushback when the repository changes during release.
 The bundle manifest lists managed script paths.
 The deployment manifest records prior and installed file state for the router.
 Keep these files in separate paths.
+VyOps can read an older manifest that stores prior and installed state in two compatible rows.
+After script sync, VyOps writes one row for each path.
 
 ## Script checks
 
