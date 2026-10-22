@@ -1,11 +1,14 @@
 import { pushFailure } from "../push-failure.mjs";
 import { repositoryState } from "../repository/state.mjs";
+import { formatRepositorySnapshot } from "../repository/snapshot.mjs";
 
 export async function commitPushback(
   gitRunner,
   { repo, relativePath, paths, expectedState, beforeCommit },
 ) {
-  const initialState = await repositoryState(gitRunner, repo, relativePath);
+  const initialState = formatRepositorySnapshot(
+    await repositoryState(gitRunner, repo, relativePath),
+  );
   if (expectedState && (expectedState.repo !== repo || initialState !== expectedState.state)) {
     throw new Error("repository changed during deployment. Refusing to commit.");
   }
@@ -23,7 +26,9 @@ export async function commitPushback(
   const { stdout: diff } = await gitRunner(["diff", "HEAD", "--", ...paths], repo);
   if (!diff) return false;
   await beforeCommit(repo);
-  if ((await repositoryState(gitRunner, repo, relativePath)) !== initialState)
+  if (
+    formatRepositorySnapshot(await repositoryState(gitRunner, repo, relativePath)) !== initialState
+  )
     throw new Error("repository changed during pushback. Refusing to commit.");
   await gitRunner(["add", "--", ...paths], repo);
   const timestamp = new Date().toISOString().replace("T", " ").slice(0, 19);

@@ -1,6 +1,8 @@
 import { backup } from "../backup.mjs";
+import { parseTarget } from "../ssh.mjs";
 
 export async function runBackup(args, log) {
+  parseTarget(args.target);
   log.debug(`[vyops] backup: target=${args.target}, destination=${args.config}`);
   await backup({ ...args, log });
   log.info(`Backup complete: ${args.config}`);

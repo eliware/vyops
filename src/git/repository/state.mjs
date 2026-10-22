@@ -13,5 +13,11 @@ export async function repositoryState(git, repo, configPath) {
     git(["status", "--porcelain=v1", "--untracked-files=all", "--", ".", ...excludedPaths], repo),
     git(["diff", "--cached", "--name-status", "--no-renames", "--", ...paths], repo),
   ]);
-  return `${head.stdout.trim()}\n${branch.stdout.trim()}\n${upstream.stdout.trim()}\n${stagedDeploymentPaths.stdout}${status.stdout}`;
+  return {
+    head: head.stdout.trim(),
+    branch: branch.stdout.trim(),
+    upstream: upstream.stdout.trim(),
+    stagedDeploymentPaths: stagedDeploymentPaths.stdout,
+    status: status.stdout,
+  };
 }

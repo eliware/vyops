@@ -1,11 +1,13 @@
 import { jest } from "@jest/globals";
-const readAndValidateConfig = jest.fn().mockResolvedValue("config");
+const readConfigFile = jest.fn().mockResolvedValue("config");
+const validateConfig = jest.fn();
 const validateBundle = jest
   .fn()
   .mockResolvedValue({ target: "vyos@router", scripts: [{ name: "hook.sh" }] });
 const validateScriptManifest = jest.fn().mockResolvedValue(undefined);
 const readDeploymentState = jest.fn().mockResolvedValue({ managed: new Set(), hasManifest: true });
-jest.unstable_mockModule("../../src/validate/config-file.mjs", () => ({ readAndValidateConfig }));
+jest.unstable_mockModule("../../src/validate/config-file.mjs", () => ({ readConfigFile }));
+jest.unstable_mockModule("../../src/validate/config.mjs", () => ({ validateConfig }));
 jest.unstable_mockModule("../../src/bundle.mjs", () => ({
   validateBundle,
   validateScriptManifest,
@@ -16,6 +18,8 @@ test("validates and reports bundle details", async () => {
   const log = { debug: jest.fn(), info: jest.fn() };
   const args = { config: "/tmp/config.boot" };
   await runPreflight(args, log);
+  expect(readConfigFile).toHaveBeenCalledWith(args.config);
+  expect(validateConfig).toHaveBeenCalledWith("config");
   expect(validateBundle).toHaveBeenCalledWith(args.config, "config");
   expect(validateScriptManifest).toHaveBeenCalledWith(args.config, undefined, ["hook.sh"]);
   expect(readDeploymentState).toHaveBeenCalledWith(

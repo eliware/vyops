@@ -1,5 +1,6 @@
 import { runGit } from "./git/command.mjs";
 import { repositoryState } from "./git/repository/state.mjs";
+import { formatRepositorySnapshot } from "./git/repository/snapshot.mjs";
 import { deploymentPaths } from "./git/deployment-paths.mjs";
 import { pushBack } from "./git/pushback.mjs";
 import { repositoryRoot, relativeConfigPath } from "./git/repository/location.mjs";
@@ -10,7 +11,8 @@ export async function repositorySnapshot(config, gitRunner = runGit) {
   const repo = await repositoryRoot(config, gitRunner);
   if (!repo) return null;
   const configPath = await relativeConfigPath(repo, config);
-  return { repo, state: await repositoryState(gitRunner, repo, configPath) };
+  const state = await repositoryState(gitRunner, repo, configPath);
+  return { repo, state: formatRepositorySnapshot(state) };
 }
 
 export async function shouldSkip(config, gitRunner = runGit) {

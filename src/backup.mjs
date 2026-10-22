@@ -1,6 +1,6 @@
 import { fs, path, log as defaultLog } from "@eliware/common";
 import { randomUUID } from "node:crypto";
-import { close, connect, parseTarget } from "./ssh.mjs";
+import { close, connect } from "./ssh.mjs";
 import { exec } from "./ssh/exec.mjs";
 import { download } from "./ssh/download.mjs";
 import { backupDestination } from "./backup/destination.mjs";
@@ -9,7 +9,6 @@ import { publishBackup } from "./backup/publish-backup.mjs";
 import { stageBackup } from "./backup/stage/backup.mjs";
 
 export async function backup({ target, config, password, log = defaultLog }) {
-  parseTarget(target);
   config = backupDestination(config);
   const client =
     password === undefined ? await connect(target) : await connect(target, { password });

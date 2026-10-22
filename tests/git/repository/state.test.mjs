@@ -71,9 +71,21 @@ test("Git integration propagates unexpected repository errors", async () => {
   }
 });
 
-test("joins Git state fields into a snapshot", async () => {
-  const git = jest.fn(async ([command]) => ({ stdout: command === "rev-parse" ? "head\n" : "" }));
-  await expect(repositoryState(git, "repo", "config.boot")).resolves.toContain("head");
+test("collects Git state fields", async () => {
+  const git = jest.fn(async ([command, ...args]) => {
+    if (command === "rev-parse" && args[0] === "HEAD") return { stdout: "head\n" };
+    if (command === "symbolic-ref") return { stdout: "main\n" };
+    if (command === "rev-parse") return { stdout: "origin/main\n" };
+    if (command === "status") return { stdout: " M other.txt\n" };
+    return { stdout: "M\tconfig.boot\n" };
+  });
+  await expect(repositoryState(git, "repo", "config.boot")).resolves.toEqual({
+    head: "head",
+    branch: "main",
+    upstream: "origin/main",
+    stagedDeploymentPaths: "M\tconfig.boot\n",
+    status: " M other.txt\n",
+  });
   expect(git).toHaveBeenCalledTimes(5);
 });
 

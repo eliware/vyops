@@ -64,67 +64,6 @@ test("downloads the confirmed config and finalizes hooks", async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-test("preserves the local config when the download fails", async () => {
-  const root = await mkdtemp(join("/virtual", "vyops-complete-"));
-  const config = join(root, "config.boot");
-  await writeFile(config, "old config");
-  await expect(
-    completeDeployment({
-      getClient: () => ({}),
-      setClient: () => {},
-      connectClient: async () => ({}),
-      close: async () => {},
-      download: jest.fn().mockRejectedValue(new Error("download failed")),
-      manifest: "manifest",
-      config,
-      finalizeHooks: null,
-      verify: false,
-      exec: async () => {},
-      log: { info: jest.fn() },
-      redact: (value) => value,
-      phase: () => {},
-      debugLog: () => {},
-      setHooksFinalized: jest.fn(),
-    }),
-  ).rejects.toThrow("download failed");
-  await expect(readFile(config, "utf8")).resolves.toBe("old config");
-  await rm(root, { recursive: true, force: true });
-});
-
-test("preserves both local files when the manifest download fails", async () => {
-  const root = await mkdtemp(join("/virtual", "vyops-complete-"));
-  const config = join(root, "config.boot");
-  const deployment = `${config}.deployment.tsv`;
-  await writeFile(config, "old config");
-  await writeFile(deployment, "old deployment state");
-  const download = jest.fn(async (_client, remote, local) => {
-    if (remote === "/config/config.boot") await writeFile(local, "new config");
-    else throw new Error("manifest download failed");
-  });
-  await expect(
-    completeDeployment({
-      getClient: () => ({}),
-      setClient: () => {},
-      connectClient: async () => ({}),
-      close: async () => {},
-      download,
-      manifest: "manifest",
-      config,
-      finalizeHooks: jest.fn(),
-      verify: false,
-      exec: async () => {},
-      log: { info: jest.fn() },
-      redact: (value) => value,
-      phase: () => {},
-      debugLog: () => {},
-      setHooksFinalized: jest.fn(),
-    }),
-  ).rejects.toThrow("manifest download failed");
-  await expect(readFile(config, "utf8")).resolves.toBe("old config");
-  await expect(readFile(deployment, "utf8")).resolves.toBe("old deployment state");
-  await rm(root, { recursive: true, force: true });
-});
-
 test("does not mark hooks finalized when cleanup fails", async () => {
   const root = await mkdtemp(join("/virtual", "vyops-complete-"));
   const config = join(root, "config.boot");

@@ -10,7 +10,6 @@ const fsMocks = {
 };
 const mocks = {
   connect: jest.fn(),
-  parseTarget: jest.fn(),
   close: jest.fn().mockResolvedValue(undefined),
   download: jest.fn().mockResolvedValue(undefined),
   exec: jest.fn(),
@@ -27,7 +26,6 @@ const { backup } = await import("../src/backup.mjs");
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mocks.parseTarget.mockReset().mockImplementation(() => {});
   mocks.connect.mockResolvedValue({});
   mocks.exec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }).mockResolvedValue({
     code: 0,
@@ -76,17 +74,6 @@ test("backs up config and nested scripts", async () => {
   expect(fsMocks.mkdir).toHaveBeenCalledWith(expect.stringContaining(".vyops-backup-"), {
     mode: 0o700,
   });
-});
-
-test("rejects an invalid target before it connects", async () => {
-  mocks.parseTarget.mockImplementation(() => {
-    throw new Error("invalid target");
-  });
-  await expect(backup({ target: "invalid", config: "/tmp/backup" })).rejects.toThrow(
-    "invalid target",
-  );
-  expect(mocks.connect).not.toHaveBeenCalled();
-  expect(mocks.close).not.toHaveBeenCalled();
 });
 
 test("passes a bootstrap password through to SSH", async () => {
