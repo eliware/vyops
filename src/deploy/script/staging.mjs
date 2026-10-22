@@ -1,6 +1,5 @@
 import { posix as posixPath } from "node:path";
-import { localScriptMetadata } from "./validation.mjs";
-import { fs } from "@eliware/common";
+import { readScriptMetadata } from "./local-metadata.mjs";
 import { recordScriptState } from "./record-state.mjs";
 import { uploadStagedScript } from "../upload-staged-script.mjs";
 
@@ -26,9 +25,8 @@ export async function stageScript(options) {
   const installed = `${installDir}/${name}`;
   const backup = `${backupDir}/${name}`;
   const parent = posixPath.dirname(name);
-  const { mode, executable, binary, localHash } = await localScriptMetadata(
+  const { mode, executable, binary, localHash } = await readScriptMetadata(
     readLocalFile,
-    fs.promises.stat,
     scriptsDir,
     name,
   );

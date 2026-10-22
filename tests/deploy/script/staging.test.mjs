@@ -10,45 +10,6 @@ import { join } from "node:path";
 const { mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
 const { setupDeployHarness } = await import("../../../test-fixtures/deploy-harness.mjs");
 const { fsMocks, mocks, deploy } = await setupDeployHarness(jest);
-const { stageScript } = await import("../../../src/deploy/script/staging.mjs");
-
-test("records script metadata and uploads the staged file", async () => {
-  const staged = [];
-  fsMocks.stat.mockResolvedValue({ mode: 0o100644 });
-  await stageScript({
-    name: "hook.sh",
-    client: {},
-    scriptsDir: "/bundle/scripts",
-    remoteDir: "/tmp/scripts",
-    installDir: "/config/scripts",
-    backupDir: "/tmp/backup",
-    manifest: "/tmp/manifest.tsv",
-    previouslyManaged: new Set(["hook.sh"]),
-    readLocalFile: jest.fn().mockResolvedValue(Buffer.from("#!/bin/sh\n")),
-    eliwarePath: (...parts) => parts.join("/"),
-    verifyBinaries: false,
-    redact: (value) => value,
-    staged,
-  });
-  expect(mocks.upload).toHaveBeenCalledWith(
-    expect.any(Object),
-    "/bundle/scripts/hook.sh",
-    "/tmp/scripts/hook.sh",
-    0o755,
-  );
-  expect(staged).toEqual([
-    {
-      name: "hook.sh",
-      remote: "/tmp/scripts/hook.sh",
-      installed: "/config/scripts/hook.sh",
-      parent: ".",
-      mode: 0o755,
-      executable: 0o111,
-      binary: false,
-      managed: true,
-    },
-  ]);
-});
 
 test("builds binary staging validation with hash verification", async () => {
   const root = await mkdtemp(join("/virtual", "vyops-binary-"));

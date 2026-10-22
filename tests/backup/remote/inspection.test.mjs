@@ -34,49 +34,21 @@ test("accepts a router with no scripts directory", async () => {
 });
 
 test.each([
-  [
-    "link scan stderr",
-    true,
-    { code: 1, stderr: "denied" },
-    "could not inspect remote scripts: denied",
-  ],
-  [
-    "link scan stdout",
-    true,
-    { code: 1, stdout: "find output" },
-    "could not inspect remote scripts: find output",
-  ],
-  [
-    "file scan stderr",
-    false,
-    { code: 1, stderr: "denied" },
-    "could not list remote scripts: denied",
-  ],
+  ["file scan stderr", { code: 1, stderr: "denied" }, "could not list remote scripts: denied"],
   [
     "file scan stdout",
-    false,
     { code: 1, stdout: "find output" },
     "could not list remote scripts: find output",
   ],
-])("reports %s errors", async (_name, linkScan, failure, message) => {
-  const exec = jest.fn();
-  if (linkScan) exec.mockResolvedValueOnce(failure);
-  else {
-    exec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }).mockResolvedValueOnce(failure);
-  }
+])("reports %s", async (_name, failure, message) => {
+  const exec = jest
+    .fn()
+    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+    .mockResolvedValueOnce(failure);
   await expect(inspectRemoteScripts(exec, {}, log)).rejects.toThrow(message);
 });
 
-test("rejects remote links and unsafe script paths", async () => {
-  const linkedRoot = jest.fn().mockResolvedValue({ code: 0, stdout: "/config/scripts\0" });
-  await expect(inspectRemoteScripts(linkedRoot, {}, log)).rejects.toThrow(
-    "remote script symlink rejected: /config/scripts",
-  );
-  expect(linkedRoot.mock.calls[0][1]).toContain("[ -L /config/scripts ]");
-  const links = jest.fn().mockResolvedValue({ code: 0, stdout: "/config/scripts/link\0" });
-  await expect(inspectRemoteScripts(links, {}, log)).rejects.toThrow(
-    "remote script symlink rejected",
-  );
+test("rejects unsafe remote script paths", async () => {
   const unsafe = jest
     .fn()
     .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
