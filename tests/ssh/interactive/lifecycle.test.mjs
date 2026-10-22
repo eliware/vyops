@@ -76,3 +76,9 @@ test("rejects shell closure when exit is queued but not sent", () => {
   );
   expect(closed.resolve).not.toHaveBeenCalled();
 });
+
+test("resolves an empty command sequence when the shell closes", () => {
+  const empty = options();
+  empty.stream.emit("close");
+  expect(empty.resolve).toHaveBeenCalledWith("output");
+});

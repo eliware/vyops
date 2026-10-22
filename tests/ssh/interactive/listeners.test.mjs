@@ -33,24 +33,3 @@ test("wires stream data and lifecycle events", () => {
   expect(stream.stderr.listenerCount("data")).toBe(1);
   clearTimeout(timer);
 });
-
-test("resolves an empty command sequence when the shell closes", () => {
-  const stream = new EventEmitter();
-  stream.stderr = new EventEmitter();
-  const resolve = jest.fn();
-  const timer = setTimeout(() => {}, 60000);
-  attachInteractiveListeners({
-    stream,
-    client: {},
-    commands: [],
-    log: jest.fn(),
-    state: { output: "", response: "", index: 0, waiting: false, settled: false, timedOut: false },
-    timer,
-    sendNext: jest.fn(),
-    resolve,
-    reject: jest.fn(),
-    onCommandComplete: jest.fn(),
-  });
-  stream.emit("close");
-  expect(resolve).toHaveBeenCalledWith("");
-});

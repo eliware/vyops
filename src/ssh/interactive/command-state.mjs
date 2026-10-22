@@ -1,4 +1,4 @@
-import { interactiveFailureDetail } from "./text.mjs";
+import { interactiveFailureDetail } from "./failure-detail.mjs";
 import { isRouterPrompt, isCommitPrompt } from "./recognition.mjs";
 
 export function shouldCompleteInteractiveCommand(state, cleaned) {
