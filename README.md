@@ -42,7 +42,7 @@ npm install --global @eliware/vyops
 ```
 
 The `vyops` command runs `bin/vyops`.
-The package includes `bin/`, `src/`, `docs/`, `specs/`, and project records.
+The package includes `bin/`, `src/`, `docs/`, `specs/`, `.env.example`, and project records.
 Only an approved release owner can publish a new package version.
 Read the [installation guide](docs/installation.md) for package contents and release limits.
 

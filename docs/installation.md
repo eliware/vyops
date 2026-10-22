@@ -32,6 +32,7 @@ The package entrypoint is `bin/vyops`.
 ## Package contents
 
 The package contains `bin/`, `src/`, `docs/`, and `specs/`.
+It also contains `.env.example` with optional settings and placeholder values.
 It also contains README.md, AGENTS.md, LICENSE, and RELEASE_NOTES.md.
 It does not contain tests, CI files, or the package lockfile.
 
