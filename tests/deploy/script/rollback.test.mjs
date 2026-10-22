@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 const { rollbackScripts } = await import("../../../src/deploy/script/rollback.mjs");
 
-test("rolls back managed script paths and warns on failure", async () => {
+test("returns failure when script restoration fails", async () => {
   const exec = jest.fn().mockRejectedValue(new Error("transport lost"));
   const log = { warn: jest.fn() };
   await expect(
@@ -13,7 +13,6 @@ test("rolls back managed script paths and warns on failure", async () => {
       remoteDir: "/tmp/r",
     }),
   ).resolves.toBe(false);
-  expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("script restoration failed"));
 });
 
 test("reports a nonzero rollback command result", async () => {

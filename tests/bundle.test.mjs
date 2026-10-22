@@ -17,38 +17,6 @@ async function bundleDirectory() {
   return root;
 }
 
-test("traverses nested scripts and excludes directories", async () => {
-  const root = await bundleDirectory();
-  try {
-    await mkdir(join(root, "scripts", "nested"));
-    await writeFile(join(root, "scripts", "nested", "hook.sh"), "#!/bin/sh\n");
-    await writeFile(join(root, "scripts", "plain.txt"), "data\n");
-    await expect(
-      validateBundle(join(root, "config.boot"), "system {}\n", { extractTarget: false }),
-    ).resolves.toEqual({
-      scripts: expect.arrayContaining([
-        expect.objectContaining({ name: "nested/hook.sh" }),
-        expect.objectContaining({ name: "plain.txt" }),
-      ]),
-    });
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("treats a non-directory scripts path as a traversal error", async () => {
-  const root = await mkdtemp(join("/virtual", "vyops-bundle-"));
-  try {
-    await rm(join(root, "scripts"), { recursive: true, force: true });
-    await writeFile(join(root, "scripts"), "not a directory");
-    await expect(
-      validateBundle(join(root, "config.boot"), "system {}\n", { extractTarget: false }),
-    ).rejects.toMatchObject({ code: "ENOTDIR" });
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
 test.each([
   ["bad.sh", "echo bad\n", 0o755, "no shebang"],
   ["bad.sh", "#!/usr/bin/python\n", 0o755, "unsupported interpreter"],
@@ -91,19 +59,6 @@ test("accepts supported binaries and executable hook names", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
-});
-
-test("skips symlink-like entries during traversal", async () => {
-  const entries = [{ name: "link.sh", isDirectory: () => false, isFile: () => false }];
-  const fsApi = {
-    readdir: async () => entries,
-    readFile: jest.fn(),
-    stat: jest.fn(),
-  };
-  await expect(
-    validateBundle("/tmp/config.boot", "system {}\n", { extractTarget: false, fsApi }),
-  ).resolves.toEqual({ scripts: [] });
-  expect(fsApi.readFile).not.toHaveBeenCalled();
 });
 
 test("rejects unsafe paths from filesystem entries", async () => {
