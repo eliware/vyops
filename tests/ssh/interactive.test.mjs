@@ -87,6 +87,24 @@ test("uses default log and completion callbacks", async () => {
   await expect(promise).resolves.toContain("testuser@router#");
 });
 
+test("completes a structured command", async () => {
+  const client = new MockClient();
+  const completed = jest.fn();
+  const promise = interactive(client, [{ phase: "save", command: "save" }], jest.fn(), completed);
+  await Promise.resolve();
+  client.shellStream.emit("data", "\ntestuser@test-router.example.test# ");
+  await expect(promise).resolves.toContain("testuser@test-router.example.test");
+  expect(completed).toHaveBeenCalledWith("save");
+});
+
+test("resolves an empty sequence when the shell closes", async () => {
+  const client = new MockClient();
+  const promise = interactive(client, []);
+  await Promise.resolve();
+  client.shellStream.emit("close");
+  await expect(promise).resolves.toBe("");
+});
+
 test.each([
   ["save", /save failed/i, "save failed\ntestuser@test-router.example.test# "],
   ["commit-confirm 5", /commit failed|error/i, "Configuration commit failed; rollback in progress"],

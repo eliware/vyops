@@ -1,20 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { attachInteractiveListeners } from "./interactive/listeners.mjs";
 import { startInteractiveTimeout } from "./interactive/timeout.mjs";
+import { createInteractiveState } from "./interactive/state.mjs";
 
 export function interactive(client, commands, log = () => {}, onCommandComplete = () => {}) {
   const operation = randomUUID();
   return new Promise((resolve, reject) => {
-    const state = {
-      output: "",
-      response: "",
-      index: 0,
-      waiting: false,
-      answering: false,
-      settled: false,
-      timedOut: false,
-      currentItem: undefined,
-    };
+    const state = createInteractiveState();
     let stream;
     const timer = startInteractiveTimeout({
       operation,

@@ -6,7 +6,9 @@ jest.unstable_mockModule("node:fs/promises", () => promises);
 const { mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
 import { join } from "node:path";
 const { setupDeployHarness } = await import("../test-fixtures/deploy-harness.mjs");
-const { fsMocks, mocks, client, deploy } = await setupDeployHarness(jest);
+const { verificationCommands, setVerificationResults } =
+  await import("../test-fixtures/deployment-verification.mjs");
+const { fsMocks, logMock, mocks, client, deploy } = await setupDeployHarness(jest);
 const deploySource = await import("../src/deploy.mjs");
 const deploymentManifest =
   "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\tmanaged.sh\ttrue\t-\t-\t-\t755\thash\tregular file\n";
@@ -255,4 +257,44 @@ test("rejects unsafe post-commit hook names", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+const verifiedDeploy = () =>
+  deploy({ target: "testuser@test-router.example.test", config: "/tmp/config.boot", verify: true });
+
+test("runs optional post-deployment verification commands", async () => {
+  await expect(verifiedDeploy()).resolves.toBe(0);
+  expect(verificationCommands(mocks).join(",")).toBe(
+    "show vrrp,show interfaces wireguard,show bgp summary,show ip route,show haproxy",
+  );
+});
+
+test("continues when optional router services are absent", async () => {
+  const absent = new Map([
+    ["show vrrp", "VRRP data is not available (process not running or no active groups)"],
+    ["show interfaces wireguard", "Interface        IP Address\n---------        ----------\n"],
+    ["show bgp summary", "% BGP instance not found"],
+    ["show haproxy", "Haproxy is not configured"],
+  ]);
+  setVerificationResults(mocks, (check) =>
+    absent.has(check) ? { code: 1, stdout: absent.get(check), stderr: "" } : undefined,
+  );
+  await expect(verifiedDeploy()).resolves.toBe(0);
+  const info = logMock.info.mock.calls.flat().join(" ");
+  expect(info).toContain(
+    "show bgp summary: optional check is not configured or active. Continuing.",
+  );
+  expect(info).toContain(
+    "show interfaces wireguard: no WireGuard interfaces are configured. Continuing.",
+  );
+});
+
+test.each([
+  ["stderr", "", "verification failed"],
+  ["stdout", "verification stdout failure", ""],
+])("fails when verification returns an error on %s", async (_stream, stdout, stderr) => {
+  setVerificationResults(mocks, () => ({ code: 1, stdout, stderr }));
+  await expect(verifiedDeploy()).rejects.toThrow(
+    `verification phase failed (show vrrp): ${stdout || stderr}`,
+  );
 });
