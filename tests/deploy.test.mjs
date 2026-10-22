@@ -6,8 +6,10 @@ jest.unstable_mockModule("node:fs/promises", () => promises);
 const { mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
 import { join } from "node:path";
 const { setupDeployHarness } = await import("../test-fixtures/deploy-harness.mjs");
-const { fsMocks, logMock, mocks, deploy } = await setupDeployHarness(jest);
+const { fsMocks, mocks, client, deploy } = await setupDeployHarness(jest);
 const deploySource = await import("../src/deploy.mjs");
+const deploymentManifest =
+  "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\tmanaged.sh\ttrue\t-\t-\t-\t755\thash\tregular file\n";
 
 test("deploys config, downloads live state, and logs when debug is enabled", async () => {
   expect(deploySource.deploy).toBe(deploy);
@@ -126,52 +128,130 @@ test("propagates download failures and tolerates cleanup failures", async () => 
   ).rejects.toThrow("download failed");
 });
 
-test("reports router-only scripts while preserving them", async () => {
-  const root = await mkdtemp(join("/virtual", "vyops-stale-"));
+test("restores a previously managed file through the manifest on failure", async () => {
+  const root = await mkdtemp(join("/virtual", "vyops-rollback-"));
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, "managed.sh"), "#!/bin/sh\n");
+  await writeFile(`${join(root, "config.boot")}.deployment.tsv`, deploymentManifest);
   try {
-    await writeFile(join(root, "config.boot"), "system {}\n");
-    await writeFile(`${join(root, "config.boot")}.manifest.tsv`, "kind\tpath\nfile\tbundle.sh\n");
-    fsMocks.readdir.mockResolvedValue([]);
-    mocks.exec.mockImplementation(async (_client, command) =>
-      command.includes("find -P /config/scripts")
-        ? { code: 0, stdout: "/config/scripts/manual.sh\0", stderr: "" }
-        : { code: 0, stdout: "", stderr: "" },
-    );
+    fsMocks.readdir.mockResolvedValue([{ name: "managed.sh", isFile: () => true }]);
+    mocks.interactive.mockRejectedValue(new Error("deployment failed"));
     await expect(
       deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
-    ).resolves.toBe(0);
-    expect(logMock.warn).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /No prior deployment manifest.*matching files.*none.*Router-only files will remain unchanged \(manual\.sh\).*vyops backup <target> <directory>/i,
+    ).rejects.toThrow("deployment failed");
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) => command.includes("cp -p") && command.includes(".scripts-backup."),
       ),
-    );
+    ).toBe(true);
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) => command.includes("cp -a") && command.includes(".scripts-backup."),
+      ),
+    ).toBe(true);
+    expect(
+      mocks.exec.mock.calls.some(([, command]) => command.includes("rm -rf -- /config/scripts")),
+    ).toBe(false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test("reports matching scripts that release saves for rollback", async () => {
-  const root = await mkdtemp(join("/virtual", "vyops-managed-"));
+test("does not roll back committed hooks when syncing the config fails", async () => {
+  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, "hook.sh"), "#!/bin/sh\n");
   try {
-    await writeFile(join(root, "config.boot"), "system {}\n");
-    await mkdir(join(root, "scripts"));
-    await writeFile(join(root, "scripts", "managed.sh"), "#!/bin/sh\n");
-    await writeFile(
-      `${join(root, "config.boot")}.deployment.tsv`,
-      "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\tmanaged.sh\tfalse\t-\t-\t-\t755\thash\tregular file\n",
-    );
-    fsMocks.readdir.mockResolvedValue([{ name: "managed.sh", isFile: () => true }]);
-    mocks.exec.mockImplementation(async (_client, command) =>
-      command.includes("find -P /config/scripts")
-        ? { code: 0, stdout: "/config/scripts/managed.sh\0", stderr: "" }
-        : { code: 0, stdout: "", stderr: "" },
-    );
+    fsMocks.readdir.mockResolvedValue([{ name: "hook.sh", isFile: () => true }]);
+    mocks.download.mockRejectedValue(new Error("download failed"));
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("download failed");
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) =>
+          command.includes("sudo rm -f") &&
+          command.includes("/config/scripts/") &&
+          !command.includes(".vyops-"),
+      ),
+    ).toBe(false);
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) => command.includes("sudo rm -rf") && command.includes(".scripts-backup."),
+      ),
+    ).toBe(true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("installs sorted post-commit hooks and cleans its remote directory", async () => {
+  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, "b.sh"), "#!/bin/sh\n");
+  await writeFile(join(hooks, "a.sh"), "#!/bin/sh\n");
+  try {
+    fsMocks.readdir.mockResolvedValue([
+      { name: "b.sh", isFile: () => true },
+      { name: "a.sh", isFile: () => true },
+    ]);
     await expect(
       deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
     ).resolves.toBe(0);
-    expect(logMock.info).toHaveBeenCalledWith(
-      expect.stringMatching(/matching files for rollback \(managed\.sh\)/i),
+    expect(mocks.upload.mock.calls.slice(1).map((call) => call[1])).toEqual([
+      join(hooks, "a.sh"),
+      join(hooks, "b.sh"),
+    ]);
+    expect(mocks.exec.mock.calls.some((call) => call[1].includes("sudo install"))).toBe(true);
+    expect(mocks.exec.mock.calls.some((call) => call[1].includes("sudo chown root:root"))).toBe(
+      true,
     );
+    expect(mocks.exec.mock.calls.some((call) => call[1].includes("sudo chmod 755"))).toBe(true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("uses a separate cleanup client after reconnect and reports cleanup failure", async () => {
+  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await writeFile(join(hooks, "hook.sh"), "#!/bin/sh\n");
+  const initial = client();
+  const interactiveClient = client();
+  const cleanupClient = client();
+  fsMocks.readdir.mockResolvedValue([{ name: "hook.sh", isFile: () => true }]);
+  mocks.connect
+    .mockResolvedValueOnce(initial)
+    .mockResolvedValueOnce(interactiveClient)
+    .mockRejectedValueOnce(new Error("recovery unavailable"))
+    .mockResolvedValueOnce(cleanupClient);
+  mocks.interactive.mockRejectedValueOnce(new Error("deployment failed"));
+  mocks.exec.mockImplementation(async (_client, command) => {
+    if (command.includes("sudo rm -rf --") && command.includes("scripts-backup"))
+      throw new Error("hook cleanup failed");
+    return { code: 0, stdout: "", stderr: "" };
+  });
+  try {
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("deployment failed");
+    expect(mocks.close).toHaveBeenCalledWith(cleanupClient);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects unsafe post-commit hook names", async () => {
+  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
+  try {
+    fsMocks.readdir.mockResolvedValue([{ name: "../hook.sh", isFile: () => true }]);
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script path is invalid");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
