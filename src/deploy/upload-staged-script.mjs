@@ -29,7 +29,7 @@ export async function uploadStagedScript({
   const binaryCheck = binary
     ? [
         `printf '%s\\n' "$(uname -m):$(file -b ${JSON.stringify(remote)})"`,
-        "| grep -Eq '^(x86_64:.*ELF.*x86-64|aarch64:.*ELF.*ARM aarch64|armv7l:.*ELF.*ARM)$'",
+        "| grep -Eq '^(x86_64:.*ELF.*x86-64.*|aarch64:.*ELF.*ARM aarch64.*|armv7l:.*ELF.*ARM.*)$'",
         verifyBinaries
           ? `&& test "$(sha256sum ${JSON.stringify(remote)} | awk '{print $1}')" = ${JSON.stringify(localHash)}`
           : "",

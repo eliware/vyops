@@ -17,10 +17,16 @@
 - Split command parsing, config parsing, bundle scanning, SSH, backup, deployment, and Git work into focused modules.
 - Separate script staging, installation, manifest updates, rollback, and cleanup into focused helpers.
 - Sort configuration values and script paths in natural order.
+- Run local preflight before Git checks or SSH setup for every release.
+- Build the router deployment manifest from the backed-up script paths and their current file state.
+- Keep the bundle manifest separate from the router deployment manifest.
+- Publish the config and both manifests as one local backup update.
+- Validate deployment manifest columns, record types, script paths, and duplicate paths before remote updates.
 
 ### Fixed
 
 - Write current deployment state for backed-up directories and scripts, and verify downloaded files against router hashes.
+- Store prior and current type, mode, and hash for each backed-up script file and directory.
 - Reject a command after a leading `--` and reject more positional values after the delimiter.
 - Validate deployment manifest headers, records, paths, and duplicates before remote updates.
 - Write actual tab characters in the remote deployment manifest header.
@@ -30,6 +36,7 @@
 - Keep files outside the snapshot unchanged.
 - Mark interactive shell commands settled after success or failure.
 - Test configured SSH known-host and host CA paths through the SSH fixture.
+- Accept standard trailing file descriptions when VyOps checks a remote binary's architecture.
 
 ## 12.0.0 — 2026-10-12
 

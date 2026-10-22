@@ -59,6 +59,8 @@ test("uses binary validation without text line-ending checks", async () => {
   });
   const command = exec.mock.calls.at(-1)[1];
   expect(command).toContain("uname -m");
+  expect(command).toContain("x86_64:.*ELF.*x86-64.*");
+  expect(command).toContain("aarch64:.*ELF.*ARM aarch64.*");
   expect(command).toContain("sha256sum");
   expect(command).not.toContain("grep -q");
   expect(command).not.toContain("test -x");
