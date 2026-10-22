@@ -1,6 +1,7 @@
 import { runGit as runGitDefault } from "./command.mjs";
 import { pushbackPaths } from "./pushback-paths.mjs";
-import { relativeConfigPath, repositoryRoot } from "./repository/location.mjs";
+import { relativeConfigPath } from "./repository/config-path.mjs";
+import { repositoryRoot } from "./repository/location.mjs";
 import { withRepositoryLock } from "./lock.mjs";
 import { commitPushback } from "./pushback/commit-push.mjs";
 

@@ -1,7 +1,7 @@
 import { targetFromConfig } from "./bundle/target.mjs";
 import { validateScriptManifest } from "./bundle/manifest.mjs";
 import { isSafeScriptPath } from "./bundle/script/path-rules.mjs";
-import { validateBundleScripts } from "./bundle/validation.mjs";
+import { validateBundleScripts } from "./bundle/script/bundle-validation.mjs";
 
 export { targetFromConfig, isSafeScriptPath, validateScriptManifest };
 

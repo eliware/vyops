@@ -2,14 +2,14 @@ import {
   filesystem,
   promises,
   resetMemoryFilesystem,
-} from "../../test-fixtures/helpers/memory-filesystem.mjs";
+} from "../../../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
 beforeEach(() => resetMemoryFilesystem());
 jest.unstable_mockModule("node:fs", () => filesystem);
 jest.unstable_mockModule("node:fs/promises", () => promises);
 const { chmod, mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
 const { join } = await import("node:path");
-const { validateBundleScripts } = await import("../../src/bundle/validation.mjs");
+const { validateBundleScripts } = await import("../../../src/bundle/script/bundle-validation.mjs");
 
 async function bundleDirectory() {
   const root = await mkdtemp(join("/virtual", "vyops-bundle-"));

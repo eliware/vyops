@@ -3,7 +3,8 @@ import { repositoryState } from "./git/repository/state.mjs";
 import { formatRepositorySnapshot } from "./git/repository/snapshot.mjs";
 import { deploymentPaths } from "./git/deployment-paths.mjs";
 import { pushBack } from "./git/pushback.mjs";
-import { repositoryRoot, relativeConfigPath } from "./git/repository/location.mjs";
+import { repositoryRoot } from "./git/repository/location.mjs";
+import { relativeConfigPath } from "./git/repository/config-path.mjs";
 
 export { pushBack };
 

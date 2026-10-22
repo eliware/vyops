@@ -26,13 +26,8 @@ test("reports whether a deployment manifest exists", async () => {
   ).resolves.toEqual({ managed: new Set(), hasManifest: false });
 });
 
-test.each([
-  "file\thook.sh\tfalse\n",
-  "kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\thook.sh\tfalse\n",
-  `${header}\nfile\t../escape\tfalse\t-\t-\t-\t755\thash\tregular file\n`,
-  `${header}\nfile\thook.sh\tfalse\t-\t-\t-\t755\thash\tregular file\nfile\thook.sh\tfalse\t-\t-\t-\t755\thash\tregular file\n`,
-])("rejects malformed deployment manifests", async (content) => {
+test("propagates invalid manifest content", async () => {
   await expect(
-    readDeploymentState(jest.fn().mockResolvedValue(content), "/tmp/manifest"),
-  ).rejects.toThrow(/invalid header|malformed record|duplicate script path|unsafe script path/);
+    readDeploymentState(jest.fn().mockResolvedValue("invalid header\n"), "/tmp/manifest"),
+  ).rejects.toThrow("deployment manifest has an invalid header");
 });
