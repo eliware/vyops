@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { deploymentManifestHeader } from "../../../src/manifest/columns.mjs";
 await import("../../../test-fixtures/helpers/memory-filesystem-setup.mjs");
 import { join } from "node:path";
 
@@ -65,7 +66,7 @@ test("stages, validates, installs, and finalizes a script tree", async () => {
   await finalize(true, {});
   expect(exec.mock.calls.at(-1)[1]).toContain("rm -rf");
   expect(exec.mock.calls[1][1]).toContain(
-    "printf '%s\\n' \"kind\\tpath\\tpreexisting\\told_mode\\told_sha256\\told_type\\tnew_mode\\tnew_sha256\\tnew_type\"",
+    `printf '%b\\n' ${JSON.stringify(deploymentManifestHeader.replaceAll("\t", "\\t"))}`,
   );
   expect(debug).toHaveBeenCalledWith("installed script: health.sh");
 });

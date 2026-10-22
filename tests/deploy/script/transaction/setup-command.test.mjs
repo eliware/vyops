@@ -10,5 +10,7 @@ test("builds the remote script transaction setup command", () => {
   });
   expect(command).toContain('mkdir -m 700 "/tmp/run/scripts" "/tmp/run/backup"');
   expect(command).toContain('sudo mkdir -p "/config/scripts"');
-  expect(command).toContain(JSON.stringify(deploymentManifestHeader));
+  expect(command).toContain(
+    `printf '%b\\n' ${JSON.stringify(deploymentManifestHeader.replaceAll("\t", "\\t"))}`,
+  );
 });
