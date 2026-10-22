@@ -1,9 +1,12 @@
 import { jest } from "@jest/globals";
-const { writeBackupManifest } = await import("../../src/backup/write-backup-manifest.mjs");
+const { writeBackupManifest } = await import("../../../src/backup/write/backup-manifest.mjs");
 
 test("writes the backup file list with private permissions", async () => {
   const fs = { writeFile: jest.fn() };
-  await writeBackupManifest(fs, (...parts) => parts.join("/"), "/tmp/staged", ["a.sh", "nested/b"]);
+  await writeBackupManifest(fs, (...parts) => parts.join("/"), "/tmp/staged", [
+    { name: "a.sh" },
+    { name: "nested/b" },
+  ]);
   expect(fs.writeFile).toHaveBeenCalledWith(
     "/tmp/staged/config.boot.manifest.tsv",
     "kind\tpath\nfile\ta.sh\nfile\tnested/b\n",

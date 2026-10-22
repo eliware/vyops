@@ -20,13 +20,15 @@ The target format is `user@host`.
 Use a DNS name, an IPv4 address, or a bracketed IPv6 address.
 Do not use a filesystem root as the destination.
 
-The backup has `config.boot`, `config.boot.manifest.tsv`, and `scripts/`.
-The manifest lists backed-up script paths with tab-separated fields.
+The backup has `config.boot`, two manifests, and `scripts/`.
+The bundle manifest lists script paths with tab-separated fields.
+The deployment manifest records current directory modes and file modes, hashes, and types.
+VyOps verifies each downloaded script against the router hash.
 VyOps sets backup file mode to `0600`.
 
 VyOps checks remote script paths and rejects remote script symlinks.
 It writes new files to a private temporary folder.
-It replaces the config, scripts, and manifest as one update.
+It replaces the config, scripts, and both manifests as one update.
 It restores prior files if publication fails.
 It closes the SSH connection after success or failure.
 

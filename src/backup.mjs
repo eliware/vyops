@@ -13,7 +13,7 @@ export async function backup({ target, config, password, log = defaultLog }) {
   const client =
     password === undefined ? await connect(target) : await connect(target, { password });
   try {
-    const files = await inspectRemoteScripts(exec, client, log);
+    const { files, directories } = await inspectRemoteScripts(exec, client, log);
     const previousBackup = path(config, `.vyops-backup-old-${randomUUID()}`);
     const stagedBackup = path(config, `.vyops-backup-${randomUUID()}`);
     try {
@@ -23,6 +23,7 @@ export async function backup({ target, config, password, log = defaultLog }) {
         client,
         staged: stagedBackup,
         files,
+        directories,
         download,
         exec,
         log,

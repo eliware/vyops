@@ -20,7 +20,7 @@
 
 ### Fixed
 
-- Read compatible legacy deployment manifest pairs and keep one state record for each script path.
+- Write current deployment state for backed-up directories and scripts, and verify downloaded files against router hashes.
 - Reject a command after a leading `--` and reject more positional values after the delimiter.
 - Validate deployment manifest headers, records, paths, and duplicates before remote updates.
 - Write actual tab characters in the remote deployment manifest header.

@@ -14,7 +14,7 @@ test.each([
     rm: jest.fn(),
   };
   await publishBackup(fs, "staged", "output", "previous");
-  expect(fs.rename).toHaveBeenCalledTimes(6);
+  expect(fs.rename).toHaveBeenCalledTimes(8);
   expect(fs.rm).toHaveBeenCalledWith("previous", { recursive: true, force: true });
 });
 

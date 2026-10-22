@@ -1,9 +1,13 @@
 import { jest } from "@jest/globals";
 import { posix } from "node:path";
+import { createHash } from "node:crypto";
 const { stageBackupScript } = await import("../../../src/backup/stage/script.mjs");
+const content = Buffer.from("script content");
+const sha256 = createHash("sha256").update(content).digest("hex");
+const backupFile = (name) => ({ name, mode: "755", sha256, type: "regular file" });
 
 test("downloads a script snapshot into a private local tree", async () => {
-  const fs = { mkdir: jest.fn(), chmod: jest.fn() };
+  const fs = { mkdir: jest.fn(), chmod: jest.fn(), readFile: jest.fn().mockResolvedValue(content) };
   const download = jest.fn();
   const exec = jest.fn().mockResolvedValue({ code: 0 });
   const log = { debug: jest.fn() };
@@ -12,7 +16,7 @@ test("downloads a script snapshot into a private local tree", async () => {
     path: (...parts) => posix.join(...parts),
     client: {},
     scripts: "/tmp/staged/scripts",
-    name: "nested/hook.sh",
+    file: backupFile("nested/hook.sh"),
     download,
     exec,
     log,
@@ -35,11 +39,11 @@ test("removes the remote snapshot when a download fails", async () => {
   const exec = jest.fn().mockResolvedValue({ code: 0 });
   await expect(
     stageBackupScript({
-      fs: { mkdir: jest.fn(), chmod: jest.fn() },
+      fs: { mkdir: jest.fn(), chmod: jest.fn(), readFile: jest.fn().mockResolvedValue(content) },
       path: (...parts) => posix.join(...parts),
       client: {},
       scripts: "/tmp/staged/scripts",
-      name: "hook.sh",
+      file: backupFile("hook.sh"),
       download: jest.fn().mockRejectedValue(new Error("download failed")),
       exec,
       log: { debug: jest.fn() },
@@ -55,11 +59,11 @@ test("fails the backup when remote snapshot cleanup fails", async () => {
     .mockResolvedValueOnce({ code: 1, stderr: "", stdout: "cleanup denied" });
   await expect(
     stageBackupScript({
-      fs: { mkdir: jest.fn(), chmod: jest.fn() },
+      fs: { mkdir: jest.fn(), chmod: jest.fn(), readFile: jest.fn().mockResolvedValue(content) },
       path: (...parts) => posix.join(...parts),
       client: {},
       scripts: "/tmp/staged/scripts",
-      name: "hook.sh",
+      file: backupFile("hook.sh"),
       download: jest.fn(),
       exec,
       log: { debug: jest.fn() },
@@ -75,11 +79,11 @@ test("keeps the download error when snapshot cleanup also fails", async () => {
     .mockResolvedValueOnce({ code: 1, stderr: "", stdout: "cleanup denied" });
   await expect(
     stageBackupScript({
-      fs: { mkdir: jest.fn(), chmod: jest.fn() },
+      fs: { mkdir: jest.fn(), chmod: jest.fn(), readFile: jest.fn().mockResolvedValue(content) },
       path: (...parts) => posix.join(...parts),
       client: {},
       scripts: "/tmp/staged/scripts",
-      name: "hook.sh",
+      file: backupFile("hook.sh"),
       download: jest.fn().mockRejectedValue(new Error("download failed")),
       exec,
       log: { debug: jest.fn() },
@@ -97,14 +101,30 @@ test("reports an SSH error when remote snapshot cleanup cannot run", async () =>
     .mockRejectedValueOnce(new Error("SSH closed"));
   await expect(
     stageBackupScript({
-      fs: { mkdir: jest.fn(), chmod: jest.fn() },
+      fs: { mkdir: jest.fn(), chmod: jest.fn(), readFile: jest.fn().mockResolvedValue(content) },
       path: (...parts) => posix.join(...parts),
       client: {},
       scripts: "/tmp/staged/scripts",
-      name: "hook.sh",
+      file: backupFile("hook.sh"),
       download: jest.fn(),
       exec,
       log: { debug: jest.fn() },
     }),
   ).rejects.toThrow("SSH closed");
+});
+
+test("rejects a script that changes during backup", async () => {
+  const exec = jest.fn().mockResolvedValue({ code: 0 });
+  await expect(
+    stageBackupScript({
+      fs: { mkdir: jest.fn(), chmod: jest.fn(), readFile: jest.fn().mockResolvedValue(content) },
+      path: (...parts) => posix.join(...parts),
+      client: {},
+      scripts: "/tmp/staged/scripts",
+      file: { ...backupFile("hook.sh"), sha256: "0".repeat(64) },
+      download: jest.fn(),
+      exec,
+      log: { debug: jest.fn() },
+    }),
+  ).rejects.toThrow("remote script changed during backup: hook.sh");
 });

@@ -14,9 +14,25 @@ test("lists and validates NUL-delimited scripts", async () => {
       stdout: "/config/scripts/foo.sh\0/config/scripts/nested/bar\0",
       stderr: "",
     })
-    .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
-  await expect(inspectRemoteScripts(exec, {}, log)).resolves.toEqual(["foo.sh", "nested/bar"]);
-  expect(exec).toHaveBeenCalledTimes(4);
+    .mockResolvedValueOnce({
+      code: 0,
+      stdout: `755\t${"a".repeat(64)}\tregular file\n`,
+      stderr: "",
+    })
+    .mockResolvedValueOnce({
+      code: 0,
+      stdout: `755\t${"a".repeat(64)}\tregular file\n`,
+      stderr: "",
+    })
+    .mockResolvedValueOnce({ code: 0, stdout: "755\n", stderr: "" });
+  await expect(inspectRemoteScripts(exec, {}, log)).resolves.toEqual({
+    files: [
+      { name: "foo.sh", mode: "755", sha256: "a".repeat(64), type: "regular file" },
+      { name: "nested/bar", mode: "755", sha256: "a".repeat(64), type: "regular file" },
+    ],
+    directories: [{ name: "nested", mode: "755", type: "directory" }],
+  });
+  expect(exec).toHaveBeenCalledTimes(5);
   expect(exec.mock.calls[0][1]).toContain("type l");
   expect(exec.mock.calls[1][1]).toContain("type f");
   expect(exec.mock.calls[0][1]).not.toContain("2>/dev/null");
@@ -29,7 +45,10 @@ test("accepts a router with no scripts directory", async () => {
     .fn()
     .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
     .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
-  await expect(inspectRemoteScripts(exec, {}, log)).resolves.toEqual([]);
+  await expect(inspectRemoteScripts(exec, {}, log)).resolves.toEqual({
+    files: [],
+    directories: [],
+  });
   expect(exec).toHaveBeenCalledTimes(2);
 });
 

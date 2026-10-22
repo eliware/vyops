@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 
 const fsMocks = {
   mkdir: jest.fn(),
@@ -7,6 +8,7 @@ const fsMocks = {
   rename: jest.fn(),
   rm: jest.fn(),
   writeFile: jest.fn(),
+  readFile: jest.fn().mockResolvedValue(Buffer.from("content")),
 };
 const mocks = {
   connect: jest.fn(),
@@ -27,11 +29,24 @@ const { backup } = await import("../src/backup.mjs");
 beforeEach(() => {
   jest.clearAllMocks();
   mocks.connect.mockResolvedValue({});
-  mocks.exec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }).mockResolvedValue({
-    code: 0,
-    stdout: "/config/scripts/foo.sh\0/config/scripts/nested/bar\0",
-    stderr: "",
-  });
+  mocks.exec
+    .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+    .mockResolvedValueOnce({
+      code: 0,
+      stdout: "/config/scripts/foo.sh\0/config/scripts/nested/bar\0",
+      stderr: "",
+    })
+    .mockResolvedValueOnce({
+      code: 0,
+      stdout: `755\t${createHash("sha256").update("content").digest("hex")}\tregular file\n`,
+      stderr: "",
+    })
+    .mockResolvedValueOnce({
+      code: 0,
+      stdout: `755\t${createHash("sha256").update("content").digest("hex")}\tregular file\n`,
+      stderr: "",
+    })
+    .mockResolvedValue({ code: 0, stdout: "755\n", stderr: "" });
 });
 
 test("backs up config and nested scripts", async () => {
@@ -70,6 +85,12 @@ test("backs up config and nested scripts", async () => {
     "kind\tpath\nfile\tfoo.sh\nfile\tnested/bar\n",
     { encoding: "utf8", mode: 0o600 },
   );
+  const contentHash = createHash("sha256").update("content").digest("hex");
+  expect(fsMocks.writeFile).toHaveBeenCalledWith(
+    expect.stringMatching(/\.vyops-backup-[0-9a-f-]{36}[\\/]config\.boot\.deployment\.tsv$/),
+    `kind\tpath\tpreexisting\told_mode\told_sha256\told_type\tnew_mode\tnew_sha256\tnew_type\nfile\tfoo.sh\ttrue\t755\t${contentHash}\tregular file\t755\t${contentHash}\tregular file\ndirectory\tnested\ttrue\t755\t-\tdirectory\t755\t-\tdirectory\nfile\tnested/bar\ttrue\t755\t${contentHash}\tregular file\t755\t${contentHash}\tregular file\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
   expect(mocks.close).toHaveBeenCalled();
   expect(fsMocks.mkdir).toHaveBeenCalledWith(expect.stringContaining(".vyops-backup-"), {
     mode: 0o700,
@@ -100,5 +121,5 @@ test("closes SSH when downloading the backup fails", async () => {
     "config download failed",
   );
   expect(mocks.close).toHaveBeenCalled();
-  expect(mocks.exec).toHaveBeenCalledTimes(4);
+  expect(mocks.exec).toHaveBeenCalledTimes(5);
 });

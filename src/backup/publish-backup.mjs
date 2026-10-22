@@ -1,6 +1,11 @@
 import { publishBackupEntries } from "./publication-transaction.mjs";
 
-const entries = ["config.boot", "scripts", "config.boot.manifest.tsv"];
+const entries = [
+  "config.boot",
+  "scripts",
+  "config.boot.manifest.tsv",
+  "config.boot.deployment.tsv",
+];
 
 export async function publishBackup(fs, staged, destination, previous, log) {
   await fs.mkdir(destination, { recursive: true });

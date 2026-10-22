@@ -14,8 +14,12 @@ directives:
       - Download the active config and scripts to a private temporary folder.
       - Set backed-up files to mode 0600.
       - Write config.boot.manifest.tsv with the backed-up script paths.
+      - >-
+        Write config.boot.deployment.tsv with current-state records for backed-up directories
+        and scripts.
       - Keep config.boot.manifest.tsv separate from config.boot.deployment.tsv.
-      - Replace config.boot, scripts, and the manifest as one local update.
+      - Verify each downloaded script against its remote SHA-256 hash.
+      - Replace config.boot, scripts, and both manifests as one local update.
       - Restore prior backup files when publication fails.
       - Close the SSH client after success or failure.
       - Report a remote snapshot cleanup failure.
