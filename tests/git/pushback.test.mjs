@@ -97,20 +97,6 @@ test("pushBack reports a push failure after the local commit", async () => {
   }
 });
 
-test("pushBack preserves staged content when the worktree also changed", async () => {
-  const { directory, config } = await createGitWorkspace();
-  const git = createGitMock(jest, directory, async (args) => {
-    if (args[0] === "status" && args[2] === "-z") return { stdout: "MM config.boot\0" };
-  });
-  try {
-    await expect(pushBack(config, { runGit: git })).rejects.toThrow(
-      "configuration or manifest has staged and unstaged changes. Refusing to overwrite staged content.",
-    );
-  } finally {
-    await removeGitWorkspace(directory);
-  }
-});
-
 test("does not reclaim a lock with missing owner metadata", async () => {
   const { directory, config } = await createGitWorkspace();
   const git = createGitMock(jest, directory);

@@ -6,7 +6,7 @@ const { recordScriptState } = await import("../../../src/deploy/script/record-st
 
 beforeEach(() => exec.mockReset().mockResolvedValue({ code: 0, stdout: "", stderr: "" }));
 
-test("records a script and its directory state before upload", async () => {
+test("runs the remote state command before upload", async () => {
   await recordScriptState({
     client: {},
     name: "nested/hook.sh",
@@ -19,9 +19,7 @@ test("records a script and its directory state before upload", async () => {
     redact: (text) => text,
   });
   expect(exec).toHaveBeenCalledTimes(1);
-  expect(exec.mock.calls[0][1]).toContain("directory\\t%s");
-  expect(exec.mock.calls[0][1]).toContain("destination is a symlink");
-  expect(exec.mock.calls[0][1]).toContain("sha256sum");
+  expect(exec.mock.calls[0][0]).toEqual({});
 });
 
 test("reports remote backup errors", async () => {

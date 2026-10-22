@@ -5,7 +5,7 @@ import { finalizeScripts } from "./finalize.mjs";
 import { deploymentRemotePaths } from "../remote/paths.mjs";
 import { inspectLiveScripts } from "../inspect-live-scripts.mjs";
 import { runScriptSyncTransaction } from "./sync-transaction.mjs";
-import { scriptSyncDependencies } from "./transaction-dependencies.mjs";
+import { scriptSyncDependencies } from "./transaction/dependencies.mjs";
 
 export async function installScripts(client, config, debugLog, runId, verifyBinaries, redact) {
   const scriptsDir = eliwarePath(config, "..", "scripts");

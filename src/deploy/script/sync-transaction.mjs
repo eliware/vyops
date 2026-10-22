@@ -1,4 +1,4 @@
-import { deploymentManifestHeader } from "../../manifest/columns.mjs";
+import { scriptTransactionSetupCommand } from "./transaction/command.mjs";
 
 export async function runScriptSyncTransaction(options, dependencies) {
   const {
@@ -27,7 +27,7 @@ export async function runScriptSyncTransaction(options, dependencies) {
   } = dependencies;
   const made = await exec(
     client,
-    `mkdir -m 700 ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)} && sudo mkdir -p ${JSON.stringify(installDir)} && printf '%s\\n' ${JSON.stringify(deploymentManifestHeader)} > ${JSON.stringify(manifest)}`,
+    scriptTransactionSetupCommand({ remoteDir, backupDir, installDir, manifest }),
   );
   if (made.code !== 0)
     throw new Error(`script directory setup failed: ${made.stderr || made.stdout}`.trim());

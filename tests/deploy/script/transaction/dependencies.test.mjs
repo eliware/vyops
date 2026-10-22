@@ -1,4 +1,4 @@
-import { scriptSyncDependencies } from "../../../src/deploy/script/transaction-dependencies.mjs";
+import { scriptSyncDependencies } from "../../../../src/deploy/script/transaction/dependencies.mjs";
 
 test("provides the dependencies for a script synchronization transaction", () => {
   const dependencies = scriptSyncDependencies();

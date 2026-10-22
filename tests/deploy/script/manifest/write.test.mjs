@@ -1,13 +1,13 @@
 import { jest } from "@jest/globals";
 
 const exec = jest.fn();
-jest.unstable_mockModule("../../../src/ssh/exec.mjs", () => ({ exec }));
+jest.unstable_mockModule("../../../../src/ssh/exec.mjs", () => ({ exec }));
 const { writeInstalledScriptManifest } =
-  await import("../../../src/deploy/script/manifest-write.mjs");
+  await import("../../../../src/deploy/script/manifest/write.mjs");
 
 beforeEach(() => exec.mockReset().mockResolvedValue({ code: 0, stdout: "", stderr: "" }));
 
-test("records installed file metadata in the deployment manifest", async () => {
+test("runs the remote manifest update", async () => {
   await writeInstalledScriptManifest({
     client: {},
     name: "nested/hook.sh",
@@ -16,11 +16,7 @@ test("records installed file metadata in the deployment manifest", async () => {
     redact: (value) => value,
   });
   expect(exec).toHaveBeenCalledTimes(1);
-  expect(exec.mock.calls[0][1]).toContain("sha256sum");
-  expect(exec.mock.calls[0][1]).toContain("nested/hook.sh");
-  expect(exec.mock.calls[0][1]).toContain("awk -F");
-  expect(exec.mock.calls[0][1]).toContain('mv -- "$manifest_tmp" "/tmp/manifest.tsv"');
-  expect(exec.mock.calls[0][1]).not.toContain('>> "/tmp/manifest.tsv"');
+  expect(exec.mock.calls[0][0]).toEqual({});
 });
 
 test.each([

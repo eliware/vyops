@@ -1,6 +1,5 @@
 import { exec } from "../../ssh/exec.mjs";
-import { scriptDirectoryState } from "./directory/state.mjs";
-import { scriptFileState } from "./file/state.mjs";
+import { scriptStateCommand } from "./state-command.mjs";
 
 export async function recordScriptState({
   client,
@@ -13,19 +12,16 @@ export async function recordScriptState({
   manifest,
   redact,
 }) {
-  const directoryMetadata = scriptDirectoryState({ parent, installDir, manifest });
-  const fileMetadata = scriptFileState({
-    name,
+  const command = scriptStateCommand({
     parent,
+    installDir,
+    name,
     backupDir,
     backup,
     installed,
     manifest,
   });
-  const result = await exec(
-    client,
-    `${directoryMetadata}${directoryMetadata ? "; " : ""}${fileMetadata}`,
-  );
+  const result = await exec(client, command);
   if (result.code !== 0)
     throw new Error(
       `script backup failed (${name}): ${redact(result.stderr || result.stdout)}`.trim(),

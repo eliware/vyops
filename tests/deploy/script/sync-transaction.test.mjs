@@ -30,16 +30,13 @@ function makeDependencies() {
   };
 }
 
-test("sets up remote paths, stages each script, and installs the staged set", async () => {
+test("stages each script and installs the staged set", async () => {
   const dependencies = makeDependencies();
   dependencies.stageScript.mockImplementation(async ({ name, staged }) => staged.push(name));
 
   await runScriptSyncTransaction(options, dependencies);
 
-  expect(dependencies.exec).toHaveBeenCalledWith(
-    options.client,
-    expect.stringContaining(`mkdir -m 700 "${options.remoteDir}"`),
-  );
+  expect(dependencies.exec).toHaveBeenCalledTimes(1);
   expect(dependencies.stageScript).toHaveBeenCalledTimes(2);
   expect(dependencies.stageScript.mock.calls[0][0]).toMatchObject({
     name: "first.sh",

@@ -1,6 +1,7 @@
 import { repositoryState } from "../repository/state.mjs";
 import { formatRepositorySnapshot } from "../repository/snapshot.mjs";
 import { pushCommit } from "./push.mjs";
+import { hasStagedAndUnstagedChanges } from "./status.mjs";
 
 export async function commitPushback(
   gitRunner,
@@ -16,10 +17,7 @@ export async function commitPushback(
     ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ...paths],
     repo,
   );
-  const hasStagedAndUnstagedChanges = status
-    .split("\0")
-    .some((entry) => entry.length > 2 && entry[0] !== " " && entry[0] !== "?" && entry[1] !== " ");
-  if (hasStagedAndUnstagedChanges)
+  if (hasStagedAndUnstagedChanges(status))
     throw new Error(
       "configuration or manifest has staged and unstaged changes. Refusing to overwrite staged content.",
     );

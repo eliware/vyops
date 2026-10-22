@@ -1,6 +1,4 @@
-import { exec } from "../../ssh/exec.mjs";
-
-export async function writeInstalledScriptManifest({ client, name, installed, manifest, redact }) {
+export function installedScriptManifestCommand({ name, installed, manifest }) {
   const awkProgram = [
     "NR == 1 { print }",
     "$2 == path {",
@@ -17,7 +15,7 @@ export async function writeInstalledScriptManifest({ client, name, installed, ma
     "NR > 1 && $2 != path { print }",
     "END { if (found != 1 || bad) exit 1 }",
   ].join("\n");
-  const command = [
+  return [
     `file_mode=$(sudo stat -c %a ${JSON.stringify(installed)})`,
     `file_hash_output=$(sudo sha256sum ${JSON.stringify(installed)})`,
     "file_hash=${file_hash_output%% *}",
@@ -29,9 +27,4 @@ export async function writeInstalledScriptManifest({ client, name, installed, ma
     `awk -F '\\t' -v OFS='\\t' -v path=${JSON.stringify(name)} -v mode="$file_mode" -v hash="$file_hash" -v type="$file_type" '${awkProgram}' ${JSON.stringify(manifest)} > "$manifest_tmp"`,
     `mv -- "$manifest_tmp" ${JSON.stringify(manifest)}`,
   ].join(" &&\n");
-  const result = await exec(client, command);
-  if (result.code !== 0)
-    throw new Error(
-      `manifest update failed (${name}): ${redact(result.stderr || result.stdout)}`.trim(),
-    );
 }

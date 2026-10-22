@@ -1,5 +1,5 @@
 import { installStagedScript } from "./install/file.mjs";
-import { writeInstalledScriptManifest } from "./manifest-write.mjs";
+import { writeInstalledScriptManifest } from "./manifest/write.mjs";
 
 export async function installStagedScripts(options) {
   const { staged, client, backupDir, installDir, runId, manifest, redact, debugLog } = options;
