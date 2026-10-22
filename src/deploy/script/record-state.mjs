@@ -1,6 +1,6 @@
 import { exec } from "../../ssh/exec.mjs";
-import { scriptDirectoryState } from "./directory-state.mjs";
-import { scriptFileState } from "./file-state.mjs";
+import { scriptDirectoryState } from "./directory/state.mjs";
+import { scriptFileState } from "./file/state.mjs";
 
 export async function recordScriptState({
   client,

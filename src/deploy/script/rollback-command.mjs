@@ -1,29 +1,15 @@
+import { directoryRollbackCommands } from "./directory/rollback-command.mjs";
+import { fileRollbackCommands } from "./file/rollback-command.mjs";
+
 export function scriptRollbackCommand({ manifest, installDir, backupDir, remoteDir }) {
-  const files = `${remoteDir}/rollback-files.tsv`;
-  const directories = `${remoteDir}/rollback-directories.tsv`;
-  const sortedDirectories = `${remoteDir}/rollback-directories-sorted.tsv`;
   return [
     "safe_name() {",
     '  [ -n "$1" ] || return 1',
     `  printf '%s\\n' "$1" | grep -Eq '^[A-Za-z0-9._/@-]+$' || return 1`,
     `  ! printf '/%s/\\n' "$1" | grep -Eq '(^|/)\\.\\.?(/|$)|//'`,
     "}",
-    `sudo awk -F '\\t' '$1 == "file" && $3 == "false" {print $2}' ${JSON.stringify(manifest)} > ${JSON.stringify(files)} || exit 1`,
-    `while IFS= read -r name`,
-    "do",
-    '  [ -n "$name" ] || continue',
-    '  safe_name "$name" || exit 1',
-    `  sudo rm -f -- ${JSON.stringify(installDir)}/"$name" || exit 1`,
-    `done < ${JSON.stringify(files)} || exit 1`,
-    `sudo cp -a ${JSON.stringify(`${backupDir}/.`)} ${JSON.stringify(`${installDir}/`)} 2>/dev/null || exit 1`,
-    `sudo awk -F '\\t' '$1 == "directory" && $3 == "false" {print $2}' ${JSON.stringify(manifest)} > ${JSON.stringify(directories)} || exit 1`,
-    `sort -r ${JSON.stringify(directories)} > ${JSON.stringify(sortedDirectories)} || exit 1`,
-    `while IFS= read -r name`,
-    "do",
-    '  [ -n "$name" ] || continue',
-    '  safe_name "$name" || exit 1',
-    `  sudo rmdir -- ${JSON.stringify(installDir)}/"$name" 2>/dev/null || exit 1`,
-    `done < ${JSON.stringify(sortedDirectories)} || exit 1`,
+    ...fileRollbackCommands({ manifest, installDir, backupDir, remoteDir }),
+    ...directoryRollbackCommands({ manifest, installDir, remoteDir }),
     `rm -rf -- ${JSON.stringify(remoteDir)} ${JSON.stringify(backupDir)}`,
   ].join("\n");
 }

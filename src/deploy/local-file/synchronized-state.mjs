@@ -1,5 +1,5 @@
 import { promises as fs } from "node:fs";
-import { downloadFilesToReplace } from "../download-to-replace.mjs";
+import { downloadFilesToReplace } from "../download/to-replace.mjs";
 import { deploymentManifestPath } from "../deployment/manifest-path.mjs";
 
 export async function downloadSynchronizedState({

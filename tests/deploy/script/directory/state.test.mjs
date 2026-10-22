@@ -1,4 +1,4 @@
-const { scriptDirectoryState } = await import("../../../src/deploy/script/directory-state.mjs");
+const { scriptDirectoryState } = await import("../../../../src/deploy/script/directory/state.mjs");
 
 test("records each missing parent directory from shallow to deep", () => {
   const command = scriptDirectoryState({

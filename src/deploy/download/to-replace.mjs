@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { basename, dirname, join } from "node:path";
+import { cleanupDownloadedFiles } from "./cleanup.mjs";
+import { rollbackDownloadedFiles } from "./rollback.mjs";
 
 export async function downloadFilesToReplace(fs, download, client, files, log) {
   const staged = files.map(({ remote, local }) => ({
@@ -30,9 +32,7 @@ export async function downloadFilesToReplace(fs, download, client, files, log) {
     }
   } catch (error) {
     try {
-      for (const file of installed.reverse())
-        await fs.rm(file.local, { force: true, recursive: true });
-      for (const file of saved.reverse()) await fs.rename(file.previous, file.local);
+      await rollbackDownloadedFiles(fs, installed, saved);
     } catch (rollbackError) {
       rollbackComplete = false;
       throw new Error(`local release state rollback failed: ${rollbackError.message}`, {
@@ -41,19 +41,6 @@ export async function downloadFilesToReplace(fs, download, client, files, log) {
     }
     throw error;
   } finally {
-    for (const file of staged) {
-      try {
-        await fs.rm(file.temporary, { force: true });
-      } catch (error) {
-        log?.warn?.(`VyOps cleanup warning: temporary file removal failed: ${error.message}`);
-      }
-      if (rollbackComplete) {
-        try {
-          await fs.rm(file.previous, { force: true });
-        } catch (error) {
-          log?.warn?.(`VyOps cleanup warning: prior file removal failed: ${error.message}`);
-        }
-      }
-    }
+    await cleanupDownloadedFiles(fs, staged, rollbackComplete, log);
   }
 }

@@ -1,12 +1,15 @@
-import { promises, resetMemoryFilesystem } from "../../test-fixtures/helpers/memory-filesystem.mjs";
+import {
+  promises,
+  resetMemoryFilesystem,
+} from "../../../test-fixtures/helpers/memory-filesystem.mjs";
 import { jest } from "@jest/globals";
-await import("../../test-fixtures/helpers/memory-filesystem-setup.mjs");
+await import("../../../test-fixtures/helpers/memory-filesystem-setup.mjs");
 beforeEach(() => resetMemoryFilesystem());
 jest.unstable_mockModule("node:fs/promises", () => promises);
 const fs = await import("node:fs/promises");
 const { mkdtemp, readFile, readdir, rename, rm, writeFile } = await import("node:fs/promises");
 import { join } from "node:path";
-const { downloadFilesToReplace } = await import("../../src/deploy/download-to-replace.mjs");
+const { downloadFilesToReplace } = await import("../../../src/deploy/download/to-replace.mjs");
 
 test("restores both old files when the second local replacement fails", async () => {
   const root = await mkdtemp(join("/virtual", "vyops-download-"));

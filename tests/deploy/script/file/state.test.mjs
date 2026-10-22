@@ -1,4 +1,4 @@
-const { scriptFileState } = await import("../../../src/deploy/script/file-state.mjs");
+const { scriptFileState } = await import("../../../../src/deploy/script/file/state.mjs");
 
 test("records and backs up an existing regular script", () => {
   const command = scriptFileState({
