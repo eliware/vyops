@@ -1,10 +1,10 @@
 import { lexConfigLine } from "../config/lexer.mjs";
+import { groupConfigBraces } from "../config/braces.mjs";
 import { fail } from "./error.mjs";
 
 export function scanConfigLine(lineText, line) {
   const { code, braces, unterminatedQuote } = lexConfigLine(lineText);
-  const openings = braces.filter(({ character }) => character === "{");
-  const closings = braces.filter(({ character }) => character === "}");
+  const { opening: openings, closing: closings } = groupConfigBraces(braces);
   if (openings.length > 1) fail(line, "multiple opening braces on one line");
   if (closings.length > 1) fail(line, "multiple closing braces on one line");
   if (unterminatedQuote) fail(line, "unterminated quotation mark");

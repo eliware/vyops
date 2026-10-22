@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import { path } from "@eliware/common";
+import { isStaleOwner } from "./stale-owner.mjs";
 
 const LOCK_MAX_AGE = 60 * 60 * 1000;
 
@@ -12,15 +13,6 @@ export async function staleLock(lock, force) {
     return false;
   }
   const pid = Number.parseInt(owner.trim(), 10);
-  if (Number.isInteger(pid) && pid > 0) {
-    try {
-      process.kill(pid, 0);
-      return false;
-    } catch (error) {
-      if (error.code === "EPERM") return false;
-      if (error.code === "ESRCH") return true;
-      return false;
-    }
-  }
+  if (Number.isInteger(pid) && pid > 0) return isStaleOwner(pid);
   return force || Date.now() - stats.mtimeMs > LOCK_MAX_AGE;
 }

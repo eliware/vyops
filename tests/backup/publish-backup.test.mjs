@@ -1,7 +1,10 @@
 import { jest } from "@jest/globals";
 const { publishBackup } = await import("../../src/backup/publish-backup.mjs");
 
-test.each([false, true])("publishes a bundle with no previous files: %s", async (missing) => {
+test.each([
+  ["prior files are present", false],
+  ["prior files are missing", true],
+])("publishes a bundle when %s", async (_condition, missing) => {
   const fs = {
     mkdir: jest.fn(),
     rename: jest.fn(async (source) => {

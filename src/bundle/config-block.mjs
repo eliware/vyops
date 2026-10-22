@@ -1,4 +1,5 @@
 import { lexConfigLine } from "../config/lexer.mjs";
+import { groupConfigBraces } from "../config/braces.mjs";
 
 function linesWithOffsets(source) {
   let offset = 0;
@@ -23,7 +24,7 @@ export function configBlock(source, name) {
     const match = declaration.exec(code);
     if (!match) continue;
     const braceIndex = match[0].lastIndexOf("{");
-    if (braces.some(({ character, index }) => character === "{" && index === braceIndex)) {
+    if (groupConfigBraces(braces).opening.some(({ index }) => index === braceIndex)) {
       opening = line.offset + braceIndex;
       break;
     }
@@ -35,7 +36,7 @@ export function configBlock(source, name) {
   for (const line of lines) {
     const { braces, quote: nextQuote } = lexConfigLine(line.text, quote);
     quote = nextQuote;
-    for (const brace of braces) {
+    for (const brace of groupConfigBraces(braces).ordered) {
       const offset = line.offset + brace.index;
       if (offset <= opening) continue;
       if (brace.character === "{") depth += 1;

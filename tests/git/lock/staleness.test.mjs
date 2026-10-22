@@ -27,24 +27,6 @@ test("keeps a lock when owner metadata is missing", async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-test.each([
-  ["live process", undefined, false],
-  ["permission denied", "EPERM", false],
-  ["unknown process error", "EINVAL", false],
-  ["exited process", "ESRCH", true],
-])("checks the owner process when it is a positive PID: %s", async (_label, code, expected) => {
-  const { root, lock } = await makeLock("424242");
-  const kill = jest.spyOn(process, "kill").mockImplementation(() => {
-    if (code) throw Object.assign(new Error(code), { code });
-  });
-  try {
-    await expect(staleLock(lock, true)).resolves.toBe(expected);
-  } finally {
-    kill.mockRestore();
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
 test("uses lock age and force when owner metadata has no valid process ID", async () => {
   const { root, lock } = await makeLock("not-a-process");
   await utimes(lock, new Date(), new Date());
