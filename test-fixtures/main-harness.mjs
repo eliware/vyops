@@ -6,6 +6,7 @@ export async function setupMainHarness(jest) {
   const runBackup = jest.fn();
   const runPreflight = jest.fn();
   const runRelease = jest.fn();
+  const readPasswordStdin = jest.fn().mockResolvedValue("stdin-secret");
   const pushBack = jest.fn();
   const repositorySnapshot = jest.fn();
   const shouldSkip = jest.fn();
@@ -20,6 +21,7 @@ export async function setupMainHarness(jest) {
     jest.unstable_mockModule("../src/commands/backup.mjs", () => ({ runBackup }));
     jest.unstable_mockModule("../src/commands/preflight.mjs", () => ({ runPreflight }));
     jest.unstable_mockModule("../src/commands/run-release.mjs", () => ({ runRelease }));
+    jest.unstable_mockModule("../src/cli/password.mjs", () => ({ readPasswordStdin }));
     jest.unstable_mockModule("../src/ssh.mjs", () => ({ closeAll }));
     jest.unstable_mockModule("@eliware/common", () => ({
       log,
@@ -42,6 +44,7 @@ export async function setupMainHarness(jest) {
     log,
     parseArgs,
     runRelease,
+    readPasswordStdin,
     pushBack,
     repositorySnapshot,
     runBackup,

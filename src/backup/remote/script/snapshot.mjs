@@ -1,4 +1,5 @@
 import { shellQuote } from "../../shell-quote.mjs";
+import { cleanupRemoteScriptSnapshot } from "./cleanup.mjs";
 
 export async function snapshotRemoteScript(exec, client, remote, snapshot) {
   const script = `${snapshot}/script`;
@@ -22,11 +23,12 @@ export async function snapshotRemoteScript(exec, client, remote, snapshot) {
   if (!snapshotError) return;
 
   try {
-    const cleanup = await exec(client, `rm -rf -- ${shellQuote(snapshot)}`);
-    if (cleanup.code !== 0)
-      throw new Error(cleanup.stderr || cleanup.stdout || `exit code ${cleanup.code}`);
+    await cleanupRemoteScriptSnapshot(exec, client, snapshot, snapshotError, {
+      includeExitCode: true,
+    });
   } catch (error) {
+    if (error === snapshotError || error.message.startsWith("remote snapshot cleanup failed:"))
+      throw error;
     throw new Error(`remote snapshot cleanup failed: ${error.message}`, { cause: snapshotError });
   }
-  throw snapshotError;
 }

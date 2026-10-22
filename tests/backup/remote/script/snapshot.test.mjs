@@ -62,3 +62,17 @@ test("cleans up after a snapshot command error", async () => {
     snapshotRemoteScript(exec, {}, "/config/scripts/hook.sh", "/tmp/.vyops-backup.run-id"),
   ).rejects.toBe(cause);
 });
+
+test("reports an SSH error when snapshot cleanup cannot run", async () => {
+  const cause = new Error("snapshot connection failed");
+  const exec = jest
+    .fn()
+    .mockRejectedValueOnce(cause)
+    .mockRejectedValueOnce(new Error("SSH closed"));
+  await expect(
+    snapshotRemoteScript(exec, {}, "/config/scripts/hook.sh", "/tmp/.vyops-backup.run-id"),
+  ).rejects.toMatchObject({
+    message: "remote snapshot cleanup failed: SSH closed",
+    cause,
+  });
+});

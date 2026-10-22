@@ -14,6 +14,13 @@ test("reports a failed remote snapshot cleanup", async () => {
   );
 });
 
+test("reports a cleanup failure without adding an exit code by default", async () => {
+  const exec = jest.fn().mockResolvedValue({ code: 2, stderr: "", stdout: "" });
+  await expect(cleanupRemoteScriptSnapshot(exec, {}, "/tmp/snapshot", null)).rejects.toThrow(
+    "remote snapshot cleanup failed: ",
+  );
+});
+
 test("preserves the operation error when cleanup also fails", async () => {
   const operationError = new Error("download failed");
   const exec = jest.fn().mockResolvedValue({ code: 1, stderr: "cleanup denied", stdout: "" });

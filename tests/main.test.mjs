@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import packageJson from "../package.json" with { type: "json" };
-import { Readable } from "node:stream";
 import "../src/main.mjs";
 const { setupMainHarness } = await import("../test-fixtures/main-harness.mjs");
 
@@ -58,19 +57,11 @@ test("preflight failures use the mocked command and do not deploy", async () => 
   expect(process.exitCode).toBe(1);
 });
 
-test("passes stdin passwords to the backup command", async () => {
-  const descriptor = Object.getOwnPropertyDescriptor(process, "stdin");
-  Object.defineProperty(process, "stdin", {
-    configurable: true,
-    value: Readable.from([Buffer.from("secret\n")]),
-  });
+test("passes a password read from stdin to the backup command", async () => {
   args = { command: "backup", passwordStdin: true };
-  try {
-    await cli.runCli();
-    expect(cli.runBackup.mock.calls[0][0].password).toBe("secret");
-  } finally {
-    Object.defineProperty(process, "stdin", descriptor);
-  }
+  await cli.runCli();
+  expect(cli.readPasswordStdin).toHaveBeenCalledWith(process.stdin);
+  expect(cli.runBackup.mock.calls[0][0].password).toBe("stdin-secret");
 });
 
 test("dispatches release workflow", async () => {
