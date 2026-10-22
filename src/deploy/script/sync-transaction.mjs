@@ -1,4 +1,4 @@
-import { scriptTransactionSetupCommand } from "./transaction/command.mjs";
+import { scriptTransactionSetupCommand } from "./transaction/setup-command.mjs";
 
 export async function runScriptSyncTransaction(options, dependencies) {
   const {

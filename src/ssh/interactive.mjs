@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { attachInteractiveListeners } from "./interactive/listeners.mjs";
 import { startInteractiveTimeout } from "./interactive/timeout.mjs";
 import { createInteractiveState } from "./interactive/state.mjs";
+import { createInteractiveShellErrorHandler } from "./interactive/shell-lifecycle.mjs";
 
 export function interactive(client, commands, log = () => {}, onCommandComplete = () => {}) {
   const operation = randomUUID();
@@ -17,12 +18,7 @@ export function interactive(client, commands, log = () => {}, onCommandComplete 
       log,
       reject,
     });
-    const handleShellError = (error) => {
-      if (state.settled) return;
-      state.settled = true;
-      clearTimeout(timer);
-      reject(error);
-    };
+    const handleShellError = createInteractiveShellErrorHandler({ state, timer, reject });
     let shellRequest;
     try {
       shellRequest = client.shell({ term: "xterm", cols: 160, rows: 48 });

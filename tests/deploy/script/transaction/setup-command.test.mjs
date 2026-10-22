@@ -1,5 +1,5 @@
 import { deploymentManifestHeader } from "../../../../src/manifest/columns.mjs";
-import { scriptTransactionSetupCommand } from "../../../../src/deploy/script/transaction/command.mjs";
+import { scriptTransactionSetupCommand } from "../../../../src/deploy/script/transaction/setup-command.mjs";
 
 test("builds the remote script transaction setup command", () => {
   const command = scriptTransactionSetupCommand({
