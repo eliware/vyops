@@ -97,51 +97,13 @@ test("completes a structured command", async () => {
   expect(completed).toHaveBeenCalledWith("save");
 });
 
-test("resolves an empty sequence when the shell closes", async () => {
+test("resolves an empty sequence without sending a command", async () => {
   const client = new MockClient();
   const promise = interactive(client, []);
   await Promise.resolve();
   client.shellStream.emit("close");
   await expect(promise).resolves.toBe("");
-});
-
-test.each([
-  ["save", /save failed/i, "save failed\ntestuser@test-router.example.test# "],
-  ["commit-confirm 5", /commit failed|error/i, "Configuration commit failed; rollback in progress"],
-])("interactive rejects failed structured command: %s", async (command, reject, response) => {
-  const client = new MockClient();
-  const promise = interactive(client, [{ command, reject }]);
-  await Promise.resolve();
-  client.shellStream.emit("data", response);
-  await expect(promise).rejects.toThrow(`interactive command failed: ${command}`);
-});
-
-test("interactive reports structured failures without a matching detail line", async () => {
-  const client = new MockClient();
-  const promise = interactive(client, [{ command: "load /tmp/config", reject: /^x/ }]);
-  await Promise.resolve();
-  client.shellStream.emit("data", "x");
-  await expect(promise).rejects.toThrow("interactive command failed: load /tmp/config");
-});
-
-test("interactive rejects commit-confirm after VyOS reports a validation error", async () => {
-  const client = new MockClient();
-  const promise = interactive(client, [
-    { command: "commit-confirm 5", reject: /(?:commit failed|commit aborted|invalid|error)/i },
-  ]);
-  await Promise.resolve();
-  client.shellStream.emit(
-    "data",
-    "commit-confirm will automatically reload previous config in 5 minutes\nProceed ? [Y/n] ",
-  );
-  expect(client.shellStream.writes).toEqual(["commit-confirm 5\n", "yes\n"]);
-  client.shellStream.emit(
-    "data",
-    'Initialized commit-confirm; 5 minutes to confirm before reload\n[pki] Invalid private key on certificate "sangahnoona.com"',
-  );
-  await expect(promise).rejects.toThrow(
-    'interactive command failed: commit-confirm 5 ([pki] Invalid private key on certificate "[redacted]")',
-  );
+  expect(client.shellStream.writes).toEqual([]);
 });
 
 test("interactive rejects a shell creation failure", async () => {

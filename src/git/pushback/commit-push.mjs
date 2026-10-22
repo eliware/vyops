@@ -1,6 +1,6 @@
-import { pushFailure } from "../push-failure.mjs";
 import { repositoryState } from "../repository/state.mjs";
 import { formatRepositorySnapshot } from "../repository/snapshot.mjs";
+import { pushCommit } from "./push.mjs";
 
 export async function commitPushback(
   gitRunner,
@@ -33,10 +33,6 @@ export async function commitPushback(
   await gitRunner(["add", "--", ...paths], repo);
   const timestamp = new Date().toISOString().replace("T", " ").slice(0, 19);
   await gitRunner(["commit", "--only", "-m", `Pushback ${timestamp}`, "--", ...paths], repo);
-  try {
-    await gitRunner(["push"], repo);
-  } catch (error) {
-    throw await pushFailure(gitRunner, repo, error);
-  }
+  await pushCommit(gitRunner, repo);
   return true;
 }
