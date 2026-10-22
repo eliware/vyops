@@ -21,6 +21,8 @@ beforeEach(() => {
   delete process.env.SSH_AUTH_SOCK;
   delete process.env.VYOPS_CONNECT_TIMEOUT;
   delete process.env.VYOPS_OPERATION_TIMEOUT;
+  delete process.env.SSH_KNOWN_HOSTS;
+  delete process.env.SSH_HOST_CA;
 });
 
 afterEach(() => {
@@ -57,6 +59,22 @@ test("connect uses the default key path", async () => {
   const client = await establishConnection("vyos@router");
   expect(client.options.privateKey).toEqual(Buffer.from("default-key"));
   await rm(keyDir, { recursive: true, force: true });
+});
+
+test("connect reads the configured known hosts and certificate authority paths", async () => {
+  const dir = await mkdtemp(join("/virtual", "ssh-configured-trust-"));
+  const knownHostsPath = join(dir, "trusted_hosts");
+  const hostCaPath = join(dir, "trusted_ca");
+  await writeFile(knownHostsPath, "router ssh-ed25519 AAAA\n");
+  await writeFile(hostCaPath, "trusted-ca");
+  process.env.HOME = dir;
+  process.env.SSH_AUTH_SOCK = "/agent.sock";
+  process.env.SSH_KNOWN_HOSTS = knownHostsPath;
+  process.env.SSH_HOST_CA = hostCaPath;
+  const client = await connect("vyos@router");
+  const callback = jest.fn();
+  expect(client.options.hostVerifier(Buffer.from("certificate"), callback)).toBe(true);
+  expect(callback).toHaveBeenCalledWith(true);
 });
 
 test("connect supports password authentication without reading a private key", async () => {

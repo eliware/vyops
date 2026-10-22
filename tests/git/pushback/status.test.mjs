@@ -1,4 +1,7 @@
-import { hasStagedAndUnstagedChanges } from "../../../src/git/pushback/status.mjs";
+import {
+  hasStagedAndUnstagedChanges,
+  hasUntrackedFiles,
+} from "../../../src/git/pushback/status.mjs";
 
 test.each([
   ["MM config.boot\0", true],
@@ -8,4 +11,12 @@ test.each([
   ["", false],
 ])("detects mixed index and worktree changes in %p", (status, expected) => {
   expect(hasStagedAndUnstagedChanges(status)).toBe(expected);
+});
+
+test.each([
+  ["?? config.boot.deployment.tsv\0", true],
+  [" M config.boot\0", false],
+  ["", false],
+])("detects untracked files in %p", (status, expected) => {
+  expect(hasUntrackedFiles(status)).toBe(expected);
 });

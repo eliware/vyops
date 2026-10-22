@@ -9,8 +9,11 @@ export function registerCliLifecycle({
   const signals = registerSignals({
     log,
     shutdownHook: async () => {
-      await closeAll();
-      await cleanup();
+      try {
+        await closeAll();
+      } finally {
+        await cleanup();
+      }
     },
   });
   return {

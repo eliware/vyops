@@ -1,7 +1,15 @@
 export function installedScriptManifestCommand({ name, installed, manifest }) {
   const awkProgram = [
-    "NR == 1 { print }",
-    "$2 == path {",
+    "function safe_path(value, count, parts, i) {",
+    "  if (value !~ /^[A-Za-z0-9._/@-]+$/ || value ~ /^\\//) return 0",
+    '  count = split(value, parts, "/")',
+    '  for (i = 1; i <= count; i++) if (parts[i] == "" || parts[i] == "." || parts[i] == "..") return 0',
+    "  return 1",
+    "}",
+    'NR == 1 { if ($0 != "kind\\tpath\\tpreexisting\\told_mode\\told_sha256\\told_type\\tnew_mode\\tnew_sha256\\tnew_type") bad = 1; print; next }',
+    "{",
+    '  if (NF != 9 || ($1 != "file" && $1 != "directory") || $2 == "" || !safe_path($2) || seen[$2]++) bad = 1',
+    "if ($2 == path) {",
     "  if (found > 0) {",
     "    bad = 1",
     "  } else {",
@@ -10,9 +18,9 @@ export function installedScriptManifestCommand({ name, installed, manifest }) {
     "    $9 = type",
     "  }",
     "  found++",
+    "}",
     "  print",
     "}",
-    "NR > 1 && $2 != path { print }",
     "END { if (found != 1 || bad) exit 1 }",
   ].join("\n");
   return [

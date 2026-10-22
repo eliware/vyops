@@ -3,11 +3,14 @@ import fs from "node:fs";
 
 export { fs };
 
-export function mockHostVerifier(knownHosts, key, callback) {
+export function mockHostVerifier(knownHosts, key, callback, hostCa = "") {
   const blocked = knownHosts
     .split(/\r?\n/)
     .some((line) => line.startsWith("@revoked router") || line.startsWith("!router "));
-  const accepted = !blocked && Buffer.isBuffer(key) && key.length === 0;
+  const accepted =
+    !blocked &&
+    Buffer.isBuffer(key) &&
+    (key.length === 0 || (key.toString() === "certificate" && hostCa === "trusted-ca"));
   callback?.(accepted);
   return accepted;
 }
@@ -65,6 +68,9 @@ export class MockClient extends EventEmitter {
 }
 
 export function createSshClientModule({ MockClient, fs, join, mockHostVerifier }) {
+  function resolveConfiguredPath(value) {
+    return value?.startsWith("~/") ? join(process.env.HOME, value.slice(2)) : value;
+  }
   return {
     connect: async (options) => {
       const client = new MockClient();
@@ -74,7 +80,10 @@ export function createSshClientModule({ MockClient, fs, join, mockHostVerifier }
           ? await fs.promises.readFile(privateKeyPath)
           : undefined;
       const knownHosts = options.knownHostsPath
-        ? await fs.promises.readFile(join(process.env.HOME, ".ssh/known_hosts"), "utf8")
+        ? await fs.promises.readFile(resolveConfiguredPath(options.knownHostsPath), "utf8")
+        : "";
+      const hostCa = options.hostCaPath
+        ? await fs.promises.readFile(resolveConfiguredPath(options.hostCaPath), "utf8")
         : "";
       let actual;
       const _utils = {
@@ -93,7 +102,7 @@ export function createSshClientModule({ MockClient, fs, join, mockHostVerifier }
         ...options,
         privateKey,
         hostVerifier: options.knownHostsPath
-          ? (key, callback) => mockHostVerifier(knownHosts, key, callback)
+          ? (key, callback) => mockHostVerifier(knownHosts, key, callback, hostCa)
           : undefined,
       };
       await new Promise((resolve, reject) => {

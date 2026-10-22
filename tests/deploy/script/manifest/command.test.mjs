@@ -9,6 +9,9 @@ test("builds a command that replaces the selected manifest entry", () => {
   expect(command).toContain("sha256sum");
   expect(command).toContain('path="nested/hook.sh"');
   expect(command).toContain("awk -F");
+  expect(command).toContain("NF != 9");
+  expect(command).toContain("safe_path($2)");
+  expect(command).toContain("seen[$2]++");
   expect(command).toContain('mv -- "$manifest_tmp" "/tmp/manifest.tsv"');
   expect(command).not.toContain('>> "/tmp/manifest.tsv"');
 });

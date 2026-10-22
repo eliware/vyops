@@ -37,3 +37,20 @@ test("removes process handlers when SSH close fails", async () => {
   expect(signals.removeHandlers).toHaveBeenCalledTimes(1);
   expect(errors.removeHandlers).toHaveBeenCalledTimes(1);
 });
+
+test("runs interruption cleanup when SSH close fails", async () => {
+  const cleanup = jest.fn();
+  let shutdownHook;
+  registerCliLifecycle({
+    log: {},
+    registerHandlers: jest.fn(() => ({ removeHandlers: jest.fn() })),
+    registerSignals: jest.fn((options) => {
+      shutdownHook = options.shutdownHook;
+      return { removeHandlers: jest.fn() };
+    }),
+    closeAll: jest.fn().mockRejectedValue(new Error("SSH close failed")),
+    cleanup,
+  });
+  await expect(shutdownHook()).rejects.toThrow("SSH close failed");
+  expect(cleanup).toHaveBeenCalledTimes(1);
+});

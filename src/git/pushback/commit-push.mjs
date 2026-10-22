@@ -1,7 +1,7 @@
 import { repositoryState } from "../repository/state.mjs";
 import { formatRepositorySnapshot } from "../repository/snapshot.mjs";
 import { pushCommit } from "./push.mjs";
-import { hasStagedAndUnstagedChanges } from "./status.mjs";
+import { hasStagedAndUnstagedChanges, hasUntrackedFiles } from "./status.mjs";
 
 export async function commitPushback(
   gitRunner,
@@ -22,7 +22,7 @@ export async function commitPushback(
       "configuration or manifest has staged and unstaged changes. Refusing to overwrite staged content.",
     );
   const { stdout: diff } = await gitRunner(["diff", "HEAD", "--", ...paths], repo);
-  if (!diff) return false;
+  if (!diff && !hasUntrackedFiles(status)) return false;
   await beforeCommit(repo);
   if (
     formatRepositorySnapshot(await repositoryState(gitRunner, repo, relativePath)) !== initialState
