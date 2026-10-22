@@ -25,7 +25,3 @@ export async function readDeploymentState(readFile, manifestPath) {
     throw error;
   }
 }
-
-export async function readManagedPaths(readFile, manifestPath) {
-  return (await readDeploymentState(readFile, manifestPath)).managed;
-}

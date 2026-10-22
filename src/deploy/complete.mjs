@@ -1,7 +1,5 @@
 import { verifyRelease } from "./verify-release.mjs";
-import { promises as fs } from "node:fs";
-import { downloadFilesToReplace } from "./download-to-replace.mjs";
-import { deploymentManifestPath } from "./deployment/manifest-path.mjs";
+import { downloadSynchronizedState } from "./local-file/synchronized-state.mjs";
 
 export async function completeDeployment(options) {
   const {
@@ -27,12 +25,17 @@ export async function completeDeployment(options) {
   setClient(null);
   setClient(await connectClient());
   debugLog(`syncing live config: /config/config.boot -> ${config}`);
-  const files = [{ remote: "/config/config.boot", local: config }];
   if (finalizeHooks) {
     phase("download deployment manifest");
-    files.push({ remote: manifest, local: deploymentManifestPath(config) });
   }
-  await downloadFilesToReplace(fs, download, getClient(), files, log);
+  await downloadSynchronizedState({
+    download,
+    client: getClient(),
+    manifest,
+    config,
+    finalizeHooks,
+    log,
+  });
   if (verify) await verifyRelease(getClient(), exec, log, redact);
   phase("run post-commit scripts");
   if (finalizeHooks) {

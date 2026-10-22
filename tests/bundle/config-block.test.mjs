@@ -22,3 +22,7 @@ test("returns empty text when the block is absent or incomplete", () => {
   expect(configBlock("interfaces {}", "system")).toBe("");
   expect(configBlock("system {\n login {\n", "system")).toBe("");
 });
+
+test("ignores declaration braces inside quoted text", () => {
+  expect(configBlock('system "quoted { text"', 'system "quoted')).toBe("");
+});

@@ -8,7 +8,6 @@ const { mkdtemp, mkdir, rm, writeFile } = await import("node:fs/promises");
 import { join } from "node:path";
 const { runDeployment } = await import("../../src/deploy/run.mjs");
 const { setupDeployHarness } = await import("../../test-fixtures/deploy-harness.mjs");
-
 test("prepares, recovers, and cleans up when release commands fail", async () => {
   const events = [];
   const client = { state: "open" };
@@ -59,10 +58,20 @@ test("prepares, recovers, and cleans up when release commands fail", async () =>
     "close",
   ]);
 });
-
 const { fsMocks, logMock, mocks, client, deploy, cleanupActiveDeployments } =
   await setupDeployHarness(jest);
-
+async function withHooks(names, action) {
+  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
+  const hooks = join(root, "scripts");
+  await mkdir(hooks, { recursive: true });
+  await Promise.all(names.map((name) => writeFile(join(hooks, name), "#!/bin/sh\n")));
+  fsMocks.readdir.mockResolvedValue(names.map((name) => ({ name, isFile: () => true })));
+  try {
+    await action(root);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
 async function pauseDeploymentAtConfirmation() {
   let releaseInteractive;
   mocks.interactive.mockImplementation(
@@ -79,7 +88,6 @@ async function pauseDeploymentAtConfirmation() {
   await jest.advanceTimersByTimeAsync(0);
   return { deployment, releaseInteractive: (value) => releaseInteractive(value) };
 }
-
 test("cleans active deployment staging on interruption", async () => {
   const { deployment, releaseInteractive } = await pauseDeploymentAtConfirmation();
   mocks.connect.mockRejectedValueOnce(new Error("reconnect unavailable"));
@@ -90,7 +98,6 @@ test("cleans active deployment staging on interruption", async () => {
   releaseInteractive("");
   await deployment;
 });
-
 test("reconnects and removes staging during successful interruption cleanup", async () => {
   const { deployment, releaseInteractive } = await pauseDeploymentAtConfirmation();
   await cleanupActiveDeployments();
@@ -103,7 +110,6 @@ test("reconnects and removes staging during successful interruption cleanup", as
   releaseInteractive("");
   await deployment;
 });
-
 test("returns success when confirmed release staging cleanup fails", async () => {
   mocks.exec.mockImplementation(async (_client, command) =>
     command.startsWith("rm -f --")
@@ -115,7 +121,6 @@ test("returns success when confirmed release staging cleanup fails", async () =>
   ).resolves.toBe(0);
   expect(logMock.warn).toHaveBeenCalledWith(expect.stringContaining("permission denied"));
 });
-
 test("reports failed recovery reconnects through debug output", async () => {
   const failure = new Error("deployment transport failed");
   mocks.interactive.mockRejectedValue(failure);
@@ -128,7 +133,6 @@ test("reports failed recovery reconnects through debug output", async () => {
   ).rejects.toBe(failure);
   expect(logMock.debug).toHaveBeenCalledWith(expect.stringMatching(/recovery reconnect failed/));
 });
-
 test("keeps the deployment error when hook recovery also fails", async () => {
   const root = await mkdtemp(join("/virtual", "vyops-recovery-"));
   const scripts = join(root, "scripts");
@@ -152,7 +156,6 @@ test("keeps the deployment error when hook recovery also fails", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
-
 test("discards and reconnects the SSH client after a timeout", async () => {
   const timeout = Object.assign(new Error("interactive SSH timeout"), { code: "VYOPS_TIMEOUT" });
   mocks.interactive.mockRejectedValue(timeout);
@@ -167,14 +170,8 @@ test("discards and reconnects the SSH client after a timeout", async () => {
     ),
   ).toBe(true);
 });
-
 test("tolerates hook rollback cleanup failures", async () => {
-  const root = await mkdtemp(join("/virtual", "vyops-deploy-"));
-  const hooks = join(root, "scripts");
-  await mkdir(hooks, { recursive: true });
-  await writeFile(join(hooks, "hook.sh"), "#!/bin/sh\n");
-  try {
-    fsMocks.readdir.mockResolvedValue([{ name: "hook.sh", isFile: () => true }]);
+  await withHooks(["hook.sh"], async (root) => {
     mocks.interactive.mockRejectedValue(new Error("deployment failed"));
     mocks.exec.mockImplementation(async (_client, command) =>
       command.includes('$3 == "false"')
@@ -185,7 +182,108 @@ test("tolerates hook rollback cleanup failures", async () => {
       deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
     ).rejects.toThrow("deployment failed");
     expect(mocks.exec).toHaveBeenCalledTimes(9);
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
+  });
+});
+test("hook setup and install failures", async () => {
+  await withHooks(["hook.sh"], async (root) => {
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "setup out", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script directory setup failed: setup out");
+    mocks.exec.mockReset();
+    fsMocks.readdir.mockResolvedValueOnce([{ name: "hook.sh", isFile: () => true }]);
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "install err" })
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script install failed (hook.sh): install err");
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) => command.includes("manifest.tsv") && command.includes("backup"),
+      ),
+    ).toBe(true);
+    expect(
+      mocks.exec.mock.calls.some(
+        ([, command]) => command.includes("while IFS= read -r name") && command.includes("false"),
+      ),
+    ).toBe(true);
+    mocks.exec.mockReset();
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "install out", stderr: "" })
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    fsMocks.readdir.mockResolvedValueOnce([{ name: "hook.sh", isFile: () => true }]);
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script install failed (hook.sh): install out");
+  });
+});
+test("handles non-missing hook directory errors and hook cleanup errors", async () => {
+  await withHooks(["hook.sh"], async (root) => {
+    fsMocks.readdir.mockRejectedValueOnce(new Error("permission denied"));
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("permission denied");
+    fsMocks.readdir.mockResolvedValueOnce([{ name: "hook.sh", isFile: () => true }]);
+    mocks.exec.mockImplementation(async (_client, command) =>
+      command.includes("sudo rm -rf") && command.includes("scripts-backup")
+        ? Promise.reject(new Error("hook cleanup failed"))
+        : { code: 0, stdout: "", stderr: "" },
+    );
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).resolves.toBe(0);
+  });
+});
+test("reports hook backup failures and tolerates install rollback failures", async () => {
+  await withHooks(["hook.sh"], async (root) => {
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "backup err" })
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script backup failed (hook.sh): backup err");
+    mocks.exec.mockReset();
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "backup out", stderr: "" })
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script backup failed (hook.sh): backup out");
+    mocks.exec.mockReset();
+    mocks.exec
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ code: 1, stdout: "install out", stderr: "" })
+      .mockRejectedValueOnce(new Error("install rollback failed"))
+      .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    await expect(
+      deploy({ target: "testuser@test-router.example.test", config: join(root, "config.boot") }),
+    ).rejects.toThrow("script install failed (hook.sh): install out");
+    expect(logMock.warn).toHaveBeenCalledWith(
+      expect.stringMatching(/cleanup warning: script restoration failed.*install rollback failed/i),
+    );
+  });
 });

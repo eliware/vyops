@@ -1,64 +1,46 @@
-function isEscaped(source, index) {
-  let slashes = 0;
-  for (let cursor = index - 1; cursor >= 0 && source[cursor] === "\\"; cursor -= 1) slashes += 1;
-  return slashes % 2 === 1;
+import { lexConfigLine } from "../config/lexer.mjs";
+
+function linesWithOffsets(source) {
+  let offset = 0;
+  return source.split("\n").map((text) => {
+    const line = { text, offset };
+    offset += text.length + 1;
+    return line;
+  });
 }
 
 export function configBlock(source, name) {
-  let quote = "";
-  let comment = false;
   const declaration = new RegExp(`^[\\t ]*${name}\\s*\\{`);
   let opening = -1;
+  const lines = linesWithOffsets(source);
+  let quote = null;
 
-  for (let index = 0; index < source.length; index += 1) {
-    const character = source[index];
-    if (comment) {
-      if (character === "\n") comment = false;
-      continue;
-    }
-    if (quote) {
-      if (character === quote && !isEscaped(source, index)) quote = "";
-      continue;
-    }
-    if (character === "#") {
-      comment = true;
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      continue;
-    }
-    if ((index === 0 || source[index - 1] === "\n") && declaration.test(source.slice(index))) {
-      const match = declaration.exec(source.slice(index));
-      opening = index + match[0].lastIndexOf("{");
+  for (const line of lines) {
+    const quoteAtLineStart = quote;
+    const { code, braces, quote: nextQuote } = lexConfigLine(line.text, quote);
+    quote = nextQuote;
+    if (quoteAtLineStart) continue;
+    const match = declaration.exec(code);
+    if (!match) continue;
+    const braceIndex = match[0].lastIndexOf("{");
+    if (braces.some(({ character, index }) => character === "{" && index === braceIndex)) {
+      opening = line.offset + braceIndex;
       break;
     }
   }
   if (opening < 0) return "";
 
   let depth = 1;
-  quote = "";
-  comment = false;
-  for (let index = opening + 1; index < source.length; index += 1) {
-    const character = source[index];
-    if (comment) {
-      if (character === "\n") comment = false;
-      continue;
+  quote = null;
+  for (const line of lines) {
+    const { braces, quote: nextQuote } = lexConfigLine(line.text, quote);
+    quote = nextQuote;
+    for (const brace of braces) {
+      const offset = line.offset + brace.index;
+      if (offset <= opening) continue;
+      if (brace.character === "{") depth += 1;
+      else if (--depth === 0) return source.slice(opening + 1, offset);
     }
-    if (quote) {
-      if (character === quote && !isEscaped(source, index)) quote = "";
-      continue;
-    }
-    if (character === "#") {
-      comment = true;
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      continue;
-    }
-    if (character === "{") depth += 1;
-    if (character === "}" && --depth === 0) return source.slice(opening + 1, index);
   }
   return "";
 }
