@@ -2,6 +2,9 @@ import { join } from "node:path";
 import { exec } from "../ssh/exec.mjs";
 import { upload } from "../ssh/upload.mjs";
 
+export const binaryArchitecturePattern =
+  "^(x86_64:.*ELF.*x86-64.*|aarch64:.*ELF.*ARM aarch64.*|armv7l:.*ELF.*ARM(,|$).*)$";
+
 export async function uploadStagedScript({
   client,
   name,
@@ -29,7 +32,7 @@ export async function uploadStagedScript({
   const binaryCheck = binary
     ? [
         `printf '%s\\n' "$(uname -m):$(file -b ${JSON.stringify(remote)})"`,
-        "| grep -Eq '^(x86_64:.*ELF.*x86-64.*|aarch64:.*ELF.*ARM aarch64.*|armv7l:.*ELF.*ARM.*)$'",
+        `| grep -Eq '${binaryArchitecturePattern}'`,
         verifyBinaries
           ? `&& test "$(sha256sum ${JSON.stringify(remote)} | awk '{print $1}')" = ${JSON.stringify(localHash)}`
           : "",

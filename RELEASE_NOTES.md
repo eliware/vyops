@@ -37,6 +37,7 @@
 - Mark interactive shell commands settled after success or failure.
 - Test configured SSH known-host and host CA paths through the SSH fixture.
 - Accept standard trailing file descriptions when VyOps checks a remote binary's architecture.
+- Reject AArch64 binaries on ARMv7 routers.
 
 ## 12.0.0 — 2026-10-12
 
