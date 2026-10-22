@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { shellQuote } from "../shell-quote.mjs";
 import { snapshotRemoteScript } from "../remote/script/snapshot.mjs";
+import { cleanupRemoteScriptSnapshot } from "../remote/script/cleanup.mjs";
 
 export async function stageBackupScript({ fs, path, client, scripts, name, download, exec, log }) {
   const remote = `/config/scripts/${name}`;
@@ -16,16 +16,6 @@ export async function stageBackupScript({ fs, path, client, scripts, name, downl
   } catch (error) {
     operationError = error;
   }
-  let cleanupError;
-  try {
-    const result = await exec(client, `rm -rf -- ${shellQuote(snapshotDirectory)}`);
-    if (result.code !== 0)
-      cleanupError = new Error(`remote snapshot cleanup failed: ${result.stderr || result.stdout}`);
-  } catch (error) {
-    cleanupError = error;
-  }
-  if (cleanupError)
-    throw new Error(cleanupError.message, { cause: operationError || cleanupError });
-  if (operationError) throw operationError;
+  await cleanupRemoteScriptSnapshot(exec, client, snapshotDirectory, operationError);
   log.debug(`[vyops] backed up script: ${name}`);
 }

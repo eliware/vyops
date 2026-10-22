@@ -54,3 +54,53 @@ test("ignores a missing client and reports close errors", async () => {
   await expect(close(client)).rejects.toThrow("close failed");
   expect(client.close).toHaveBeenCalledTimes(1);
 });
+
+test("host verifier accepts a known host and rejects a mismatch", async () => {
+  const dir = await prepareKey();
+  await writeFile(
+    join(dir, ".ssh/known_hosts"),
+    "# comment\n\nrouter ssh-ed25519 AAAA\nmalformed\n",
+  );
+  const client = await connect("vyos@router");
+  const verify = (key) => new Promise((resolve) => client.options.hostVerifier(key, resolve));
+  await expect(verify(Buffer.alloc(0))).resolves.toBe(true);
+  await expect(verify(Buffer.from("mismatch"))).resolves.toBe(false);
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("host verifier rejects revoked, negated, wildcard, and malformed entries", async () => {
+  const dir = await prepareKey();
+  await writeFile(
+    join(dir, ".ssh/known_hosts"),
+    "@cert-authority router ssh-ed25519 AAAA\n@revoked router ssh-ed25519 AAAA\n*.example ssh-ed25519 AAAA\n|1|bad|bad ssh-ed25519 AAAA\n!router router ssh-ed25519 AAAA\n",
+  );
+  const client = await connect("vyos@router");
+  await expect(
+    new Promise((resolve) => client.options.hostVerifier(Buffer.alloc(0), resolve)),
+  ).resolves.toBe(false);
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("host verifier accepts valid hashed hosts and rejects malformed hashes", async () => {
+  const dir = await prepareKey();
+  const { createHmac } = await import("node:crypto");
+  const salt = Buffer.from("salt");
+  const digest = createHmac("sha1", salt).update("router").digest("base64");
+  await writeFile(
+    join(dir, ".ssh/known_hosts"),
+    `|1|${salt.toString("base64")}|${digest} ssh-ed25519 AAAA\nrouter badtype bad\n`,
+  );
+  const client = await connect("vyos@router");
+  await expect(
+    new Promise((resolve) => client.options.hostVerifier(Buffer.alloc(0), resolve)),
+  ).resolves.toBe(true);
+  await writeFile(
+    join(dir, ".ssh/known_hosts"),
+    "|2|salt|digest ssh-ed25519 AAAA\n|1||| ssh-ed25519 AAAA\n!router router ssh-ed25519 AAAA\n",
+  );
+  const rejectedClient = await connect("vyos@router");
+  await expect(
+    new Promise((resolve) => rejectedClient.options.hostVerifier(Buffer.alloc(0), resolve)),
+  ).resolves.toBe(false);
+  await rm(dir, { recursive: true, force: true });
+});

@@ -1,15 +1,12 @@
-import { readFile as readLocalFile } from "node:fs/promises";
 import { fs, path as eliwarePath, log } from "@eliware/common";
 import { exec } from "../../ssh/exec.mjs";
 import { listScripts } from "./tree.mjs";
 import { finalizeScripts } from "./finalize.mjs";
-import { rollbackScripts } from "./rollback.mjs";
 import { isSafeScriptPath } from "../../bundle.mjs";
 import { deploymentRemotePaths } from "../remote/paths.mjs";
-import { stageScript } from "./staging.mjs";
-import { installStagedScripts } from "./install.mjs";
 import { inspectLiveScripts } from "../inspect-live-scripts.mjs";
 import { runScriptSyncTransaction } from "./sync-transaction.mjs";
+import { scriptSyncDependencies } from "./transaction-dependencies.mjs";
 
 export async function installScripts(client, config, debugLog, runId, verifyBinaries, redact) {
   const scriptsDir = eliwarePath(config, "..", "scripts");
@@ -40,16 +37,7 @@ export async function installScripts(client, config, debugLog, runId, verifyBina
       runId,
       debugLog,
     },
-    {
-      exec,
-      stageScript,
-      installStagedScripts,
-      rollbackScripts,
-      log,
-      readLocalFile,
-      stat: fs.promises.stat,
-      eliwarePath,
-    },
+    scriptSyncDependencies(),
   );
   return async (committed, activeClient) => {
     await finalizeScripts(exec, log, {
