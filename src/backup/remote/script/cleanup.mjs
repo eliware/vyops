@@ -9,7 +9,11 @@ export async function cleanupRemoteScriptSnapshot(
 ) {
   let cleanupError;
   try {
-    const result = await exec(client, `rm -rf -- ${shellQuote(snapshotDirectory)}`);
+    const directory = shellQuote(snapshotDirectory);
+    const result = await exec(
+      client,
+      `if test -L ${directory}; then exit 1; elif test -d ${directory}; then find -P ${directory} -maxdepth 1 -type f -name script -delete && rmdir -- ${directory}; elif test -e ${directory}; then exit 1; else exit 0; fi`,
+    );
     if (result.code !== 0) {
       const output = result.stderr || result.stdout;
       cleanupError = new Error(

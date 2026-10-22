@@ -19,7 +19,9 @@ test("rejects a failed remote snapshot", async () => {
   await expect(
     snapshotRemoteScript(exec, {}, "/config/scripts/hook.sh", "/tmp/.vyops-backup.run-id"),
   ).rejects.toThrow("remote script changed or is not a regular file: /config/scripts/hook.sh");
-  expect(exec.mock.calls[1][1]).toBe("rm -rf -- '/tmp/.vyops-backup.run-id'");
+  expect(exec.mock.calls[1][1]).toBe(
+    "if test -L '/tmp/.vyops-backup.run-id'; then exit 1; elif test -d '/tmp/.vyops-backup.run-id'; then find -P '/tmp/.vyops-backup.run-id' -maxdepth 1 -type f -name script -delete && rmdir -- '/tmp/.vyops-backup.run-id'; elif test -e '/tmp/.vyops-backup.run-id'; then exit 1; else exit 0; fi",
+  );
 });
 
 test("reports a failed remote snapshot cleanup", async () => {

@@ -28,9 +28,13 @@ export function attachInteractiveLifecycle(options) {
         typeof finalCommand === "string"
           ? finalCommand === "exit"
           : finalCommand?.command === "exit";
-      if (commands.length === 0 || (state.index >= commands.length && expectedClose))
+      if (commands.length === 0 || (state.index >= commands.length && expectedClose)) {
+        state.settled = true;
         resolve(state.output);
-      else reject(new Error("interactive SSH closed before command sequence completed"));
+      } else {
+        state.settled = true;
+        reject(new Error("interactive SSH closed before command sequence completed"));
+      }
     }
   });
 }

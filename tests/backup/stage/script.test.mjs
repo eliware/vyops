@@ -27,7 +27,7 @@ test("downloads a script snapshot into a private local tree", async () => {
     "/tmp/staged/scripts/nested/hook.sh",
   );
   expect(fs.chmod).toHaveBeenCalledWith("/tmp/staged/scripts/nested/hook.sh", 0o600);
-  expect(exec).toHaveBeenLastCalledWith(expect.anything(), expect.stringContaining("rm -rf --"));
+  expect(exec).toHaveBeenLastCalledWith(expect.anything(), expect.stringContaining("find -P "));
   expect(log.debug).toHaveBeenCalledWith("[vyops] backed up script: nested/hook.sh");
 });
 
@@ -45,7 +45,7 @@ test("removes the remote snapshot when a download fails", async () => {
       log: { debug: jest.fn() },
     }),
   ).rejects.toThrow("download failed");
-  expect(exec).toHaveBeenLastCalledWith(expect.anything(), expect.stringContaining("rm -rf --"));
+  expect(exec).toHaveBeenLastCalledWith(expect.anything(), expect.stringContaining("find -P "));
 });
 
 test("fails the backup when remote snapshot cleanup fails", async () => {

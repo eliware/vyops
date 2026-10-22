@@ -64,6 +64,7 @@ test("records stderr failures and resolves an expected exit", () => {
   const exited = options({ commands: ["exit"], index: 1, resolve: jest.fn() });
   exited.stream.emit("close");
   expect(exited.resolve).toHaveBeenCalledWith("output");
+  expect(exited.state.settled).toBe(true);
 });
 
 test("rejects shell closure when exit is queued but not sent", () => {
@@ -75,6 +76,7 @@ test("rejects shell closure when exit is queued but not sent", () => {
     }),
   );
   expect(closed.resolve).not.toHaveBeenCalled();
+  expect(closed.state.settled).toBe(true);
 });
 
 test("resolves an empty command sequence when the shell closes", () => {

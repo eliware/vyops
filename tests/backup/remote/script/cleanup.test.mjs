@@ -4,7 +4,10 @@ import { cleanupRemoteScriptSnapshot } from "../../../../src/backup/remote/scrip
 test("removes a remote script snapshot", async () => {
   const exec = jest.fn().mockResolvedValue({ code: 0 });
   await cleanupRemoteScriptSnapshot(exec, {}, "/tmp/snapshot", null);
-  expect(exec).toHaveBeenCalledWith({}, "rm -rf -- '/tmp/snapshot'");
+  expect(exec).toHaveBeenCalledWith(
+    {},
+    "if test -L '/tmp/snapshot'; then exit 1; elif test -d '/tmp/snapshot'; then find -P '/tmp/snapshot' -maxdepth 1 -type f -name script -delete && rmdir -- '/tmp/snapshot'; elif test -e '/tmp/snapshot'; then exit 1; else exit 0; fi",
+  );
 });
 
 test("reports a failed remote snapshot cleanup", async () => {

@@ -63,7 +63,7 @@ test("backs up config and nested scripts", async () => {
     true,
   );
   expect(
-    mocks.exec.mock.calls.some(([, command]) => command.includes("rm -rf -- '/tmp/.vyops-backup.")),
+    mocks.exec.mock.calls.some(([, command]) => command.includes("find -P '/tmp/.vyops-backup.")),
   ).toBe(true);
   expect(fsMocks.writeFile).toHaveBeenCalledWith(
     expect.stringMatching(/\.vyops-backup-[0-9a-f-]{36}[\\/]config\.boot\.manifest\.tsv$/),
