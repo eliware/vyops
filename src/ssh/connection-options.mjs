@@ -1,17 +1,13 @@
 import { connectTimeout } from "./timeouts/connect.mjs";
+import { authenticationOptions } from "./connection/authentication.mjs";
+import { hostVerificationOptions } from "./connection/host-verification.mjs";
 
 export function createConnectionOptions({ host, username, password }, environment = process.env) {
   return {
     host,
     username,
-    privateKeyPath:
-      password === undefined && !environment.SSH_AUTH_SOCK
-        ? environment.VYOPS_SSH_KEY || undefined
-        : undefined,
-    agent: environment.SSH_AUTH_SOCK,
-    knownHostsPath: environment.SSH_KNOWN_HOSTS || "~/.ssh/known_hosts",
-    hostCaPath: environment.SSH_HOST_CA,
-    password,
+    ...authenticationOptions({ password }, environment),
+    ...hostVerificationOptions(environment),
     connectTimeout: connectTimeout(environment),
   };
 }
