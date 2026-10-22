@@ -2,19 +2,32 @@
 
 ## 15.0.0 — 2026-10-22
 
+### Added
+
+- Upgrade `@eliware/common`, `@eliware/ssh-client`, and `@eliware/test` to version 15.0.0.
+- Align CI, npm publication, and Knit workflows with the approved shared workflows.
+- Use full Git history in CI for tag and release checks.
+- Add mocked tests with an in-memory file system and maintain 100 percent source coverage.
+- Add focused modules and matching tests for CLI arguments, backups, bundles, config, deployment, Git, SSH, and validation.
+
 ### Changed
 
-- Align package metadata, documentation, and workflows with Eliware Test 15 conventions.
-- Update `@eliware/common`, `@eliware/ssh-client`, and `@eliware/test` to version 15.0.0.
-- Group implementation modules and tests by responsibility.
-- Replace test filesystem setup with an in-memory mock filesystem.
-- Check deployment manifests during preflight and record installed script state.
+- Rewrite user docs, specifications, README, and AGENTS instructions in ASD-STE100 language.
+- Split command parsing, config parsing, bundle scanning, SSH, backup, deployment, and Git work into focused modules.
+- Separate script staging, installation, manifest updates, rollback, and cleanup into focused helpers.
+- Sort configuration values and script paths in natural order.
 
 ### Fixed
 
-- Reject duplicate deployment paths before release.
-- Store prior and installed script data in one manifest record.
-- Keep Git and SSH commands isolated behind test mocks.
+- Reject a command after a leading `--` and reject more positional values after the delimiter.
+- Validate deployment manifest headers, records, paths, and duplicates before remote updates.
+- Write actual tab characters in the remote deployment manifest header.
+- Commit selected untracked deployment files during Git pushback.
+- Run remote interruption cleanup if an SSH client close fails.
+- Reject symbolic-link snapshot folders during cleanup.
+- Keep files outside the snapshot unchanged.
+- Mark interactive shell commands settled after success or failure.
+- Test configured SSH known-host and host CA paths through the SSH fixture.
 
 ## 12.0.0 — 2026-10-12
 
