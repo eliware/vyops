@@ -1,6 +1,6 @@
 # Release Notes
 
-## 15.0.1 — 2026-10-26
+## 15.0.1 — 2026-10-27
 
 ### Changed
 
@@ -10,6 +10,7 @@
 - Move deployment manifest record validation to a focused module.
 - Define command and positional value order in the CLI specification.
 - Include `.env.example` in the package content specification.
+- Clarify that npm publication and router releases use separate workflows.
 
 ### Fixed
 
