@@ -7,6 +7,7 @@ directives:
       - Print usage and return an error when no command is given.
       - Print usage for an invalid command or invalid arguments.
       - Accept command options before or after the command name.
+      - Put the command name before positional values.
       - Print usage and return success for standalone --help.
       - Print package.json version and return success for standalone --version.
       - Accept one config path for preflight and release.

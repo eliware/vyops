@@ -4,3 +4,9 @@ test("normalizes and bounds command summaries", () => {
   expect(commandSummary("  show\n version  ")).toBe("show version");
   expect(commandSummary("x".repeat(300))).toHaveLength(240);
 });
+
+test("redacts secret fields from command summaries", () => {
+  expect(commandSummary("set system password='sensitive-value'")).toBe(
+    "set system password=[redacted]",
+  );
+});

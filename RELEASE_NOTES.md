@@ -1,5 +1,21 @@
 # Release Notes
 
+## 15.0.1 — 2026-10-26
+
+### Changed
+
+- Upgrade `@eliware/common`, `@eliware/ssh-client`, and `@eliware/test` to version 15.0.1.
+- Move CLI lifecycle setup and cleanup to a focused entrypoint module.
+- Move remote script directory inspection to a focused module.
+- Move deployment manifest record validation to a focused module.
+- Define command and positional value order in the CLI specification.
+- Include `.env.example` in the package content specification.
+
+### Fixed
+
+- Redact secret values from SSH command debug summaries.
+- Remove repeated optional-service status checks from release integration tests.
+
 ## 15.0.0 — 2026-10-22
 
 ### Added

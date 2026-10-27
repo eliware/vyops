@@ -1,6 +1,6 @@
 {
   "name": "@eliware/vyops",
-  "version": "15.0.0",
+  "version": "15.0.1",
   "type": "module",
   "description": "Preflight local VyOS bundles. Release bundles with SSH. Copy router configuration and scripts with SSH.",
   "keywords": [
@@ -43,11 +43,11 @@
     "node": ">=26"
   },
   "dependencies": {
-    "@eliware/common": "^15.0.0",
-    "@eliware/ssh-client": "^15.0.0"
+    "@eliware/common": "^15.0.1",
+    "@eliware/ssh-client": "^15.0.1"
   },
   "devDependencies": {
-    "@eliware/test": "^15.0.0"
+    "@eliware/test": "^15.0.1"
   },
   "jest": {
     "testEnvironment": "node",

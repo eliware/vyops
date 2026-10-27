@@ -14,3 +14,10 @@ test("does not select a command after a leading value delimiter", () => {
 test("reports the supplied usage when no command exists", () => {
   expect(() => selectCommand(["--debug"], "Usage")).toThrow("Usage");
 });
+
+test("treats the first non-option value as the command", () => {
+  expect(selectCommand(["config.boot", "preflight"], "Usage")).toEqual({
+    command: "config.boot",
+    valueStart: 1,
+  });
+});

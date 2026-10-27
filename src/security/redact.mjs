@@ -1,6 +1,6 @@
-export function redactDeploymentOutput(value, password) {
+export function redactSensitiveValues(value, secretValue) {
   return String(value)
-    .replaceAll(password || "", password ? "[redacted]" : "")
+    .replaceAll(secretValue || "", secretValue ? "[redacted]" : "")
     .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g, "[private-key redacted]")
     .replace(
       /\b(password|passwd|secret|token|community)\s*(?:=|:)\s*(?:"[^"]*"|'[^']*'|[^\s,;)}]+)/gi,

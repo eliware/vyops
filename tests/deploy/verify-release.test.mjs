@@ -30,7 +30,7 @@ test("rejects unavailable text when a verification command also reports an error
   );
 });
 
-const { logMock, mocks, deploy } = await setupDeployHarness(jest);
+const { mocks, deploy } = await setupDeployHarness(jest);
 const verifiedDeploy = () =>
   deploy({ target: "testuser@test-router.example.test", config: "/tmp/config.boot", verify: true });
 
@@ -52,13 +52,6 @@ test("continues when optional router services are absent", async () => {
     absent.has(check) ? { code: 1, stdout: absent.get(check), stderr: "" } : undefined,
   );
   await expect(verifiedDeploy()).resolves.toBe(0);
-  const info = logMock.info.mock.calls.flat().join(" ");
-  expect(info).toContain(
-    "show bgp summary: optional check is not configured or active. Continuing.",
-  );
-  expect(info).toContain(
-    "show interfaces wireguard: no WireGuard interfaces are configured. Continuing.",
-  );
 });
 
 test.each([

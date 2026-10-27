@@ -1,7 +1,7 @@
 import { remoteScriptPath } from "./script/path.mjs";
 import { validateRemoteScript } from "./script.mjs";
 import { inspectRemoteScriptLinks } from "./script/link-inspection.mjs";
-import { inspectRemoteScriptDirectory } from "./directory.mjs";
+import { inspectRemoteScriptDirectories } from "./directories.mjs";
 import { naturalCompare } from "../../validate/natural-compare.mjs";
 
 export async function inspectRemoteScripts(exec, client, log) {
@@ -29,14 +29,6 @@ export async function inspectRemoteScripts(exec, client, log) {
     const metadata = await validateRemoteScript(exec, client, `/config/scripts/${name}`);
     files.push({ name, ...metadata });
   }
-  const directoryNames = new Set();
-  for (const { name } of files) {
-    const parts = name.split("/");
-    for (let index = 1; index < parts.length; index += 1)
-      directoryNames.add(parts.slice(0, index).join("/"));
-  }
-  const directories = [];
-  for (const name of [...directoryNames].sort(naturalCompare))
-    directories.push(await inspectRemoteScriptDirectory(exec, client, name));
+  const directories = await inspectRemoteScriptDirectories(exec, client, files);
   return { files, directories };
 }

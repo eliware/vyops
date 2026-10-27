@@ -13,18 +13,3 @@ test("parses managed files and excludes directory records", () => {
     hasManifest: true,
   });
 });
-
-test.each([
-  ["file\thook.sh\tfalse\n", /invalid header/],
-  [manifest("file\thook.sh\tfalse\n"), /malformed record/],
-  [manifest("file\t../escape\tfalse\t-\t-\t-\t755\thash\tregular file\n"), /unsafe script path/],
-  [
-    manifest(
-      "file\thook.sh\tfalse\t-\t-\t-\t755\thash\tregular file\n" +
-        "file\thook.sh\tfalse\t-\t-\t-\t755\thash\tregular file\n",
-    ),
-    /duplicate script path/,
-  ],
-])("rejects an invalid manifest", (content, error) => {
-  expect(() => parseDeploymentState(content)).toThrow(error);
-});

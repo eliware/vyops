@@ -13,7 +13,7 @@ directives:
       - Keep package metadata and version in package.json.
       - >-
         Limit npm package files to src/, docs/, specs/, README.md, AGENTS.md, LICENSE,
-        RELEASE_NOTES.md, and bin/.
+        RELEASE_NOTES.md, .env.example, and bin/.
       - Run npm ci after a package-lock.json change.
       - Run npm test after code or behavior changes.
       - Require 100 percent statement, branch, function, and line coverage for src/ modules.
